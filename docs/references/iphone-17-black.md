@@ -38,4 +38,4 @@ Official sources:
 - `screen-mesh` is independently named and replaceable by a future media texture.
 - Positive Z is the front display; negative Z is the rear camera side.
 - Front and back review views are deterministic. Studio view may add subtle idle motion.
-- Portrait texture target is 1206 × 2622 pixels. Landscape support will rotate content/UV state rather than distort the physical screen proportions.
+- Portrait texture target is 1206 × 2622 pixels; landscape is 2622 × 1206 pixels. Orientation state rotates the physical model and counter-rotates the synthetic screen layout, preserving aspect ratio rather than stretching the content.

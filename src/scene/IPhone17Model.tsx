@@ -2,12 +2,17 @@ import { RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
 import type { Group } from 'three'
-import { IPHONE_17_SCENE, type ReviewView } from '../model/iphone17'
+import {
+  IPHONE_17_SCENE,
+  type ReviewView,
+  type ScreenOrientation,
+} from '../model/iphone17'
 
 interface IPhone17ModelProps {
   accent: string
   animate: boolean
   view: ReviewView
+  orientation: ScreenOrientation
 }
 
 const viewRotations: Record<ReviewView, [number, number, number]> = {
@@ -67,41 +72,57 @@ function RearLens({ name, y }: { name: string; y: number }) {
   )
 }
 
-function ScreenArtwork({ accent }: { accent: string }) {
+function ScreenArtwork({
+  accent,
+  orientation,
+}: {
+  accent: string
+  orientation: ScreenOrientation
+}) {
+  const landscape = orientation === 'landscape'
+
   return (
-    <group name="demo-screen-content" position={[0, 0, 0.101]}>
-      <RoundedBox args={[1.19, 2.46, 0.008]} radius={0.105} smoothness={6}>
+    <group
+      name="demo-screen-content"
+      position={[0, 0, 0.101]}
+      rotation={[0, 0, landscape ? -Math.PI / 2 : 0]}
+    >
+      <RoundedBox
+        args={landscape ? [2.46, 1.19, 0.008] : [1.19, 2.46, 0.008]}
+        radius={0.105}
+        smoothness={6}
+      >
         <meshBasicMaterial color="#0e1118" toneMapped={false} />
       </RoundedBox>
       <RoundedBox
-        args={[1.02, 0.72, 0.008]}
+        args={landscape ? [0.92, 0.92, 0.008] : [1.02, 0.72, 0.008]}
         radius={0.075}
         smoothness={5}
-        position={[0, 0.63, 0.008]}
+        position={landscape ? [-0.64, 0, 0.008] : [0, 0.63, 0.008]}
       >
         <meshBasicMaterial color={accent} toneMapped={false} />
       </RoundedBox>
       <RoundedBox
-        args={[1.02, 0.42, 0.008]}
+        args={landscape ? [0.98, 0.4, 0.008] : [1.02, 0.42, 0.008]}
         radius={0.06}
         smoothness={5}
-        position={[0, -0.09, 0.008]}
+        position={landscape ? [0.55, 0.25, 0.008] : [0, -0.09, 0.008]}
       >
         <meshBasicMaterial color="#1b202b" toneMapped={false} />
       </RoundedBox>
       <RoundedBox
-        args={[0.48, 0.52, 0.008]}
+        args={landscape ? [0.46, 0.42, 0.008] : [0.48, 0.52, 0.008]}
         radius={0.06}
         smoothness={5}
-        position={[-0.27, -0.67, 0.008]}
+        position={landscape ? [0.29, -0.28, 0.008] : [-0.27, -0.67, 0.008]}
       >
         <meshBasicMaterial color="#202633" toneMapped={false} />
       </RoundedBox>
       <RoundedBox
-        args={[0.48, 0.52, 0.008]}
+        args={landscape ? [0.46, 0.42, 0.008] : [0.48, 0.52, 0.008]}
         radius={0.06}
         smoothness={5}
-        position={[0.27, -0.67, 0.008]}
+        position={landscape ? [0.81, -0.28, 0.008] : [0.27, -0.67, 0.008]}
       >
         <meshBasicMaterial color="#171c25" toneMapped={false} />
       </RoundedBox>
@@ -109,7 +130,12 @@ function ScreenArtwork({ accent }: { accent: string }) {
   )
 }
 
-export function IPhone17Model({ accent, animate, view }: IPhone17ModelProps) {
+export function IPhone17Model({
+  accent,
+  animate,
+  view,
+  orientation,
+}: IPhone17ModelProps) {
   const group = useRef<Group>(null)
   const { width, height, depth, glassWidth, glassHeight, displayWidth, displayHeight } =
     IPHONE_17_SCENE
@@ -125,7 +151,9 @@ export function IPhone17Model({ accent, animate, view }: IPhone17ModelProps) {
 
     group.current.rotation.x += (target[0] + idlePitch - group.current.rotation.x) * easing
     group.current.rotation.y += (target[1] + idleYaw - group.current.rotation.y) * easing
-    group.current.rotation.z += (target[2] - group.current.rotation.z) * easing
+    const orientationRotation = orientation === 'landscape' ? Math.PI / 2 : 0
+    group.current.rotation.z +=
+      (target[2] + orientationRotation - group.current.rotation.z) * easing
     group.current.position.y =
       0.1 + (animate && view === 'studio' ? Math.sin(time * 0.8) * 0.025 : 0)
   })
@@ -134,7 +162,11 @@ export function IPhone17Model({ accent, animate, view }: IPhone17ModelProps) {
     <group
       name="iphone-17-root"
       ref={group}
-      rotation={viewRotations[view]}
+      rotation={[
+        viewRotations[view][0],
+        viewRotations[view][1],
+        viewRotations[view][2] + (orientation === 'landscape' ? Math.PI / 2 : 0),
+      ]}
       position={[0, 0.1, 0]}
     >
       <RoundedBox name="body-frame" args={[width, height, depth]} radius={0.17} smoothness={10}>
@@ -171,7 +203,7 @@ export function IPhone17Model({ accent, animate, view }: IPhone17ModelProps) {
       >
         <meshBasicMaterial color="#0b0e14" toneMapped={false} />
       </RoundedBox>
-      <ScreenArtwork accent={accent} />
+      <ScreenArtwork accent={accent} orientation={orientation} />
 
       <RoundedBox
         name="dynamic-island"

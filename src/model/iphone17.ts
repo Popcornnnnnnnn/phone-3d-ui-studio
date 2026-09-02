@@ -33,4 +33,4 @@ export const IPHONE_17_SCENE = {
 } as const
 
 export type ReviewView = 'studio' | 'front' | 'back'
-
+export type ScreenOrientation = 'portrait' | 'landscape'

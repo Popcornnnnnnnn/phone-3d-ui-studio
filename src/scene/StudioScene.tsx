@@ -1,7 +1,7 @@
 import { ContactShadows, OrbitControls } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
-import type { ReviewView } from '../model/iphone17'
+import type { ReviewView, ScreenOrientation } from '../model/iphone17'
 import type { StudioPreset } from '../studio/presets'
 import { IPhone17Model } from './IPhone17Model'
 
@@ -9,6 +9,7 @@ interface StudioSceneProps {
   preset: StudioPreset
   animate: boolean
   view: ReviewView
+  orientation: ScreenOrientation
 }
 
 const cameraPositions: Record<ReviewView, [number, number, number]> = {
@@ -29,7 +30,7 @@ function ReviewCamera({ view }: { view: ReviewView }) {
   return null
 }
 
-export function StudioScene({ preset, animate, view }: StudioSceneProps) {
+export function StudioScene({ preset, animate, view, orientation }: StudioSceneProps) {
   return (
     <Canvas
       shadows="basic"
@@ -56,7 +57,12 @@ export function StudioScene({ preset, animate, view }: StudioSceneProps) {
         <pointLight color={preset.accent} intensity={0.7} position={[2.5, 0.8, -3]} />
       )}
       <ReviewCamera view={view} />
-      <IPhone17Model accent={preset.accent} animate={animate} view={view} />
+      <IPhone17Model
+        accent={preset.accent}
+        animate={animate}
+        view={view}
+        orientation={orientation}
+      />
       <ContactShadows
         position={[0, -1.58, 0]}
         opacity={0.52}

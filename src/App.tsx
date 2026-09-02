@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react'
-import { IPHONE_17_MM, type ReviewView } from './model/iphone17'
+import {
+  IPHONE_17_MM,
+  type ReviewView,
+  type ScreenOrientation,
+} from './model/iphone17'
 import { StudioScene } from './scene/StudioScene'
 import { findStudioPreset, studioPresets } from './studio/presets'
 
@@ -7,6 +11,7 @@ export function App() {
   const [presetId, setPresetId] = useState(studioPresets[0].id)
   const [animate, setAnimate] = useState(true)
   const [view, setView] = useState<ReviewView>('studio')
+  const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
   const preset = useMemo(() => findStudioPreset(presetId), [presetId])
 
   return (
@@ -24,7 +29,12 @@ export function App() {
 
       <section className="workspace">
         <div className="viewport" aria-label="Interactive 3D phone viewport">
-          <StudioScene preset={preset} animate={animate} view={view} />
+          <StudioScene
+            preset={preset}
+            animate={animate}
+            view={view}
+            orientation={orientation}
+          />
           <div className="viewport-label">
             <span>Preview 01</span>
             <span>{view === 'studio' ? 'Drag to orbit · Scroll to zoom' : `${view} review`}</span>
@@ -81,6 +91,19 @@ export function App() {
             <p>
               1206 × 2622 target. Prerecorded and live sources share the same contract.
             </p>
+            <div className="view-switcher" role="group" aria-label="Screen orientation">
+              {(['portrait', 'landscape'] as const).map((item) => (
+                <button
+                  className={item === orientation ? 'view-button active' : 'view-button'}
+                  key={item}
+                  type="button"
+                  aria-pressed={item === orientation}
+                  onClick={() => setOrientation(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
           </section>
 
           <section className="panel-section source-card">
