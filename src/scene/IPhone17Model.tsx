@@ -7,12 +7,15 @@ import {
   type ReviewView,
   type ScreenOrientation,
 } from '../model/iphone17'
+import type { ScreenMedia } from '../studio/screenMedia'
+import { ScreenSurface } from './ScreenSurface'
 
 interface IPhone17ModelProps {
   accent: string
   animate: boolean
   view: ReviewView
   orientation: ScreenOrientation
+  screenMedia: ScreenMedia | null
 }
 
 const viewRotations: Record<ReviewView, [number, number, number]> = {
@@ -135,10 +138,10 @@ export function IPhone17Model({
   animate,
   view,
   orientation,
+  screenMedia,
 }: IPhone17ModelProps) {
   const group = useRef<Group>(null)
-  const { width, height, depth, glassWidth, glassHeight, displayWidth, displayHeight } =
-    IPHONE_17_SCENE
+  const { width, height, depth, glassWidth, glassHeight } = IPHONE_17_SCENE
 
   useFrame((state, delta) => {
     if (!group.current) return
@@ -194,16 +197,8 @@ export function IPhone17Model({
         />
       </RoundedBox>
 
-      <RoundedBox
-        name="screen-mesh"
-        args={[displayWidth, displayHeight, 0.012]}
-        radius={0.135}
-        smoothness={10}
-        position={[0, 0, depth / 2 + 0.018]}
-      >
-        <meshBasicMaterial color="#0b0e14" toneMapped={false} />
-      </RoundedBox>
-      <ScreenArtwork accent={accent} orientation={orientation} />
+      <ScreenSurface media={screenMedia} orientation={orientation} />
+      {!screenMedia && <ScreenArtwork accent={accent} orientation={orientation} />}
 
       <RoundedBox
         name="dynamic-island"

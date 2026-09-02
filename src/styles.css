@@ -188,7 +188,7 @@ button {
   right: 0;
 }
 
-.source-card p:last-child {
+.source-description {
   margin: 14px 0 0;
   color: #8e939e;
   font-size: 12px;
@@ -213,6 +213,7 @@ button {
 }
 
 .wide-button {
+  display: block;
   width: 100%;
   padding: 11px 14px;
   margin-top: 16px;
@@ -223,6 +224,56 @@ button {
   cursor: pointer;
   font-size: 12px;
   font-weight: 650;
+  text-align: center;
+}
+
+.file-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.source-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0 0;
+  color: #aeb3bd;
+  font-size: 10px;
+}
+
+.source-meta span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-meta span:last-child {
+  flex: none;
+  color: #747b87;
+}
+
+.source-error {
+  margin: 10px 0 0;
+  color: #ff9a91;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.source-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .view-switcher {
@@ -251,6 +302,12 @@ button {
   border-color: #b8ff3d;
   color: #edf5df;
   outline: none;
+}
+
+.view-button:disabled {
+  border-color: rgb(255 255 255 / 5%);
+  color: #555b65;
+  cursor: not-allowed;
 }
 
 .wide-button:hover,

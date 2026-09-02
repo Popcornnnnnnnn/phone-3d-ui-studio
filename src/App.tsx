@@ -6,6 +6,7 @@ import {
 } from './model/iphone17'
 import { StudioScene } from './scene/StudioScene'
 import { findStudioPreset, studioPresets } from './studio/presets'
+import { useLocalVideoSource } from './studio/useLocalVideoSource'
 
 export function App() {
   const [presetId, setPresetId] = useState(studioPresets[0].id)
@@ -13,12 +14,16 @@ export function App() {
   const [view, setView] = useState<ReviewView>('studio')
   const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
   const preset = useMemo(() => findStudioPreset(presetId), [presetId])
+  const { error, media, pause, play, reset, selectFile, status } =
+    useLocalVideoSource()
+  const sourceReady = media !== null
+  const sourceStatus = status === 'idle' ? 'Idle' : status
 
   return (
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">M1 · iPhone 17 geometry</p>
+          <p className="eyebrow">M2 · Prerecorded screen media</p>
           <h1>Phone 3D UI Studio</h1>
         </div>
         <div className="status-cluster" aria-label="Source status">
@@ -34,6 +39,7 @@ export function App() {
             animate={animate}
             view={view}
             orientation={orientation}
+            screenMedia={media}
           />
           <div className="viewport-label">
             <span>Preview 01</span>
@@ -87,10 +93,57 @@ export function App() {
               <p className="section-kicker">Screen source</p>
               <h2>Isolated mesh</h2>
             </div>
-            <span className="chip">Idle</span>
-            <p>
-              1206 × 2622 target. Prerecorded and live sources share the same contract.
+            <span className={sourceReady ? 'chip ready' : 'chip'}>{sourceStatus}</span>
+            <p className="source-description">
+              Local-only media is held in memory and mapped with contain scaling.
+              Nothing is uploaded or copied into the project.
             </p>
+            <label className="wide-button file-button">
+              <span>{sourceReady ? 'Replace local video' : 'Choose local video'}</span>
+              <input
+                accept="video/*"
+                aria-label="Choose a local screen recording"
+                type="file"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0]
+                  if (file) selectFile(file)
+                  event.currentTarget.value = ''
+                }}
+              />
+            </label>
+            {media && (
+              <p className="source-meta" title={media.name}>
+                <span>{media.name}</span>
+                <span>{media.width} × {media.height}</span>
+              </p>
+            )}
+            {error && <p className="source-error" role="alert">{error}</p>}
+            <div className="source-actions" role="group" aria-label="Video playback">
+              <button
+                className="view-button"
+                disabled={!sourceReady || status === 'playing'}
+                onClick={() => void play()}
+                type="button"
+              >
+                Play
+              </button>
+              <button
+                className="view-button"
+                disabled={!sourceReady || status !== 'playing'}
+                onClick={pause}
+                type="button"
+              >
+                Pause
+              </button>
+              <button
+                className="view-button"
+                disabled={!sourceReady}
+                onClick={reset}
+                type="button"
+              >
+                Reset
+              </button>
+            </div>
             <div className="view-switcher" role="group" aria-label="Screen orientation">
               {(['portrait', 'landscape'] as const).map((item) => (
                 <button

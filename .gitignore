@@ -19,6 +19,8 @@ exports/
 *.mov
 *.mp4
 *.webm
+*.m4v
+*.avi
 
 # Local state
 .DS_Store

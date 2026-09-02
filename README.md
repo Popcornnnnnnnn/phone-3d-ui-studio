@@ -8,7 +8,7 @@ A reusable desktop studio for presenting a phone UI on a controllable 3D device,
 ## Project status
 
 - Accepted: M0 project foundation; M1 calibrated iPhone 17 model
-- Next phase: M2 prerecorded content-production MVP
+- Active: M2 prerecorded content-production MVP; screen-video vertical slice implemented locally
 - Baseline start: 2026-09-02
 - Target content-production MVP: 2026-09-18
 - Target live-sync release candidate: 2026-10-09
@@ -37,7 +37,7 @@ PROJECT_PLAN.md        Schedule, milestones, effort, risks, acceptance gates
 ROADMAP.md             Date-based delivery checkpoints
 ```
 
-The current application contains an original procedural iPhone 17 black reference model, an independently addressable screen mesh, deterministic front/back review views, three visual presets, simulated motion, orbit controls, and explicit screen/pose source contracts. Confirmed dimensions and approximation boundaries are recorded in [docs/references/iphone-17-black.md](docs/references/iphone-17-black.md). Landscape content mapping, video texture, live capture, and recording are not implemented yet.
+The current application contains an original procedural iPhone 17 black reference model, an independently addressable screen mesh, deterministic front/back review views, three visual presets, simulated motion, orbit controls, and explicit screen/pose source contracts. A local video can be selected, played, paused, reset, and mapped to the screen with non-stretching portrait/landscape contain scaling. Confirmed dimensions and approximation boundaries are recorded in [docs/references/iphone-17-black.md](docs/references/iphone-17-black.md). Live capture, camera timeline, final-scene recording, and saved project state are not implemented yet.
 
 ## Local development
 
@@ -54,5 +54,6 @@ The local studio runs at <http://127.0.0.1:4317>. Run the complete verification 
 
 - Keep source, generated media, captured phone content, secrets, and build caches separate.
 - Never commit captured personal phone screens, signing material, provisioning profiles, `.env` files, or recordings.
+- Local video selection uses an in-memory object URL; the app does not copy, upload, or serialize the selected file path.
 - A visually convincing render is not proof that live capture or pose synchronization works.
 - Every milestone closes only after its acceptance check is recorded in the corresponding GitHub issue.

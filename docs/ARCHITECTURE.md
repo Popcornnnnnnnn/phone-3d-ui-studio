@@ -46,3 +46,13 @@ Never commit:
 
 Use synthetic/demo UI media for fixtures and documentation.
 
+## Prerecorded screen source
+
+The M2 prerecorded path keeps the user's media outside project state:
+
+1. The file picker receives a local `File` selected by the user.
+2. A short-lived object URL feeds a muted, looping `HTMLVideoElement`.
+3. A `VideoTexture` is attached only to the independently named `screen-mesh`.
+4. Replacing the source or leaving the app pauses the element, clears its source, disposes the texture, and revokes the object URL.
+
+The selected file bytes and local path are never copied, uploaded, or serialized. The screen shader rotates display coordinates for landscape mode and applies contain scaling from source and target aspect ratios. Pixels outside the fitted source are black, so mismatched media is letterboxed or pillarboxed rather than stretched or cropped.

@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
 import type { ReviewView, ScreenOrientation } from '../model/iphone17'
 import type { StudioPreset } from '../studio/presets'
+import type { ScreenMedia } from '../studio/screenMedia'
 import { IPhone17Model } from './IPhone17Model'
 
 interface StudioSceneProps {
@@ -10,6 +11,7 @@ interface StudioSceneProps {
   animate: boolean
   view: ReviewView
   orientation: ScreenOrientation
+  screenMedia: ScreenMedia | null
 }
 
 const cameraPositions: Record<ReviewView, [number, number, number]> = {
@@ -30,7 +32,13 @@ function ReviewCamera({ view }: { view: ReviewView }) {
   return null
 }
 
-export function StudioScene({ preset, animate, view, orientation }: StudioSceneProps) {
+export function StudioScene({
+  preset,
+  animate,
+  view,
+  orientation,
+  screenMedia,
+}: StudioSceneProps) {
   return (
     <Canvas
       shadows="basic"
@@ -62,6 +70,7 @@ export function StudioScene({ preset, animate, view, orientation }: StudioSceneP
         animate={animate}
         view={view}
         orientation={orientation}
+        screenMedia={screenMedia}
       />
       <ContactShadows
         position={[0, -1.58, 0]}
