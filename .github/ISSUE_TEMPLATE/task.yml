@@ -1,0 +1,24 @@
+name: Project task
+description: Track an implementation or validation task
+title: "[Task] "
+labels: ["task"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Required outcome
+      description: Describe the externally verifiable result.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance checks
+      description: List the evidence required before this task is complete.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and risks
+      description: List blockers, upstream decisions, and important constraints.

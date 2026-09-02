@@ -1,0 +1,27 @@
+# Dependencies and builds
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.mobileprovision
+*.p12
+
+# Captures, recordings, and generated media
+captures/
+recordings/
+exports/
+*.mov
+*.mp4
+*.webm
+
+# Local state
+.DS_Store
+*.log
+*.sqlite
+*.sqlite3
+
