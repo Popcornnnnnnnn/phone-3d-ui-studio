@@ -1,5 +1,10 @@
 # Roadmap
 
+## Accepted progress
+
+- 2026-09-02 — M0 project foundation accepted ahead of its 2026-09-04 target.
+- 2026-09-02 — M1 calibrated iPhone 17 black model accepted ahead of its 2026-09-09 target.
+
 ## Week 1 — 2026-09-02 to 2026-09-06
 
 - Complete repository and CI foundation.
@@ -47,4 +52,3 @@ Checkpoint: integrated beta survives normal orientation and connectivity changes
 - Produce the release-candidate recording and clean-machine verification.
 
 Checkpoint: release candidate is ready for physical-device acceptance on 2026-10-12.
-

@@ -7,12 +7,13 @@ A reusable desktop studio for presenting a phone UI on a controllable 3D device,
 
 ## Project status
 
-- Phase: M1 3D phone asset integration in progress
+- Accepted: M0 project foundation; M1 calibrated iPhone 17 model
+- Next phase: M2 prerecorded content-production MVP
 - Baseline start: 2026-09-02
 - Target content-production MVP: 2026-09-18
 - Target live-sync release candidate: 2026-10-09
 - Target acceptance: 2026-10-12
-- Active work: [M1 — integrate an action-ready 3D phone asset](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/2)
+- Next work item: [M2 — screen-video texture and orientation calibration](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/4)
 
 The schedule assumes one primary developer, a Mac and iPhone available for testing, and no App Store release requirement. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the estimate, gates, and acceptance criteria.
 
