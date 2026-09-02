@@ -8,6 +8,9 @@ import {
   type ScreenOrientation,
 } from '../model/iphone17'
 import type { ScreenMedia } from '../studio/screenMedia'
+import { AppleMark } from './AppleMark'
+import { PhoneShell } from './PhoneShell'
+import { RearCameraSystem } from './RearCameraSystem'
 import { ScreenSurface } from './ScreenSurface'
 
 interface IPhone17ModelProps {
@@ -19,7 +22,7 @@ interface IPhone17ModelProps {
 }
 
 const viewRotations: Record<ReviewView, [number, number, number]> = {
-  studio: [0.08, -0.3, -0.04],
+  studio: [0.055, 0.08, -0.025],
   front: [0, 0, 0],
   back: [0, 0, 0],
 }
@@ -38,40 +41,18 @@ function SideButton({
   return (
     <RoundedBox
       name={name}
-      args={[0.025, height, 0.06]}
-      radius={0.012}
-      smoothness={4}
-      position={[side * (IPHONE_17_SCENE.width / 2 + 0.011), y, 0]}
+      args={[0.022, height, 0.065]}
+      radius={0.011}
+      smoothness={6}
+      position={[side * (IPHONE_17_SCENE.width / 2 + 0.009), y, 0]}
     >
-      <meshStandardMaterial color="#16171a" metalness={0.88} roughness={0.24} />
+      <meshPhysicalMaterial
+        color="#363735"
+        clearcoat={0.35}
+        metalness={0.92}
+        roughness={0.22}
+      />
     </RoundedBox>
-  )
-}
-
-function RearLens({ name, y }: { name: string; y: number }) {
-  const radius = IPHONE_17_SCENE.rearLensDiameter / 2
-
-  return (
-    <group name={name} position={[0.43, y, -0.142]} rotation={[Math.PI / 2, 0, 0]}>
-      <mesh>
-        <cylinderGeometry args={[radius * 1.08, radius * 1.08, 0.055, 64]} />
-        <meshStandardMaterial color="#111216" metalness={0.92} roughness={0.19} />
-      </mesh>
-      <mesh position={[0, -0.031, 0]}>
-        <cylinderGeometry args={[radius * 0.78, radius * 0.78, 0.012, 64]} />
-        <meshPhysicalMaterial
-          color="#05070b"
-          metalness={0.35}
-          roughness={0.08}
-          clearcoat={1}
-          clearcoatRoughness={0.08}
-        />
-      </mesh>
-      <mesh position={[-radius * 0.2, -0.039, radius * 0.18]}>
-        <sphereGeometry args={[radius * 0.13, 20, 20]} />
-        <meshBasicMaterial color="#38506e" transparent opacity={0.72} />
-      </mesh>
-    </group>
   )
 }
 
@@ -141,7 +122,7 @@ export function IPhone17Model({
   screenMedia,
 }: IPhone17ModelProps) {
   const group = useRef<Group>(null)
-  const { width, height, depth, glassWidth, glassHeight } = IPHONE_17_SCENE
+  const { height, depth } = IPHONE_17_SCENE
 
   useFrame((state, delta) => {
     if (!group.current) return
@@ -172,30 +153,7 @@ export function IPhone17Model({
       ]}
       position={[0, 0.1, 0]}
     >
-      <RoundedBox name="body-frame" args={[width, height, depth]} radius={0.17} smoothness={10}>
-        <meshPhysicalMaterial
-          color="#18191c"
-          metalness={0.86}
-          roughness={0.27}
-          clearcoat={0.32}
-          clearcoatRoughness={0.2}
-        />
-      </RoundedBox>
-
-      <RoundedBox
-        name="front-glass"
-        args={[glassWidth, glassHeight, 0.018]}
-        radius={0.155}
-        smoothness={10}
-        position={[0, 0, depth / 2 + 0.005]}
-      >
-        <meshPhysicalMaterial
-          color="#07090d"
-          roughness={0.08}
-          clearcoat={1}
-          clearcoatRoughness={0.04}
-        />
-      </RoundedBox>
+      <PhoneShell />
 
       <ScreenSurface media={screenMedia} orientation={orientation} />
       {!screenMedia && <ScreenArtwork accent={accent} orientation={orientation} />}
@@ -210,36 +168,8 @@ export function IPhone17Model({
         <meshBasicMaterial color="#020305" toneMapped={false} />
       </RoundedBox>
 
-      <RoundedBox
-        name="back-glass"
-        args={[glassWidth, glassHeight, 0.018]}
-        radius={0.155}
-        smoothness={10}
-        position={[0, 0, -depth / 2 - 0.005]}
-      >
-        <meshPhysicalMaterial color="#161719" roughness={0.34} clearcoat={0.28} />
-      </RoundedBox>
-
-      <RoundedBox
-        name="camera-plate"
-        args={[0.52, 0.88, 0.055]}
-        radius={0.17}
-        smoothness={10}
-        position={[0.43, 0.91, -depth / 2 - 0.035]}
-      >
-        <meshPhysicalMaterial color="#1c1d20" roughness={0.3} clearcoat={0.45} />
-      </RoundedBox>
-      <RearLens name="rear-camera-main" y={1.08} />
-      <RearLens name="rear-camera-ultrawide" y={0.74} />
-
-      <mesh name="flash" position={[0.04, 0.98, -0.139]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.062, 0.062, 0.025, 40]} />
-        <meshPhysicalMaterial color="#fff2c9" roughness={0.22} clearcoat={0.8} />
-      </mesh>
-      <mesh name="rear-microphone" position={[0.15, 0.83, -0.143]}>
-        <sphereGeometry args={[0.018, 20, 20]} />
-        <meshBasicMaterial color="#050609" />
-      </mesh>
+      <AppleMark />
+      <RearCameraSystem />
 
       <SideButton name="action-button" side={-1} y={0.82} height={0.16} />
       <SideButton name="volume-up" side={-1} y={0.47} height={0.23} />

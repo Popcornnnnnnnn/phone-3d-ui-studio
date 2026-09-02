@@ -15,7 +15,7 @@ interface StudioSceneProps {
 }
 
 const cameraPositions: Record<ReviewView, [number, number, number]> = {
-  studio: [3.3, 1.8, 4.8],
+  studio: [2.8, 1.5, 5.2],
   front: [0, 0.1, 5.4],
   back: [0, 0.1, -5.4],
 }
@@ -48,21 +48,35 @@ export function StudioScene({
     >
       <color attach="background" args={[preset.background]} />
       <fog attach="fog" args={[preset.background, 7, 15]} />
-      <ambientLight intensity={0.28} />
+      <hemisphereLight color="#f4f6ff" groundColor={preset.floor} intensity={1.05} />
+      <ambientLight intensity={0.42} />
       <directionalLight
         castShadow
-        color="#ffffff"
+        color="#fffdf8"
         intensity={preset.keyLight}
         position={view === 'back' ? [-3.5, 5.2, -3.8] : [3.5, 5.2, 3.8]}
         shadow-mapSize={[1024, 1024]}
       />
+      <directionalLight
+        color="#b9cbff"
+        intensity={1.1}
+        position={view === 'back' ? [3, 1.2, 2.8] : [-3, 1.2, -2.8]}
+      />
+      <rectAreaLight
+        color="#ffffff"
+        height={4}
+        intensity={3.2}
+        position={view === 'back' ? [1.8, 0.5, -3.5] : [-1.8, 0.5, 3.5]}
+        rotation={view === 'back' ? [0, Math.PI, 0] : [0, 0, 0]}
+        width={1.4}
+      />
       <pointLight
         color={preset.accent}
-        intensity={preset.fillLight}
+        intensity={preset.fillLight * 0.55}
         position={[-3.2, 1.4, 2.2]}
       />
       {view === 'back' && (
-        <pointLight color={preset.accent} intensity={0.7} position={[2.5, 0.8, -3]} />
+        <pointLight color={preset.accent} intensity={0.38} position={[2.5, 0.8, -3]} />
       )}
       <ReviewCamera view={view} />
       <IPhone17Model

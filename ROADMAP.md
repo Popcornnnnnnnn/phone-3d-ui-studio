@@ -5,6 +5,7 @@
 - 2026-09-02 — M0 project foundation accepted ahead of its 2026-09-04 target.
 - 2026-09-02 — M1 calibrated iPhone 17 black model accepted ahead of its 2026-09-09 target.
 - 2026-09-02 — M2 screen-video texture and orientation slice accepted ahead of its 2026-09-13 target.
+- 2026-09-02 — M1 visual acceptance reopened after the geometry-correct render failed recognizable iPhone 17 fidelity review; revised candidate awaits visual sign-off.
 
 ## Week 1 — 2026-09-02 to 2026-09-06
 

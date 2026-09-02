@@ -28,9 +28,16 @@ Official sources:
 
 - Scene scale is normalized to a 3-unit product height; every confirmed millimetre value uses the same conversion.
 - Body and glass corner radii are visually fitted to the official orthographic drawing because the public specification does not provide a single manufacturing radius suitable for a low-poly render mesh.
-- Camera-plate contour, component center positions, lens stack thickness, button depth, port internals, glass tint, roughness and clearcoat are visual approximations.
+- Camera-island contour, component center positions, lens stack thickness, button depth, port internals, glass tint, roughness and clearcoat are visual approximations calibrated against Apple’s black product-viewer imagery.
 - The on-screen artwork is synthetic. It is not an iOS screenshot.
-- The Apple logo is intentionally omitted. Adding branded marks or redistributing Apple product-bezel assets requires a separate rights review.
+- The rear mark is a procedural Apple-style approximation included for this private personal demo. It does not import or redistribute Apple artwork and must not be treated as an official product asset.
+
+## Visual calibration
+
+- The black finish is rendered as neutral deep-charcoal aluminum around a darker, softly reflective color-infused glass back rather than a single pure-black material.
+- The rail is a rounded-rectangle extrusion with a controlled bevel, while front and back glass are independent flat surfaces. This preserves the measured 7.95 mm depth without the inflated edge artifacts produced by an oversized box bevel.
+- The standard iPhone 17 rear camera system is represented as a compact vertical pill at the upper-left, with two separate protective rings, dark lens glass, a flash, and microphone.
+- The default Soft Paper scene uses a light neutral background so the black silhouette, thin border, lens depth, and edge highlights remain readable.
 
 ## Review contract
 

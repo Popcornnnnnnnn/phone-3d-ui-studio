@@ -7,13 +7,14 @@ A reusable desktop studio for presenting a phone UI on a controllable 3D device,
 
 ## Project status
 
-- Accepted: M0 project foundation; M1 calibrated iPhone 17 model
-- Active: M2 prerecorded content-production MVP; screen-video vertical slice accepted
+- Accepted: M0 project foundation; M2 screen-video vertical slice
+- Active: M1 iPhone 17 visual rework candidate; previous geometry-only acceptance was reopened
 - Baseline start: 2026-09-02
 - Target content-production MVP: 2026-09-18
 - Target live-sync release candidate: 2026-10-09
 - Target acceptance: 2026-10-12
-- Next work item: [M2 — reusable studio and camera presets](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/5)
+- Current review item: [M1 — visually recalibrate the iPhone 17 asset](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/2)
+- Next M2 work item after visual sign-off: [reusable studio and camera presets](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/5)
 
 The schedule assumes one primary developer, a Mac and iPhone available for testing, and no App Store release requirement. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the estimate, gates, and acceptance criteria.
 

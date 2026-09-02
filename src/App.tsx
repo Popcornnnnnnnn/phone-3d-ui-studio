@@ -9,7 +9,7 @@ import { findStudioPreset, studioPresets } from './studio/presets'
 import { useLocalVideoSource } from './studio/useLocalVideoSource'
 
 export function App() {
-  const [presetId, setPresetId] = useState(studioPresets[0].id)
+  const [presetId, setPresetId] = useState('paper')
   const [animate, setAnimate] = useState(true)
   const [view, setView] = useState<ReviewView>('studio')
   const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
@@ -23,7 +23,7 @@ export function App() {
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">M2 · Prerecorded screen media</p>
+          <p className="eyebrow">M1 visual rework · M2 screen media</p>
           <h1>Phone 3D UI Studio</h1>
         </div>
         <div className="status-cluster" aria-label="Source status">
