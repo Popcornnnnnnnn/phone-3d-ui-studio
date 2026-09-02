@@ -225,6 +225,34 @@ button {
   font-weight: 650;
 }
 
+.view-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.view-button {
+  padding: 9px 6px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 8px;
+  color: #8f95a0;
+  background: #15171c;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.view-button:hover,
+.view-button:focus-visible,
+.view-button.active {
+  border-color: #b8ff3d;
+  color: #edf5df;
+  outline: none;
+}
+
 .wide-button:hover,
 .wide-button:focus-visible {
   border-color: #b8ff3d;

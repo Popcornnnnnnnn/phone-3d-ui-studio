@@ -29,12 +29,14 @@ The first deliverable is independently useful and does not wait for iOS capture 
 
 ```text
 docs/                  Architecture and decision records
+src/model/             Calibrated device dimensions and tests
+src/scene/             Three.js model and studio scene
 .github/               Issue templates and project automation metadata
 PROJECT_PLAN.md        Schedule, milestones, effort, risks, acceptance gates
 ROADMAP.md             Date-based delivery checkpoints
 ```
 
-The current application is a runnable renderer skeleton with a procedural phone placeholder, an isolated screen surface, three visual presets, simulated motion, orbit controls, and explicit screen/pose source contracts. It does not yet contain a production phone asset, video texture, live capture, or recording.
+The current application contains an original procedural iPhone 17 black reference model, an independently addressable screen mesh, deterministic front/back review views, three visual presets, simulated motion, orbit controls, and explicit screen/pose source contracts. Confirmed dimensions and approximation boundaries are recorded in [docs/references/iphone-17-black.md](docs/references/iphone-17-black.md). Landscape content mapping, video texture, live capture, and recording are not implemented yet.
 
 ## Local development
 
