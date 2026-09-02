@@ -3,6 +3,7 @@ node_modules/
 dist/
 .vite/
 coverage/
+*.tsbuildinfo
 
 # Local configuration and secrets
 .env
@@ -24,4 +25,3 @@ exports/
 *.log
 *.sqlite
 *.sqlite3
-

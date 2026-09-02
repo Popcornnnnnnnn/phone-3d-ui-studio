@@ -7,7 +7,7 @@ A reusable desktop studio for presenting a phone UI on a controllable 3D device,
 
 ## Project status
 
-- Phase: project setup and technical validation
+- Phase: M0 renderer foundation in progress
 - Baseline start: 2026-09-02
 - Target content-production MVP: 2026-09-18
 - Target live-sync release candidate: 2026-10-09
@@ -34,7 +34,18 @@ PROJECT_PLAN.md        Schedule, milestones, effort, risks, acceptance gates
 ROADMAP.md             Date-based delivery checkpoints
 ```
 
-Application code will be introduced during the foundation milestone after the renderer and capture-spike decisions are recorded.
+The current application is a runnable renderer skeleton with a procedural phone placeholder, an isolated screen surface, three visual presets, simulated motion, orbit controls, and explicit screen/pose source contracts. It does not yet contain a production phone asset, video texture, live capture, or recording.
+
+## Local development
+
+Requires Node.js 24 or newer.
+
+```bash
+npm install
+npm run dev
+```
+
+The local studio runs at <http://127.0.0.1:4317>. Run the complete verification suite with `npm run check`.
 
 ## Working rules
 

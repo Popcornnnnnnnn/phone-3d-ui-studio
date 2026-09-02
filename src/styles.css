@@ -1,0 +1,284 @@
+:root {
+  color: #f5f7fb;
+  background: #090a0d;
+  font-family:
+    Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% -12%, rgb(184 255 61 / 9%), transparent 26rem),
+    #090a0d;
+}
+
+.topbar {
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  background: rgb(10 11 14 / 88%);
+  backdrop-filter: blur(18px);
+}
+
+.topbar h1,
+.inspector h2 {
+  margin: 0;
+  font-weight: 610;
+  letter-spacing: -0.025em;
+}
+
+.topbar h1 {
+  margin-top: 4px;
+  font-size: 19px;
+}
+
+.eyebrow,
+.section-kicker {
+  margin: 0;
+  color: #8b909c;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.status-cluster {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #b9bdc7;
+  font-size: 13px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: #b8ff3d;
+  box-shadow: 0 0 18px rgb(184 255 61 / 78%);
+}
+
+.workspace {
+  height: calc(100vh - 84px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 342px;
+}
+
+.viewport {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.viewport::after {
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 18px;
+  content: "";
+  pointer-events: none;
+}
+
+.viewport-label {
+  position: absolute;
+  right: 36px;
+  bottom: 34px;
+  left: 36px;
+  display: flex;
+  justify-content: space-between;
+  color: rgb(255 255 255 / 54%);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.inspector {
+  padding: 24px;
+  overflow-y: auto;
+  border-left: 1px solid rgb(255 255 255 / 8%);
+  background: #0f1014;
+}
+
+.panel-section {
+  padding: 0 0 24px;
+  margin: 0 0 24px;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+}
+
+.inspector h2 {
+  margin-top: 7px;
+  font-size: 16px;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.preset {
+  display: grid;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 10px;
+  color: #a9aeba;
+  background: #15171c;
+  cursor: pointer;
+  font-size: 10px;
+  text-align: left;
+}
+
+.preset:hover,
+.preset:focus-visible {
+  border-color: rgb(255 255 255 / 24%);
+  outline: none;
+}
+
+.preset.active {
+  border-color: #b8ff3d;
+  color: #f4f8ec;
+  box-shadow: 0 0 0 1px rgb(184 255 61 / 16%);
+}
+
+.swatch {
+  width: 100%;
+  height: 42px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  box-shadow: inset 0 0 16px currentColor;
+}
+
+.source-card {
+  position: relative;
+}
+
+.source-card .chip {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.source-card p:last-child {
+  margin: 14px 0 0;
+  color: #8e939e;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.chip {
+  padding: 5px 8px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 99px;
+  color: #9aa0aa;
+  background: #17191e;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chip.ready {
+  color: #b8ff3d;
+  background: rgb(184 255 61 / 8%);
+}
+
+.wide-button {
+  width: 100%;
+  padding: 11px 14px;
+  margin-top: 16px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 10px;
+  color: #ecedf0;
+  background: #191b20;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.wide-button:hover,
+.wide-button:focus-visible {
+  border-color: #b8ff3d;
+  outline: none;
+}
+
+.metrics {
+  border-bottom: 0;
+}
+
+.metrics dl {
+  display: grid;
+  gap: 1px;
+  margin: 12px 0 0;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 7%);
+}
+
+.metrics dl div {
+  display: flex;
+  justify-content: space-between;
+  padding: 11px 12px;
+  background: #14161a;
+  font-size: 11px;
+}
+
+.metrics dt {
+  color: #7f8590;
+}
+
+.metrics dd {
+  margin: 0;
+  color: #d6d9df;
+}
+
+@media (max-width: 840px) {
+  body {
+    overflow: auto;
+  }
+
+  .workspace {
+    height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .viewport {
+    height: 62vh;
+    min-height: 460px;
+  }
+
+  .inspector {
+    border-top: 1px solid rgb(255 255 255 / 8%);
+    border-left: 0;
+  }
+}
