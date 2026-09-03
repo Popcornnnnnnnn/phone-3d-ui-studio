@@ -30,7 +30,7 @@ import {
   rollingDecodedFps,
   type WebRTCReceiverSample,
 } from './webRTCStats'
-import { h264OnlyCodecPreferences } from './webRTCCodecPreferences'
+import { vp8OnlyCodecPreferences } from './webRTCCodecPreferences'
 
 export type LivePhoneStatus = 'idle' | 'connecting' | 'ready' | 'error'
 export type PoseSyncMode = 'live' | 'frame-clock' | 'estimated'
@@ -363,13 +363,12 @@ export function useLivePhoneSource() {
       direction: 'recvonly',
     })
     const videoCapabilities = RTCRtpReceiver.getCapabilities('video')
-    const h264Codecs = h264OnlyCodecPreferences(videoCapabilities)
-    if (h264Codecs) {
-      // Keeping VP8 as a fallback allowed the native answer to select libvpx
-      // even though both peers advertise H.264 first. This local iPhone path
-      // requires H.264 so the encoder stays on VideoToolbox instead of the
-      // software VP8 encoder.
-      videoTransceiver.setCodecPreferences(h264Codecs)
+    const vp8Codecs = vp8OnlyCodecPreferences(videoCapabilities)
+    if (vp8Codecs) {
+      // WebRTC 152 negotiates forced H.264 on iOS 27 beta but VideoToolbox
+      // emits zero frames. Pin the browser offer to the previously proven VP8
+      // path so a connected session cannot remain a silent black screen.
+      videoTransceiver.setCodecPreferences(vp8Codecs)
     }
 
     const frameMetadataQueue: FrameMetadataMessage[] = []

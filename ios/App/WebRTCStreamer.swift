@@ -17,11 +17,6 @@ final class WebRTCStreamer: NSObject {
     private static let factory: RTCPeerConnectionFactory = {
         RTCInitializeSSL()
         let encoderFactory = RTCDefaultVideoEncoderFactory()
-        if let h264 = RTCDefaultVideoEncoderFactory.supportedCodecs().first(
-            where: { $0.name.caseInsensitiveCompare("H264") == .orderedSame }
-        ) {
-            encoderFactory.preferredCodec = h264
-        }
         return RTCPeerConnectionFactory(
             encoderFactory: encoderFactory,
             decoderFactory: RTCDefaultVideoDecoderFactory()
@@ -129,32 +124,14 @@ final class WebRTCStreamer: NSObject {
             )
             sender.parameters = parameters
         }
-        if let videoTransceiver = peerConnection.transceivers.first(
-            where: { $0.mediaType == .video }
-        ) {
-            let h264Codecs = Self.factory
-                .rtpSenderCapabilities(forKind: kRTCMediaStreamTrackKindVideo)
-                .codecs
-                .filter { $0.name.caseInsensitiveCompare("H264") == .orderedSame }
-            h264PreferenceCodecCount = h264Codecs.count
-            if !h264Codecs.isEmpty {
-                // The remote offer already lists H.264 first, but the native
-                // transceiver can still answer with its VP8 default. Restrict
-                // this screen-share transceiver to the VideoToolbox-capable
-                // H.264 profiles so both sides negotiate the intended codec.
-                do {
-                    try videoTransceiver.setCodecPreferences(
-                        h264Codecs,
-                        error: ()
-                    )
-                    h264PreferenceApplied = true
-                    h264PreferenceError = nil
-                } catch {
-                    h264PreferenceApplied = false
-                    h264PreferenceError = error.localizedDescription
-                }
-            }
-        }
+        // WebRTC 152's forced H.264/VideoToolbox path negotiates successfully
+        // on iOS 27 beta but silently emits zero encoded frames. Leave codec
+        // selection at the proven default (VP8) until that native path can be
+        // validated independently; a working software path is preferable to
+        // an apparently connected black screen.
+        h264PreferenceApplied = false
+        h264PreferenceCodecCount = 0
+        h264PreferenceError = nil
         _ = peerConnection.setBweMinBitrateBps(
             1_500_000,
             currentBitrateBps: 4_000_000,

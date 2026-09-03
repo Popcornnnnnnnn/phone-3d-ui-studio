@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { h264OnlyCodecPreferences } from './webRTCCodecPreferences'
+import { vp8OnlyCodecPreferences } from './webRTCCodecPreferences'
 
-describe('h264OnlyCodecPreferences', () => {
-  it('keeps every H.264 profile and removes software-codec fallbacks', () => {
+describe('vp8OnlyCodecPreferences', () => {
+  it('keeps VP8 and removes the broken forced-H.264 path', () => {
     const capabilities = {
       codecs: [
         { mimeType: 'video/VP8', clockRate: 90_000 },
@@ -22,19 +22,18 @@ describe('h264OnlyCodecPreferences', () => {
       headerExtensions: [],
     } satisfies RTCRtpCapabilities
 
-    expect(h264OnlyCodecPreferences(capabilities)).toEqual([
-      capabilities.codecs[1],
-      capabilities.codecs[2],
+    expect(vp8OnlyCodecPreferences(capabilities)).toEqual([
+      capabilities.codecs[0],
     ])
   })
 
-  it('leaves the browser defaults untouched when H.264 is unavailable', () => {
+  it('leaves the browser defaults untouched when VP8 is unavailable', () => {
     const capabilities = {
-      codecs: [{ mimeType: 'video/VP8', clockRate: 90_000 }],
+      codecs: [{ mimeType: 'video/H264', clockRate: 90_000 }],
       headerExtensions: [],
     } satisfies RTCRtpCapabilities
 
-    expect(h264OnlyCodecPreferences(capabilities)).toBeNull()
-    expect(h264OnlyCodecPreferences(null)).toBeNull()
+    expect(vp8OnlyCodecPreferences(capabilities)).toBeNull()
+    expect(vp8OnlyCodecPreferences(null)).toBeNull()
   })
 })

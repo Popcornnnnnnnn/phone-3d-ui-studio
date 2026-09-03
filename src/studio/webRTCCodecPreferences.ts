@@ -1,11 +1,11 @@
-export function h264OnlyCodecPreferences(
+export function vp8OnlyCodecPreferences(
   capabilities: RTCRtpCapabilities | null,
 ) {
   if (!capabilities) return null
 
-  const h264Codecs = capabilities.codecs.filter(
-    (codec) => codec.mimeType.toLowerCase() === 'video/h264',
+  const vp8Codecs = capabilities.codecs.filter(
+    (codec) => codec.mimeType.toLowerCase() === 'video/vp8',
   )
 
-  return h264Codecs.length > 0 ? h264Codecs : null
+  return vp8Codecs.length > 0 ? vp8Codecs : null
 }

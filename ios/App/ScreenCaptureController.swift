@@ -126,7 +126,17 @@ final class ScreenCaptureController: NSObject, ObservableObject {
             }
         }
         webRTCStreamer.onStateChange = { [weak self] state in
-            self?.webRTCState = state
+            guard let self else { return }
+            self.webRTCState = state
+            if state == .failed, self.captureState.isActive {
+                self.scheduleFrameSocketReconnect()
+            }
+        }
+        poseSocket.onStateChange = { [weak self] state in
+            guard let self else { return }
+            if state == .failed, self.captureState.isActive {
+                self.scheduleFrameSocketReconnect()
+            }
         }
     }
 
@@ -144,11 +154,7 @@ final class ScreenCaptureController: NSObject, ObservableObject {
             return
         }
 
-        socket.connect(to: bridgeURL)
-        poseSocket.connect(to: poseBridgeURL(from: bridgeURL))
-        if streamCodec == .webrtc {
-            webRTCStreamer.connect(to: roleURL(from: bridgeURL, role: "phone-webrtc"))
-        }
+        connectBridgeServices(to: bridgeURL)
         motion.start()
         startDiagnostics()
         picker.isActive = true
@@ -274,10 +280,20 @@ final class ScreenCaptureController: NSObject, ObservableObject {
                 let bridgeURL = self.bridgeURL()
             else { return }
             self.frameReconnectWorkItem = nil
-            self.socket.connect(to: bridgeURL)
+            self.connectBridgeServices(to: bridgeURL)
         }
         frameReconnectWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
+    }
+
+    private func connectBridgeServices(to bridgeURL: URL) {
+        socket.connect(to: bridgeURL)
+        poseSocket.connect(to: poseBridgeURL(from: bridgeURL))
+        if streamCodec == .webrtc {
+            webRTCStreamer.connect(
+                to: roleURL(from: bridgeURL, role: "phone-webrtc")
+            )
+        }
     }
 
     private func startDiagnostics() {
@@ -483,45 +499,31 @@ final class ScreenCaptureController: NSObject, ObservableObject {
                 width: width,
                 height: height
             )
-            let canSubmitCaptureBufferDirectly = (
-                frameOrientation == nil || frameOrientation == .up
-            ) && CVPixelBufferGetWidth(pixelBuffer) == outputDimensions.width
-                && CVPixelBufferGetHeight(pixelBuffer) == outputDimensions.height
-
-            let conversionMs: Double
-            if canSubmitCaptureBufferDirectly {
-                conversionMs = 0
-                webRTCStreamer.push(
-                    pixelBuffer: pixelBuffer,
-                    timestamp: timestamp
-                )
-            } else {
-                let conversionStartedAt = ProcessInfo.processInfo.systemUptime
-                guard let outputPixelBuffer = h264PixelBuffer(
-                    image: image,
-                    extent: extent,
-                    width: outputDimensions.width,
-                    height: outputDimensions.height
-                ) else { return }
-                conversionMs = (
-                    ProcessInfo.processInfo.systemUptime - conversionStartedAt
-                ) * 1_000
-                webRTCStreamer.push(
-                    pixelBuffer: outputPixelBuffer,
-                    timestamp: timestamp
-                )
-            }
+            // iOS 27 ScreenCaptureKit currently returns a surface that the
+            // WebRTC H.264 VideoToolbox path silently drops when wrapped
+            // directly. Keep the measured, compatible Core Image conversion
+            // until iOS can request a supported capture pixel format.
+            let conversionStartedAt = ProcessInfo.processInfo.systemUptime
+            guard let outputPixelBuffer = h264PixelBuffer(
+                image: image,
+                extent: extent,
+                width: outputDimensions.width,
+                height: outputDimensions.height
+            ) else { return }
+            let conversionMs = (
+                ProcessInfo.processInfo.systemUptime - conversionStartedAt
+            ) * 1_000
+            webRTCStreamer.push(
+                pixelBuffer: outputPixelBuffer,
+                timestamp: timestamp
+            )
             diagnosticLock.withLock {
                 submittedFrameCount += 1
                 acceptedFrameCount += 1
                 conversionTotalMs += conversionMs
                 conversionSamples += 1
                 conversionMaxMs = max(conversionMaxMs, conversionMs)
-                if canSubmitCaptureBufferDirectly {
-                    webRTCDirectFrameCount += 1
-                } else {
-                    webRTCConvertedFrameCount += 1
-                }
+                webRTCConvertedFrameCount += 1
             }
             return
         }

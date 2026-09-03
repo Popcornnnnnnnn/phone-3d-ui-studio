@@ -203,7 +203,12 @@ final class LiveSocket: NSObject, URLSessionWebSocketDelegate {
         didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
         reason: Data?
     ) {
-        state = closeCode == .normalClosure ? .idle : .failed
+        // Ignore the close callback produced by an explicit disconnect(). If
+        // the active server closes normally (for example during a local
+        // service restart), surface it as a failure so the capture owner can
+        // reconnect instead of remaining silently idle.
+        guard task === webSocketTask else { return }
+        state = .failed
     }
 
     private func beginClockSync() {
