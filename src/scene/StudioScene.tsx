@@ -209,6 +209,16 @@ export function StudioScene({
         intensity={1.05}
         position={[3.8, 3.2, -3.6]}
       />
+      {view === 'calibration' && useTabletopStandard && (
+        <rectAreaLight
+          color={preset.fillColor}
+          height={0.9}
+          intensity={3.2}
+          position={[0, TABLETOP_PHONE_CENTER_Y + 0.22, 3.8]}
+          rotation={[0, 0, 0]}
+          width={2.8}
+        />
+      )}
       {view === 'back' && useTabletopStandard && (
         <rectAreaLight
           color={preset.keyColor}

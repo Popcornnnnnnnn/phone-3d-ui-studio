@@ -149,6 +149,43 @@ function DynamicIslandSurface() {
   )
 }
 
+const bottomSpeakerCenters = [
+  -0.342,
+  -0.292,
+  -0.244,
+  0.244,
+  0.292,
+  0.338,
+  0.385,
+  0.432,
+] as const
+
+function ImportedBottomInterior() {
+  const { height } = IPHONE_17_SCENE
+  const innerY = -height / 2 + 0.003
+
+  return (
+    <group name="bottom-interior">
+      {bottomSpeakerCenters.map((x) => (
+        <mesh key={x} position={[x, innerY, 0]}>
+          <cylinderGeometry args={[0.0225, 0.0225, 0.012, 24]} />
+          <meshBasicMaterial color="#000103" toneMapped={false} />
+        </mesh>
+      ))}
+
+      <RoundedBox
+        name="usb-c-inner-tunnel"
+        args={[0.155, 0.012, 0.022]}
+        radius={0.011}
+        smoothness={6}
+        position={[0, innerY, 0]}
+      >
+        <meshBasicMaterial color="#000103" toneMapped={false} />
+      </RoundedBox>
+    </group>
+  )
+}
+
 export function IPhone17Model({
   animate,
   view,
@@ -221,6 +258,7 @@ export function IPhone17Model({
       {hasLocalAsset ? (
         <Suspense fallback={<ProceduralIPhone17Shell />}>
           <LocalIPhone17Asset />
+          <ImportedBottomInterior />
         </Suspense>
       ) : (
         <ProceduralIPhone17Shell />

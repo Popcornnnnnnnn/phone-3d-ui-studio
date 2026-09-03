@@ -1,6 +1,11 @@
 import { useGLTF } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
-import { Mesh, MeshPhysicalMaterial } from 'three'
+import {
+  Mesh,
+  MeshBasicMaterial,
+  MeshPhysicalMaterial,
+  MeshStandardMaterial,
+} from 'three'
 import { IPHONE_17_MM, MODEL_HEIGHT } from '../model/iphone17'
 
 export const LOCAL_IPHONE_17_ASSET_URL =
@@ -11,21 +16,30 @@ export const LOCAL_IPHONE_17_MODEL_SCALE =
 
 export function LocalIPhone17Asset() {
   const { scene } = useGLTF(LOCAL_IPHONE_17_ASSET_URL)
-  const materials = useMemo(
-    () => ({
+  const materials = useMemo(() => {
+    const body = scene.getObjectByName('17-Body')
+    const sourceBodyMaterial =
+      body instanceof Mesh && body.material instanceof MeshStandardMaterial
+        ? body.material
+        : null
+
+    return {
       aluminum: new MeshPhysicalMaterial({
-        color: '#292a2b',
-        metalness: 0.86,
-        roughness: 0.28,
-        clearcoat: 0.18,
-        clearcoatRoughness: 0.24,
+        color: '#56595d',
+        metalness: 0.68,
+        roughness: 0.4,
+        clearcoat: 0.12,
+        clearcoatRoughness: 0.3,
+        normalMap: sourceBodyMaterial?.normalMap ?? null,
+        normalScale: sourceBodyMaterial?.normalScale,
+        metalnessMap: sourceBodyMaterial?.metalnessMap ?? null,
+        roughnessMap: sourceBodyMaterial?.roughnessMap ?? null,
       }),
-      backGlass: new MeshPhysicalMaterial({
-        color: '#343536',
-        metalness: 0.06,
-        roughness: 0.3,
-        clearcoat: 0.72,
-        clearcoatRoughness: 0.2,
+      portRim: new MeshPhysicalMaterial({
+        color: '#8c9095',
+        metalness: 0.82,
+        roughness: 0.26,
+        clearcoat: 0.16,
       }),
       cameraPlate: new MeshPhysicalMaterial({
         color: '#2b2c2d',
@@ -53,6 +67,10 @@ export function LocalIPhone17Asset() {
         roughness: 0.18,
         clearcoat: 0.55,
       }),
+      cavity: new MeshBasicMaterial({
+        color: '#010204',
+        toneMapped: false,
+      }),
       logo: new MeshPhysicalMaterial({
         color: '#111214',
         metalness: 0.38,
@@ -68,9 +86,8 @@ export function LocalIPhone17Asset() {
         roughness: 0.16,
         clearcoat: 0.9,
       }),
-    }),
-    [],
-  )
+    }
+  }, [scene])
   const model = useMemo(() => {
     const clone = scene.clone(true)
 
@@ -81,8 +98,6 @@ export function LocalIPhone17Asset() {
 
         if (object.name === '17-GlassRough' || object.name === '17-Matte') {
           object.visible = false
-        } else if (object.name === '17-Back') {
-          object.material = materials.backGlass
         } else if (
           object.name === '17-Body' ||
           object.name === '17-Control' ||
@@ -96,7 +111,6 @@ export function LocalIPhone17Asset() {
           object.material = materials.cameraPlate
         } else if (object.name === '17-Logo') {
           object.material = materials.logo
-          object.position.z -= 0.00008
         } else if (object.name === '17-Flash') {
           object.material = materials.flash
         } else if (/Lens|lens|Glass/.test(object.name)) {
@@ -104,11 +118,15 @@ export function LocalIPhone17Asset() {
         } else if (/Camera.*Edge|Camera.*Gray/.test(object.name)) {
           object.material = materials.cameraRing
         } else if (
-          /Camera.*Black|Camera.*Plastic|17-Mic|17-Island|17-Screen|17-NetTop|17-USB|17-Screw/.test(
+          /Camera.*Black|Camera.*Plastic|17-Mic|17-Island|17-Screen/.test(
             object.name,
           )
         ) {
           object.material = materials.black
+        } else if (/17-USB|17-Screw/.test(object.name)) {
+          object.material = materials.portRim
+        } else if (object.name === '17-NetTop') {
+          object.material = materials.cavity
         }
       }
     })
