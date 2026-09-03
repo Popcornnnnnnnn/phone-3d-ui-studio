@@ -69,6 +69,7 @@ export function useLocalVideoSource() {
 
       setMedia({
         element,
+        kind: 'video',
         name: file.name,
         width: element.videoWidth,
         height: element.videoHeight,

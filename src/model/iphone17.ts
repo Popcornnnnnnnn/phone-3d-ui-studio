@@ -32,5 +32,9 @@ export const IPHONE_17_SCENE = {
   rearLensDiameter: millimetersToScene(IPHONE_17_MM.rearLensDiameter),
 } as const
 
-export type ReviewView = 'studio' | 'front' | 'back'
+export const STUDIO_FLOOR_Y = -1.6
+export const TABLETOP_PHONE_CENTER_Y =
+  STUDIO_FLOOR_Y + IPHONE_17_SCENE.depth / 2 + 0.01
+
+export type ReviewView = 'calibration' | 'hero' | 'front' | 'back'
 export type ScreenOrientation = 'portrait' | 'landscape'

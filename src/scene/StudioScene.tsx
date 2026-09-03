@@ -1,33 +1,150 @@
-import { ContactShadows, OrbitControls } from '@react-three/drei'
-import { Canvas, useThree } from '@react-three/fiber'
-import { useEffect } from 'react'
-import type { ReviewView, ScreenOrientation } from '../model/iphone17'
+import { OrbitControls } from '@react-three/drei'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
+import { Vector3 } from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import {
+  TABLETOP_PHONE_CENTER_Y,
+  type ReviewView,
+  type ScreenOrientation,
+} from '../model/iphone17'
+import type { PoseSample } from '../studio/contracts'
 import type { StudioPreset } from '../studio/presets'
 import type { ScreenMedia } from '../studio/screenMedia'
+import type { LiveFrameRenderSignal } from '../studio/useLivePhoneSource'
 import { IPhone17Model } from './IPhone17Model'
+import { StudioEnvironment } from './StudioEnvironment'
 
 interface StudioSceneProps {
   preset: StudioPreset
   animate: boolean
+  ambientMotion: boolean
+  showGrid: boolean
+  showAxes: boolean
   view: ReviewView
   orientation: ScreenOrientation
   screenMedia: ScreenMedia | null
+  livePoseRef?: RefObject<PoseSample | null>
+  liveFrameRenderRef?: RefObject<LiveFrameRenderSignal | null>
+  onLiveFrameRendered?: (frameId: number, renderedAtMs: number) => void
+  cameraResetRevision?: number
+  useTabletopStandard?: boolean
 }
 
-const cameraPositions: Record<ReviewView, [number, number, number]> = {
-  studio: [2.8, 1.5, 5.2],
-  front: [0, 0.1, 5.4],
-  back: [0, 0.1, -5.4],
+function LiveFrameRenderObserver({
+  signalRef,
+  onRendered,
+}: {
+  signalRef: RefObject<LiveFrameRenderSignal | null>
+  onRendered: (frameId: number, renderedAtMs: number) => void
+}) {
+  const submittedFrameIdRef = useRef<number | null>(null)
+
+  useFrame(() => {
+    const signal = signalRef.current
+    if (!signal || signal.frameId === submittedFrameIdRef.current) return
+    submittedFrameIdRef.current = signal.frameId
+    window.requestAnimationFrame(() => onRendered(signal.frameId, Date.now()))
+  })
+
+  return null
 }
 
-function ReviewCamera({ view }: { view: ReviewView }) {
+interface CameraSetup {
+  position: [number, number, number]
+  target: [number, number, number]
+}
+
+const uprightCameraSetups: Record<ReviewView, CameraSetup> = {
+  calibration: { position: [0, 0.1, 5.4], target: [0, 0.05, 0] },
+  hero: { position: [2.8, 1.5, 5.2], target: [0, 0.05, 0] },
+  front: { position: [0, 0.1, 5.4], target: [0, 0.05, 0] },
+  back: { position: [0, 0.1, -5.4], target: [0, 0.05, 0] },
+}
+
+function cameraSetup(view: ReviewView, useTabletopStandard: boolean): CameraSetup {
+  if (!useTabletopStandard) return uprightCameraSetups[view]
+
+  const target: [number, number, number] = [0, TABLETOP_PHONE_CENTER_Y, 0]
+  const tabletopSetups: Record<ReviewView, CameraSetup> = {
+    calibration: {
+      position: [0, TABLETOP_PHONE_CENTER_Y, 5.4],
+      target,
+    },
+    hero: {
+      position: [2.9, TABLETOP_PHONE_CENTER_Y + 2.35, 4.75],
+      target,
+    },
+    front: {
+      position: [0, TABLETOP_PHONE_CENTER_Y + 5.55, 0.001],
+      target,
+    },
+    back: {
+      position: [0, TABLETOP_PHONE_CENTER_Y - 5.55, 0.001],
+      target,
+    },
+  }
+
+  return tabletopSetups[view]
+}
+
+function ReviewCamera({
+  view,
+  resetRevision,
+  useTabletopStandard,
+  controlsRef,
+}: {
+  view: ReviewView
+  resetRevision: number
+  useTabletopStandard: boolean
+  controlsRef: RefObject<OrbitControlsImpl | null>
+}) {
   const camera = useThree((state) => state.camera)
+  const transition = useRef({
+    active: false,
+    elapsed: 0,
+    fromPosition: new Vector3(),
+    toPosition: new Vector3(),
+    fromTarget: new Vector3(),
+    toTarget: new Vector3(),
+    currentTarget: new Vector3(),
+  })
 
   useEffect(() => {
-    camera.position.set(...cameraPositions[view])
-    camera.lookAt(0, 0.05, 0)
-    camera.updateProjectionMatrix()
-  }, [camera, view])
+    const setup = cameraSetup(view, useTabletopStandard)
+    const state = transition.current
+    state.active = true
+    state.elapsed = 0
+    state.fromPosition.copy(camera.position)
+    state.toPosition.set(...setup.position)
+    state.fromTarget.copy(controlsRef.current?.target ?? state.currentTarget)
+    state.toTarget.set(...setup.target)
+  }, [camera, controlsRef, resetRevision, useTabletopStandard, view])
+
+  useFrame((_, delta) => {
+    const state = transition.current
+    if (!state.active) return
+
+    state.elapsed += delta
+    const progress = Math.min(state.elapsed / 0.45, 1)
+    const eased = 1 - Math.pow(1 - progress, 3)
+    camera.position.lerpVectors(state.fromPosition, state.toPosition, eased)
+    state.currentTarget.lerpVectors(state.fromTarget, state.toTarget, eased)
+    camera.lookAt(state.currentTarget)
+    if (controlsRef.current) {
+      controlsRef.current.target.copy(state.currentTarget)
+      controlsRef.current.update()
+    }
+    if (progress === 1) {
+      camera.position.copy(state.toPosition)
+      state.currentTarget.copy(state.toTarget)
+      camera.lookAt(state.toTarget)
+      controlsRef.current?.target.copy(state.toTarget)
+      controlsRef.current?.update()
+      state.active = false
+    }
+  })
 
   return null
 }
@@ -35,78 +152,103 @@ function ReviewCamera({ view }: { view: ReviewView }) {
 export function StudioScene({
   preset,
   animate,
+  ambientMotion,
+  showGrid,
+  showAxes,
   view,
   orientation,
   screenMedia,
+  livePoseRef,
+  liveFrameRenderRef,
+  onLiveFrameRendered,
+  cameraResetRevision = 0,
+  useTabletopStandard = false,
 }: StudioSceneProps) {
+  const controlsRef = useRef<OrbitControlsImpl>(null)
+  const [initialCamera] = useState(() => cameraSetup(view, useTabletopStandard))
+  const orbitEnabled = view === 'calibration' || view === 'hero'
+
   return (
     <Canvas
       shadows="basic"
       dpr={[1, 2]}
-      camera={{ position: [3.3, 1.8, 4.8], fov: 34, near: 0.1, far: 100 }}
-      gl={{ antialias: true, alpha: false }}
+      camera={{ position: initialCamera.position, fov: 34, near: 0.1, far: 100 }}
+      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
     >
-      <color attach="background" args={[preset.background]} />
-      <fog attach="fog" args={[preset.background, 7, 15]} />
-      <hemisphereLight color="#f4f6ff" groundColor={preset.floor} intensity={1.05} />
-      <ambientLight intensity={0.42} />
-      <directionalLight
-        castShadow
-        color="#fffdf8"
-        intensity={preset.keyLight}
-        position={view === 'back' ? [-3.5, 5.2, -3.8] : [3.5, 5.2, 3.8]}
-        shadow-mapSize={[1024, 1024]}
+      <StudioEnvironment
+        preset={preset}
+        ambientMotion={ambientMotion}
+        showGrid={showGrid}
+        showAxes={showAxes}
+        showShadows={view === 'hero' || view === 'front'}
       />
-      <directionalLight
-        color="#b9cbff"
-        intensity={1.1}
-        position={view === 'back' ? [3, 1.2, 2.8] : [-3, 1.2, -2.8]}
+      <hemisphereLight
+        color={preset.keyColor}
+        groundColor={preset.backgroundBottom}
+        intensity={0.8}
+      />
+      <ambientLight intensity={0.46} />
+      <rectAreaLight
+        color={preset.keyColor}
+        height={5.2}
+        intensity={preset.keyLight}
+        position={[0.6, 5.5, 1.4]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        width={4.8}
       />
       <rectAreaLight
-        color="#ffffff"
-        height={4}
-        intensity={3.2}
-        position={view === 'back' ? [1.8, 0.5, -3.5] : [-1.8, 0.5, 3.5]}
-        rotation={view === 'back' ? [0, Math.PI, 0] : [0, 0, 0]}
-        width={1.4}
+        color={preset.fillColor}
+        height={3.8}
+        intensity={preset.fillLight}
+        position={[-2.8, 0.8, 4.8]}
+        rotation={[0, 0, 0]}
+        width={2.6}
       />
-      <pointLight
-        color={preset.accent}
-        intensity={preset.fillLight * 0.55}
-        position={[-3.2, 1.4, 2.2]}
+      <directionalLight
+        color={preset.rimColor}
+        intensity={1.05}
+        position={[3.8, 3.2, -3.6]}
       />
-      {view === 'back' && (
-        <pointLight color={preset.accent} intensity={0.38} position={[2.5, 0.8, -3]} />
+      {view === 'back' && useTabletopStandard && (
+        <rectAreaLight
+          color={preset.keyColor}
+          height={5.4}
+          intensity={2.2}
+          position={[0, TABLETOP_PHONE_CENTER_Y - 4.2, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+          width={3.6}
+        />
       )}
-      <ReviewCamera view={view} />
+      <ReviewCamera
+        controlsRef={controlsRef}
+        resetRevision={cameraResetRevision}
+        useTabletopStandard={useTabletopStandard}
+        view={view}
+      />
+      {liveFrameRenderRef && onLiveFrameRendered && (
+        <LiveFrameRenderObserver
+          signalRef={liveFrameRenderRef}
+          onRendered={onLiveFrameRendered}
+        />
+      )}
       <IPhone17Model
-        accent={preset.accent}
         animate={animate}
         view={view}
         orientation={orientation}
         screenMedia={screenMedia}
+        livePoseRef={livePoseRef}
+        useTabletopStandard={useTabletopStandard}
       />
-      <ContactShadows
-        position={[0, -1.58, 0]}
-        opacity={0.52}
-        scale={7}
-        blur={2.5}
-        far={4.5}
-        color={preset.floor}
-      />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.6, 0]} receiveShadow>
-        <planeGeometry args={[24, 24]} />
-        <meshStandardMaterial color={preset.floor} roughness={0.86} />
-      </mesh>
       <OrbitControls
+        ref={controlsRef}
         makeDefault
-        enabled={view === 'studio'}
+        enabled={orbitEnabled}
         enablePan={false}
         minDistance={3.1}
         maxDistance={7.5}
-        minPolarAngle={0.72}
-        maxPolarAngle={2.2}
-        target={[0, 0.05, 0]}
+        minPolarAngle={0.32}
+        maxPolarAngle={2.82}
+        target={initialCamera.target}
       />
     </Canvas>
   )

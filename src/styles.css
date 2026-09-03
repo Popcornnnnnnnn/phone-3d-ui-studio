@@ -59,6 +59,21 @@ button {
   font-size: 19px;
 }
 
+.brand-cluster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+  object-fit: cover;
+}
+
 .eyebrow,
 .section-kicker {
   margin: 0;
@@ -100,7 +115,7 @@ button {
 .viewport::after {
   position: absolute;
   inset: 18px;
-  border: 1px solid rgb(255 255 255 / 8%);
+  border: 1px solid rgb(21 27 32 / 10%);
   border-radius: 18px;
   content: "";
   pointer-events: none;
@@ -113,7 +128,7 @@ button {
   left: 36px;
   display: flex;
   justify-content: space-between;
-  color: rgb(255 255 255 / 54%);
+  color: rgb(31 37 43 / 52%);
   font-size: 11px;
   letter-spacing: 0.06em;
   pointer-events: none;
@@ -176,6 +191,67 @@ button {
   border: 1px solid currentColor;
   border-radius: 6px;
   box-shadow: inset 0 0 16px currentColor;
+}
+
+.scene-toggle-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.scene-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 9px;
+  color: #989eaa;
+  background: #15171c;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.scene-toggle:hover,
+.scene-toggle:focus-visible {
+  border-color: rgb(255 255 255 / 24%);
+  outline: none;
+}
+
+.scene-toggle.active {
+  color: #edf1e8;
+}
+
+.toggle-track {
+  position: relative;
+  width: 26px;
+  height: 15px;
+  flex: none;
+  border-radius: 99px;
+  background: #343841;
+  transition: background 160ms ease;
+}
+
+.toggle-track span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #9298a3;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.scene-toggle.active .toggle-track {
+  background: rgb(184 255 61 / 24%);
+}
+
+.scene-toggle.active .toggle-track span {
+  background: #b8ff3d;
+  transform: translateX(11px);
 }
 
 .source-card {
@@ -281,6 +357,67 @@ button {
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   margin-top: 14px;
+}
+
+.view-switcher.two-column {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.view-switcher.four-column {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.view-switcher.four-column .view-button {
+  padding-inline: 3px;
+  font-size: 8px;
+}
+
+.live-stats {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+}
+
+.live-stats div {
+  display: flex;
+  justify-content: space-between;
+  color: #7f8590;
+  font-size: 10px;
+}
+
+.live-stats dd {
+  margin: 0;
+  color: #d6d9df;
+}
+
+.measurement-results {
+  display: grid;
+  gap: 1px;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 7%);
+}
+
+.measurement-results div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 11px;
+  background: #14161a;
+}
+
+.measurement-results span {
+  color: #7f8590;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.measurement-results strong {
+  color: #e7eadf;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .view-button {

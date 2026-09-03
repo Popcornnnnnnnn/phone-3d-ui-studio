@@ -1,6 +1,16 @@
 # iPhone 17 black geometry reference
 
-This model is an original procedural approximation for UI demonstration. Apple source material is used as measurement and visual reference only; no Apple PDF, bezel asset, photograph, logo, or texture is redistributed in this repository.
+The repository includes an original procedural approximation as a distributable fallback. A higher-fidelity third-party GLB may be loaded from the ignored `public/local-assets/` directory for private local use; that asset is never committed or redistributed with this repository.
+
+## Private local asset
+
+- Source: [Apple iPhone 17 in Official Design and Colors by aliartist3d](https://www.cgtrader.com/free-3d-models/electronics/phone/apple-iphone-17-in-official-design-and-colors)
+- Downloaded variant: `Apple iPhone 17 Black.glb`
+- License shown at download: `Editorial License (no AI)`
+- Local destination: `public/local-assets/iphone-17/iphone-17-black.glb`
+- The downloaded file remains local-only. Publishing, packaging, or redistributing it requires a separate license review.
+- The GLB supplies the body, cameras, lenses, buttons, port, Apple mark, materials, and embedded textures. The app retains its own independent screen surface for synthetic artwork and local video.
+- When the local asset is available, the independent video surface reuses the imported `17-Screen` geometry and its full-range UVs directly. This preserves the model's continuous-curvature corner contour instead of approximating it with a circular rounded rectangle.
 
 ## Confirmed inputs
 

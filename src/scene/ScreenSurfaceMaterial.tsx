@@ -53,8 +53,8 @@ export function ScreenSurfaceMaterial({
   media,
   orientation,
 }: ScreenSurfaceMaterialProps) {
-  const texture = useMemo(() => {
-    if (!media) return null
+  const videoTexture = useMemo(() => {
+    if (!media || media.kind !== 'video') return null
 
     const nextTexture = new VideoTexture(media.element)
     nextTexture.colorSpace = SRGBColorSpace
@@ -66,7 +66,9 @@ export function ScreenSurfaceMaterial({
     return nextTexture
   }, [media])
 
-  useEffect(() => () => texture?.dispose(), [texture])
+  useEffect(() => () => videoTexture?.dispose(), [videoTexture])
+
+  const texture = media?.kind === 'texture' ? media.texture : videoTexture
 
   const uniforms = useMemo(() => {
     if (!media || !texture) return null

@@ -4,6 +4,8 @@ import {
   IPHONE_17_MM,
   IPHONE_17_SCENE,
   MODEL_HEIGHT,
+  STUDIO_FLOOR_Y,
+  TABLETOP_PHONE_CENTER_Y,
   millimetersToScene,
 } from './iphone17'
 
@@ -37,5 +39,10 @@ describe('iPhone 17 geometry contract', () => {
       8,
     )
   })
-})
 
+  it('rests the horizontal phone just above the studio floor', () => {
+    expect(
+      TABLETOP_PHONE_CENTER_Y - IPHONE_17_SCENE.depth / 2,
+    ).toBeCloseTo(STUDIO_FLOOR_Y + 0.01)
+  })
+})

@@ -1,14 +1,20 @@
 # Architecture baseline
 
+## Product invariant
+
+The physical iPhone is the source of truth for both visible screen content and device orientation. Prerecorded video and simulated motion are diagnostic sources only; they do not satisfy the product goal. A hand-authored animation timeline must never be presented as proof of live device synchronization.
+
+See [PRODUCT_GOAL.md](PRODUCT_GOAL.md) for the product boundary and acceptance flow.
+
 ## Data flow
 
 ```text
-Phone screen capture ---- video transport ----> HTML video / media source
-                                                     |
-                                                     v
-                                               Three.js VideoTexture
-                                                     |
-Phone attitude -------- pose transport ------> phone group quaternion
+Phone screen capture ---- JPEG/WebSocket ------> browser CanvasTexture
+                                                      |
+                                                      v
+                                                screen mesh material
+                                                      |
+Phone attitude -------- JSON/WebSocket --------> phone group quaternion
                                                      |
                                                      v
                                   3D studio + camera + compositor
@@ -26,12 +32,20 @@ Phone attitude -------- pose transport ------> phone group quaternion
 - **Synchronizer** aligns and marks freshness; it does not silently pretend missing data is current.
 - **Recorder** consumes the final composited output.
 
+## Live-input feasibility candidate
+
+The current iOS 27 path uses a locally signed SwiftUI host app and ScreenCaptureKit full-display capture. The app captures screen sample buffers and Core Motion attitude in the same lifecycle, JPEG-compresses video at up to 15 fps, and sends both streams to a small Node WebSocket bridge on the trusted local network. The browser keeps only the newest undecoded frame and the iOS/bridge queues are bounded so a slow consumer does not create unbounded memory growth.
+
+Each frame and pose message carries a synchronized timestamp. The browser retains three seconds of raw quaternion history and uses spherical interpolation to select the pose at the WebRTC frame's `captureTime`; receiver pipeline delay is the fallback when the frame clock is unavailable. Calibration is applied after interpolation so changing the tabletop zero does not invalidate history. The UI exposes alignment mode, video-aligned delay and nearest pose-sample distance, and marks screen data stale after 1 second and pose data stale after 500 ms. These are observability thresholds, not yet full long-run acceptance results.
+
+The iOS companion therefore requires iOS 27; ReplayKit broadcast sample handlers are no longer supported on that release. The transport protocol deliberately keeps the capture API replaceable.
+
 ## Initial technology direction
 
 - TypeScript, React, Vite.
 - Three.js through React Three Fiber; Drei for standard scene helpers.
-- WebRTC for a future local video path where it is justified by the feasibility spike.
-- WebSocket or WebRTC DataChannel for pose samples.
+- WebSocket/JPEG for the first measurable local feasibility path; WebRTC remains an optimization candidate after physical-device evidence.
+- WebSocket JSON messages for pose samples.
 - Browser MediaRecorder for the first export path, with OBS as a diagnostic/reference option rather than a required runtime dependency.
 
 These are baseline choices, not proof of platform feasibility. The M3 and M4 spikes may replace transport details without changing the renderer contracts.

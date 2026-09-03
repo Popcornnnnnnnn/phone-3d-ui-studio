@@ -1,11 +1,24 @@
+import type { Texture } from 'three'
 import type { ScreenOrientation } from '../model/iphone17'
 
-export interface ScreenMedia {
-  element: HTMLVideoElement
+interface ScreenMediaBase {
+  kind: 'texture' | 'video'
   name: string
   width: number
   height: number
 }
+
+export interface VideoScreenMedia extends ScreenMediaBase {
+  kind: 'video'
+  element: HTMLVideoElement
+}
+
+export interface TextureScreenMedia extends ScreenMediaBase {
+  kind: 'texture'
+  texture: Texture
+}
+
+export type ScreenMedia = TextureScreenMedia | VideoScreenMedia
 
 export interface ScreenContainMapping {
   contentScale: readonly [x: number, y: number]

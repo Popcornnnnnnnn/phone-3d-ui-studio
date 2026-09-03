@@ -2,7 +2,7 @@
 
 ## Executive estimate
 
-The recommended baseline is **six calendar weeks / about 26–32 focused engineering days** for a usable live-sync release candidate, followed by one acceptance day. A production-ready prerecorded-content studio is expected earlier, after about **11–14 focused days**.
+The recommended baseline is **six calendar weeks / about 26–32 focused engineering days** for a usable physical-device live-twin release candidate, followed by one acceptance day. The prerecorded-content path is a renderer validation harness, not a separate product target.
 
 This estimate covers a local Mac authoring tool and one iPhone test path. It does not include App Store distribution, Windows support, Android support, cloud accounts, collaborative editing, or automated 3D reconstruction as an end-user feature.
 
@@ -10,9 +10,10 @@ This estimate covers a local Mac authoring tool and one iPhone test path. It doe
 
 The project is split at the highest-risk boundary:
 
-- The studio/rendering path is developed first and can ship without live capture.
+- The studio/rendering path is developed first only far enough to validate the model, screen surface, compositor, and recording boundary.
 - Live screen transport and motion transport are separate spikes with explicit go/no-go decisions.
 - Screen frames and pose samples are timestamped independently; synchronization is accepted by measurement rather than appearance alone.
+- Generic mockup timelines, template catalogues, and marketing-video features are deferred because established products already serve that workflow.
 
 ## Milestones and dates
 
@@ -20,9 +21,9 @@ The project is split at the highest-risk boundary:
 |---|---:|---:|---|
 | M0 — Project foundation | 2026-09-04 | 1–2 d | Repository, architecture contract, asset/privacy rules, runnable skeleton, CI checks |
 | M1 — 3D phone prototype | 2026-09-09 | 3 d | Phone model with isolated screen mesh, orbit controls, calibrated portrait/landscape UVs |
-| M2 — Content-production MVP | 2026-09-18 | 7–9 d | Video texture, studio presets, camera timeline, local recording, repeatable demo export |
+| M2 — Renderer validation slice | 2026-09-18 | 3–5 d | Prerecorded video proves the independent screen mesh, orientation handling, lighting, and local compositor |
 | M3 — Live-screen feasibility gate | 2026-09-23 | 3 d | One measured iPhone-to-Mac capture path; latency, resolution, protected-content limits documented; route selected or rejected |
-| M4 — Pose-sync feasibility gate | 2026-09-28 | 3 d | Quaternion transport, zero-pose calibration, coordinate conversion and smoothing demonstrated on a real device |
+| M4 — Pose-sync feasibility gate | 2026-09-28 | 3 d | Quaternion transport, one-click level calibration, coordinate conversion and smoothing demonstrated on a real device |
 | M5 — Integrated live-sync beta | 2026-10-05 | 5 d | Screen and pose integrated, reconnection handled, timestamp alignment measured, 10-minute stability run |
 | M6 — Release candidate | 2026-10-09 | 3–4 d | Presets, recording, onboarding, error states, clean-machine setup and regression checks |
 | Acceptance | 2026-10-12 | 1 d | End-to-end physical-device demo and documented known limitations |
@@ -45,13 +46,13 @@ The project is split at the highest-risk boundary:
 - Support portrait/landscape orientation and safe-area masks.
 - Establish a repeatable screenshot review scene.
 
-### M2 — Content-production MVP
+### M2 — Renderer validation slice
 
 - Apply prerecorded screen media as a Three.js video texture.
 - Implement background, floor, shadow, lighting, and material presets.
-- Implement saved camera shots and deterministic camera motion.
-- Add a timeline, play/pause/reset controls, and preset serialization.
-- Export a 1080p/30 fps reference recording with stable audio/video behavior.
+- Retain minimal play/pause/reset and deterministic review cameras for diagnosis.
+- Treat camera timelines, template authoring, and saved marketing projects as deferred non-goals.
+- Keep a local recording boundary only as needed to prove that the final live composite can be captured.
 
 ### M3 — Live-screen feasibility
 
@@ -65,7 +66,7 @@ The project is split at the highest-risk boundary:
 
 - Capture device attitude as a quaternion.
 - Convert the phone coordinate frame to the Three.js right-handed frame.
-- Implement zero-pose calibration, interpolation, filtering, and stale-sample detection.
+- Implement one-click level calibration, interpolation, filtering, and stale-sample detection.
 - Measure pose update rate and motion-to-render latency.
 
 ### M5 — Integrated beta
@@ -86,18 +87,18 @@ The project is split at the highest-risk boundary:
 
 ## Acceptance criteria
 
-### Content-production MVP
+### Renderer validation baseline
 
 - A supplied screen recording maps correctly to the phone screen in portrait and landscape.
-- At least three reusable studio presets and three camera-shot presets are available.
-- A 60-second 1080p recording completes without visible texture corruption or camera discontinuity.
-- Reopening the saved project reproduces the same scene and camera timeline.
+- Deterministic front, back, and studio review views expose geometry and mapping errors.
+- Prerecorded media and simulated motion remain clearly labelled as test sources, not live proof.
 
 ### Live-sync release candidate
 
 - A physical phone can connect through an explicit, user-consented flow.
 - The live screen appears on the 3D screen mesh and survives an orientation change.
-- The model follows real-device attitude after one zero-pose calibration.
+- The model follows real-device attitude after one explicit **Calibrate tabletop pose** action with the iPhone screen-up and its Dynamic Island pointing toward the Mac.
+- **Reset standard view** returns orbit controls to the charging-port-level tabletop camera.
 - Measured median pose latency is at most 80 ms on the test LAN; median screen latency is at most 250 ms.
 - Screen/pose relative skew is normally within 100 ms and is surfaced when stale.
 - A ten-minute test has no unrecovered disconnect, runaway rotation, or frozen texture.
@@ -123,6 +124,7 @@ The largest uncertainty is iPhone capture behavior while other applications are 
 - Automatic generation of an exact branded phone model from one photograph.
 - Capture of DRM-protected or system-restricted content.
 - Production-grade video editor features such as multitrack editing, captions, or color grading.
+- A Rotato-style general mockup animator, extensive keyframe timeline, device catalogue, or template marketplace.
 
 ## Schedule change policy
 
@@ -130,4 +132,3 @@ The largest uncertainty is iPhone capture behavior while other applications are 
 - A milestone date changes only with a written reason, revised impact, and updated acceptance target.
 - Feasibility spikes end with a decision record even when the tested route is rejected.
 - Progress percentage is derived from accepted tasks, not elapsed time or code volume.
-

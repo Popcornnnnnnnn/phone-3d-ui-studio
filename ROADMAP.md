@@ -6,6 +6,9 @@
 - 2026-09-02 — M1 calibrated iPhone 17 black model accepted ahead of its 2026-09-09 target.
 - 2026-09-02 — M2 screen-video texture and orientation slice accepted ahead of its 2026-09-13 target.
 - 2026-09-02 — M1 visual acceptance reopened after the geometry-correct render failed recognizable iPhone 17 fidelity review; revised candidate awaits visual sign-off.
+- 2026-09-02 — Product direction narrowed to a live physical-device twin: real iPhone screen plus real device attitude drive the rendered phone. The prerecorded studio remains a test harness, not a standalone mockup-editor target.
+- 2026-09-02 — M3/M4 physical-device path proved: iOS 27 ScreenCaptureKit sends the live display and timestamped Core Motion pose over Wi-Fi to the local bridge; the browser renders both on the 3D phone and one-click level calibration is verified. Formal latency, reconnection and stability evidence remains open.
+- 2026-09-03 — M4 screen/pose alignment implemented: WebRTC frame capture time selects an interpolated pose from bounded history; real-device telemetry observed `frame-clock` alignment at about 131 ms video delay with a 2.4 ms nearest-sample gap. Tabletop zero pose and the charging-port standard camera were browser-verified; formal long-run acceptance remains open.
 
 ## Week 1 — 2026-09-02 to 2026-09-06
 
@@ -25,11 +28,11 @@ Checkpoint: a supplied UI recording plays correctly on the 3D phone.
 
 ## Week 3 — 2026-09-14 to 2026-09-20
 
-- Finish preset persistence, camera timeline, and recording.
-- Produce and review the content-production MVP reference export.
-- Begin the iPhone live-screen spike only after MVP acceptance.
+- Freeze the minimum renderer validation slice.
+- Begin the iPhone live-screen spike without expanding into a generic keyframe or template editor.
+- Record the first measured capture-path evidence and limitations.
 
-Checkpoint: the content-production MVP is usable independently of live sync.
+Checkpoint: the renderer is sufficient to distinguish transport failures from display/model failures, and one live-screen route has measured evidence.
 
 ## Week 4 — 2026-09-21 to 2026-09-27
 
