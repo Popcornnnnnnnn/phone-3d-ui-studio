@@ -7,6 +7,7 @@ import {
   type FrameMeasurementSample,
   type LiveMeasurementReport,
   type PoseMeasurementSample,
+  type PoseRenderMeasurementSample,
 } from './liveMeasurement'
 import {
   multiplyQuaternions,
@@ -16,7 +17,12 @@ import {
   type FrameMetadataMessage,
   type LivePoseMessage,
   type QuaternionTuple,
+  type Vector3Tuple,
 } from './liveProtocol'
+import {
+  quaternionAngularDistance,
+  STANDARD_TABLETOP_QUATERNION,
+} from './poseDiagnostics'
 import {
   captureTimeToEpochMs,
   interpolatePoseAt,
@@ -24,6 +30,15 @@ import {
   type TimedPoseQuaternion,
 } from './poseTimeline'
 import type { ScreenMedia } from './screenMedia'
+import {
+  type PosePresentationMode,
+  usesVideoAlignedPose,
+  usesPosePrediction,
+} from './posePresentation'
+import {
+  predictQuaternion,
+  ULTRA_REQUESTED_POSE_HZ,
+} from './posePrediction'
 import {
   deriveWebRTCReceiverMetrics,
   readWebRTCReceiverSample,
@@ -33,6 +48,7 @@ import {
 
 export type LivePhoneStatus = 'idle' | 'connecting' | 'ready' | 'error'
 export type PoseSyncMode = 'live' | 'frame-clock' | 'estimated'
+export type { PosePresentationMode } from './posePresentation'
 
 export interface LivePhoneStats {
   browsers: number
@@ -43,6 +59,12 @@ export interface LivePhoneStats {
   poseSyncDelayMs: number | null
   poseSyncErrorMs: number | null
   poseSyncMode: PoseSyncMode
+  poseActualHz: number | null
+  poseRequestedHz: number | null
+  posePredictionMs: number | null
+  posePredictionCorrectionDegrees: number | null
+  poseArrivalGapP95Ms: number | null
+  renderFps: number | null
   codec: 'jpeg' | 'h264' | 'webrtc' | null
   webRTCCodecMimeType: string | null
   webRTCBitrateMbps: number | null
@@ -60,12 +82,31 @@ export interface LiveFrameRenderSignal {
   frameId: number
 }
 
+export interface LivePoseDiagnostics {
+  latestSensorRelative: QuaternionTuple
+  targetQuaternion: QuaternionTuple
+  sampledAtMs: number
+}
+
+export interface LivePoseKinematics {
+  quaternion: QuaternionTuple
+  rotationRate: Vector3Tuple
+  sampledAtMacMs: number
+  receivedAtMacMs: number
+}
+
+export interface PoseRenderDiagnostics {
+  predictionMs: number | null
+  renderFps: number
+}
+
 export interface LiveMeasurementState {
   status: 'idle' | 'running' | 'complete'
   elapsedMs: number
   receivedFrames: number
   renderedFrames: number
   poseSamples: number
+  poseRenderSamples: number
   report: LiveMeasurementReport | null
 }
 
@@ -73,6 +114,7 @@ interface ActiveMeasurement {
   startedAtMs: number
   frames: Map<number, FrameMeasurementSample>
   poses: PoseMeasurementSample[]
+  poseRenders: PoseRenderMeasurementSample[]
   droppedBeforeDecode: number
 }
 
@@ -91,6 +133,12 @@ const initialStats: LivePhoneStats = {
   poseSyncDelayMs: null,
   poseSyncErrorMs: null,
   poseSyncMode: 'live',
+  poseActualHz: null,
+  poseRequestedHz: null,
+  posePredictionMs: null,
+  posePredictionCorrectionDegrees: null,
+  poseArrivalGapP95Ms: null,
+  renderFps: null,
   codec: null,
   webRTCCodecMimeType: null,
   webRTCBitrateMbps: null,
@@ -110,18 +158,9 @@ const initialMeasurement: LiveMeasurementState = {
   receivedFrames: 0,
   renderedFrames: 0,
   poseSamples: 0,
+  poseRenderSamples: 0,
   report: null,
 }
-
-// The calibrated phone lies screen-up on the studio table. Local +Z (screen
-// normal) becomes world +Y, while local +Y (Dynamic Island/top edge) points
-// toward world -Z, i.e. toward the Mac from the charging-port camera.
-const STANDARD_TABLETOP_QUATERNION: QuaternionTuple = [
-  -Math.SQRT1_2,
-  0,
-  0,
-  Math.SQRT1_2,
-]
 
 function tabletopQuaternion(
   reference: QuaternionTuple,
@@ -137,6 +176,16 @@ function tabletopQuaternion(
 
 function phoneTimeOnMac(phoneTimestampMs: number, clockOffsetMs: number | null) {
   return clockOffsetMs === null ? null : phoneTimestampMs + clockOffsetMs
+}
+
+function percentile(values: number[], percentileValue: number) {
+  if (values.length === 0) return null
+  const sorted = [...values].sort((left, right) => left - right)
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.ceil(sorted.length * percentileValue) - 1),
+  )
+  return sorted[index]
 }
 
 export function getDefaultBridgeUrl() {
@@ -165,6 +214,11 @@ export function useLivePhoneSource() {
   const poseHistoryRef = useRef<TimedPoseQuaternion[]>([])
   const zeroPoseRef = useRef<QuaternionTuple | null>(null)
   const poseRef = useRef<PoseSample | null>(null)
+  const ultraPoseKinematicsRef = useRef<LivePoseKinematics | null>(null)
+  const previousUltraPoseKinematicsRef =
+    useRef<LivePoseKinematics | null>(null)
+  const posePresentationModeRef =
+    useRef<PosePresentationMode>('synchronized')
   const liveFrameRenderRef = useRef<LiveFrameRenderSignal | null>(null)
   const lastFrameReceivedRef = useRef<number | null>(null)
   const lastPoseReceivedRef = useRef<number | null>(null)
@@ -175,6 +229,10 @@ export function useLivePhoneSource() {
   const [hasManualLevel, setHasManualLevel] = useState(false)
   const [screenStale, setScreenStale] = useState(false)
   const [poseStale, setPoseStale] = useState(false)
+  const [posePresentationMode, setPosePresentationModeState] =
+    useState<PosePresentationMode>('synchronized')
+  const [poseDiagnostics, setPoseDiagnostics] =
+    useState<LivePoseDiagnostics | null>(null)
   const [status, setStatus] = useState<LivePhoneStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<LivePhoneStats>(initialStats)
@@ -222,6 +280,8 @@ export function useLivePhoneSource() {
     poseHistoryRef.current = []
     zeroPoseRef.current = null
     poseRef.current = null
+    ultraPoseKinematicsRef.current = null
+    previousUltraPoseKinematicsRef.current = null
     liveFrameRenderRef.current = null
     lastFrameReceivedRef.current = null
     lastPoseReceivedRef.current = null
@@ -238,6 +298,7 @@ export function useLivePhoneSource() {
       endedAtMs,
       frames,
       active.poses,
+      active.poseRenders,
       active.droppedBeforeDecode,
     )
     setMeasurement({
@@ -246,6 +307,7 @@ export function useLivePhoneSource() {
       receivedFrames: frames.length,
       renderedFrames: report.screen.renderedFrames,
       poseSamples: active.poses.length,
+      poseRenderSamples: active.poseRenders.length,
       report,
     })
   }, [])
@@ -256,6 +318,7 @@ export function useLivePhoneSource() {
       startedAtMs,
       frames: new Map(),
       poses: [],
+      poseRenders: [],
       droppedBeforeDecode: 0,
     }
     setMeasurement({
@@ -264,6 +327,7 @@ export function useLivePhoneSource() {
       receivedFrames: 0,
       renderedFrames: 0,
       poseSamples: 0,
+      poseRenderSamples: 0,
       report: null,
     })
   }, [])
@@ -297,6 +361,7 @@ export function useLivePhoneSource() {
     setHasManualLevel(false)
     setScreenStale(false)
     setPoseStale(false)
+    setPoseDiagnostics(null)
     setStatus('idle')
     setError(null)
     setStats(initialStats)
@@ -311,8 +376,79 @@ export function useLivePhoneSource() {
       timestampMs: Date.now(),
       quaternion: STANDARD_TABLETOP_QUATERNION,
     }
+    ultraPoseKinematicsRef.current = null
+    previousUltraPoseKinematicsRef.current = null
+    setPoseDiagnostics({
+      latestSensorRelative: [0, 0, 0, 1],
+      targetQuaternion: STANDARD_TABLETOP_QUATERNION,
+      sampledAtMs: Date.now(),
+    })
     setHasManualLevel(true)
   }, [])
+
+  const reportPoseRenderDiagnostics = useCallback(
+    ({ predictionMs, renderFps }: PoseRenderDiagnostics) => {
+      setStats((current) => ({
+        ...current,
+        posePredictionMs: predictionMs,
+        renderFps,
+      }))
+    },
+    [],
+  )
+
+  const recordPoseRenderSample = useCallback(
+    (sample: PoseRenderMeasurementSample) => {
+      const active = activeMeasurementRef.current
+      if (!active || active.poseRenders.length >= 30_000) return
+      active.poseRenders.push(sample)
+    },
+    [],
+  )
+
+  const sendPosePresentationMode = useCallback(
+    (mode: PosePresentationMode) => {
+      const socket = poseSocketRef.current
+      if (!socket || socket.readyState !== WebSocket.OPEN) return
+      socket.send(
+        JSON.stringify({
+          type: 'pose-mode',
+          mode,
+          requestedHz:
+            mode === 'ultra' ? ULTRA_REQUESTED_POSE_HZ : 60,
+        }),
+      )
+    },
+    [],
+  )
+
+  const setPosePresentationMode = useCallback(
+    (mode: PosePresentationMode) => {
+      posePresentationModeRef.current = mode
+      setPosePresentationModeState(mode)
+      sendPosePresentationMode(mode)
+
+      if (!usesPosePrediction(mode)) {
+        ultraPoseKinematicsRef.current = null
+        previousUltraPoseKinematicsRef.current = null
+        setStats((current) => ({
+          ...current,
+          posePredictionMs: null,
+          posePredictionCorrectionDegrees: null,
+        }))
+      }
+
+      const rawPose = rawPoseRef.current
+      const reference = zeroPoseRef.current
+      if (!usesVideoAlignedPose(mode) && rawPose && reference) {
+        poseRef.current = {
+          timestampMs: Date.now(),
+          quaternion: tabletopQuaternion(reference, rawPose),
+        }
+      }
+    },
+    [sendPosePresentationMode],
+  )
 
   const connect = useCallback(() => {
     finishMeasurement()
@@ -322,6 +458,7 @@ export function useLivePhoneSource() {
     setHasManualLevel(false)
     setScreenStale(false)
     setPoseStale(false)
+    setPoseDiagnostics(null)
     setStatus('connecting')
     setError(null)
     setStats(initialStats)
@@ -398,6 +535,13 @@ export function useLivePhoneSource() {
     let poseSyncMode: PoseSyncMode = 'live'
     let poseSyncDelayMs: number | null = null
     let poseSyncErrorMs: number | null = null
+    const poseSampleIntervalsMs: number[] = []
+    const poseArrivalGapsMs: number[] = []
+    let previousPoseArrivalAtMs: number | null = null
+    let poseActualHz: number | null = null
+    let poseRequestedHz: number | null = null
+    let poseArrivalGapP95Ms: number | null = null
+    let posePredictionCorrectionDegrees: number | null = null
 
     const applyPoseAt = (
       targetTimestampMs: number,
@@ -658,18 +802,30 @@ export function useLivePhoneSource() {
         message.timestampMs,
         message.clockOffsetMs,
       )
-      const active = activeMeasurementRef.current
-      if (active) {
-        active.poses.push({
-          sampledAtMacMs,
-          bridgeReceivedAtMs: message.bridgeReceivedAtMs,
-          bridgeRelayedAtMs: message.bridgeRelayedAtMs,
-          browserReceivedAtMs,
-          clockRttMs: message.clockRttMs,
-        })
-      }
-
       const rawPose = normalizeQuaternion(message.quaternion)
+      let arrivalGapMs: number | null = null
+      if (previousPoseArrivalAtMs !== null) {
+        arrivalGapMs = browserReceivedAtMs - previousPoseArrivalAtMs
+        if (arrivalGapMs >= 0 && arrivalGapMs < 1_000) {
+          poseArrivalGapsMs.push(arrivalGapMs)
+          if (poseArrivalGapsMs.length > 120) poseArrivalGapsMs.shift()
+          poseArrivalGapP95Ms = percentile(poseArrivalGapsMs, 0.95)
+        }
+      }
+      previousPoseArrivalAtMs = browserReceivedAtMs
+      if (
+        message.sampleIntervalMs !== null &&
+        message.sampleIntervalMs > 0 &&
+        message.sampleIntervalMs < 1_000
+      ) {
+        poseSampleIntervalsMs.push(message.sampleIntervalMs)
+        if (poseSampleIntervalsMs.length > 120) poseSampleIntervalsMs.shift()
+        const averageIntervalMs =
+          poseSampleIntervalsMs.reduce((sum, value) => sum + value, 0) /
+          poseSampleIntervalsMs.length
+        poseActualHz = 1_000 / averageIntervalMs
+      }
+      poseRequestedHz = message.requestedHz
       rawPoseRef.current = rawPose
       recordPoseSample(poseHistoryRef.current, {
         timestampMs: sampledAtMacMs ?? browserReceivedAtMs,
@@ -678,20 +834,86 @@ export function useLivePhoneSource() {
       lastPoseReceivedRef.current = browserReceivedAtMs
       setPoseStale(false)
       if (!zeroPoseRef.current) zeroPoseRef.current = rawPose
-      if (!applyPoseWithCurrentVideoDelay(browserReceivedAtMs)) {
+      const useLatestPose = !usesVideoAlignedPose(
+        posePresentationModeRef.current,
+      )
+      const currentPose = tabletopQuaternion(zeroPoseRef.current, rawPose)
+      if (
+        useLatestPose ||
+        !applyPoseWithCurrentVideoDelay(browserReceivedAtMs)
+      ) {
         poseSyncMode = 'live'
         poseSyncDelayMs = 0
         poseSyncErrorMs = 0
         poseRef.current = {
           timestampMs: sampledAtMacMs ?? message.timestampMs,
-          quaternion: tabletopQuaternion(zeroPoseRef.current, rawPose),
+          quaternion: currentPose,
         }
+      }
+
+      if (
+        usesPosePrediction(posePresentationModeRef.current) &&
+        message.rotationRate
+      ) {
+        const kinematics: LivePoseKinematics = {
+          quaternion: currentPose,
+          rotationRate: message.rotationRate,
+          sampledAtMacMs: sampledAtMacMs ?? browserReceivedAtMs,
+          receivedAtMacMs: browserReceivedAtMs,
+        }
+        const previous = previousUltraPoseKinematicsRef.current
+        if (previous) {
+          const elapsedMs = Math.min(
+            30,
+            Math.max(0, kinematics.sampledAtMacMs - previous.sampledAtMacMs),
+          )
+          const previousPrediction = predictQuaternion(
+            previous.quaternion,
+            previous.rotationRate,
+            elapsedMs,
+          )
+          posePredictionCorrectionDegrees = quaternionAngularDistance(
+            previousPrediction,
+            currentPose,
+          )
+        }
+        ultraPoseKinematicsRef.current = kinematics
+        previousUltraPoseKinematicsRef.current = kinematics
+      } else {
+        ultraPoseKinematicsRef.current = null
+        previousUltraPoseKinematicsRef.current = null
+        posePredictionCorrectionDegrees = null
+      }
+      const active = activeMeasurementRef.current
+      if (active && active.poses.length < 30_000) {
+        active.poses.push({
+          sampledAtMacMs,
+          bridgeReceivedAtMs: message.bridgeReceivedAtMs,
+          bridgeRelayedAtMs: message.bridgeRelayedAtMs,
+          browserReceivedAtMs,
+          clockRttMs: message.clockRttMs,
+          arrivalGapMs,
+          sensorIntervalMs: message.sampleIntervalMs,
+          angularSpeedDegreesPerSecond: message.rotationRate
+            ? (Math.hypot(...message.rotationRate) * 180) / Math.PI
+            : null,
+          predictionCorrectionDegrees: posePredictionCorrectionDegrees,
+        })
       }
       setPoseReady(true)
 
       const now = performance.now()
       if (now - lastPoseUiUpdate > 200) {
         lastPoseUiUpdate = now
+        const reference = zeroPoseRef.current
+        const targetPose = poseRef.current
+        if (reference && targetPose) {
+          setPoseDiagnostics({
+            latestSensorRelative: relativeQuaternion(reference, rawPose),
+            targetQuaternion: targetPose.quaternion,
+            sampledAtMs: sampledAtMacMs ?? browserReceivedAtMs,
+          })
+        }
         setStats((current) => ({
           ...current,
           poseLatencyMs:
@@ -701,6 +923,10 @@ export function useLivePhoneSource() {
           poseSyncDelayMs,
           poseSyncErrorMs,
           poseSyncMode,
+          poseActualHz,
+          poseRequestedHz,
+          poseArrivalGapP95Ms,
+          posePredictionCorrectionDegrees,
         }))
       }
     }
@@ -745,7 +971,9 @@ export function useLivePhoneSource() {
         presentedAtMacMs,
         performance.timeOrigin,
       )
-      applyPoseForPresentedFrame(captureAtMacMs, presentedAtMacMs)
+      if (usesVideoAlignedPose(posePresentationModeRef.current)) {
+        applyPoseForPresentedFrame(captureAtMacMs, presentedAtMacMs)
+      }
       webRTCFrames += 1
       updateWebRTCMedia(video)
       setStats((current) => ({
@@ -851,6 +1079,9 @@ export function useLivePhoneSource() {
         browsers: message.browsers,
         phones: message.phones,
       }))
+      if (message.phones > 0) {
+        sendPosePresentationMode(posePresentationModeRef.current)
+      }
       void requestWebRTCOffer()
     }
 
@@ -1062,6 +1293,12 @@ export function useLivePhoneSource() {
       }
     })
 
+    poseSocket.addEventListener('open', () => {
+      if (poseSocketRef.current === poseSocket) {
+        sendPosePresentationMode(posePresentationModeRef.current)
+      }
+    })
+
     poseSocket.addEventListener('error', () => {
       if (poseSocketRef.current === poseSocket) setPoseStale(true)
     })
@@ -1078,7 +1315,7 @@ export function useLivePhoneSource() {
       finishMeasurement()
       setStatus('idle')
     })
-  }, [finishMeasurement, releaseResources])
+  }, [finishMeasurement, releaseResources, sendPosePresentationMode])
 
   useEffect(() => disconnect, [disconnect])
 
@@ -1101,6 +1338,7 @@ export function useLivePhoneSource() {
             (frame) => frame.renderedAtMs !== null,
           ).length,
           poseSamples: active.poses.length,
+          poseRenderSamples: active.poseRenders.length,
         }))
       }
     }, 250)
@@ -1122,11 +1360,17 @@ export function useLivePhoneSource() {
     media,
     orientation,
     poseReady,
+    poseDiagnostics,
+    posePresentationMode,
     poseRef,
+    recordPoseRenderSample,
+    reportPoseRenderDiagnostics,
     poseStale,
     screenStale,
+    setPosePresentationMode,
     startMeasurement,
     stats,
     status,
+    ultraPoseKinematicsRef,
   }
 }

@@ -12,7 +12,18 @@ import {
 } from '../model/iphone17'
 import { createRoundedRectangleGeometry } from '../model/roundedRectangle'
 import type { PoseSample } from '../studio/contracts'
+import type { QuaternionTuple } from '../studio/liveProtocol'
+import type { PoseRenderMeasurementSample } from '../studio/liveMeasurement'
+import {
+  MAX_POSE_PREDICTION_MS,
+  posePredictionHorizonMs,
+  predictQuaternion,
+} from '../studio/posePrediction'
 import type { ScreenMedia } from '../studio/screenMedia'
+import type {
+  LivePoseKinematics,
+  PoseRenderDiagnostics,
+} from '../studio/useLivePhoneSource'
 import { AppleMark } from './AppleMark'
 import {
   LOCAL_IPHONE_17_ASSET_URL,
@@ -28,6 +39,11 @@ interface IPhone17ModelProps {
   orientation: ScreenOrientation
   screenMedia: ScreenMedia | null
   livePoseRef?: RefObject<PoseSample | null>
+  livePoseKinematicsRef?: RefObject<LivePoseKinematics | null>
+  livePoseSmoothingRate?: number
+  onRenderedPoseChange?: (quaternion: QuaternionTuple) => void
+  onPoseRenderDiagnostics?: (diagnostics: PoseRenderDiagnostics) => void
+  onPoseRenderSample?: (sample: PoseRenderMeasurementSample) => void
   useTabletopStandard?: boolean
 }
 
@@ -285,25 +301,106 @@ export function IPhone17Model({
   orientation,
   screenMedia,
   livePoseRef,
+  livePoseKinematicsRef,
+  livePoseSmoothingRate = 20,
+  onRenderedPoseChange,
+  onPoseRenderDiagnostics,
+  onPoseRenderSample,
   useTabletopStandard = false,
 }: IPhone17ModelProps) {
   const group = useRef<Group>(null)
   const targetQuaternion = useRef(new Quaternion())
+  const lastPosePublishAt = useRef(-Infinity)
+  const renderDiagnostics = useRef({ elapsedSeconds: 0, frames: 0 })
   const hasLocalAsset = useLocalAssetAvailability()
 
   useFrame((state, delta) => {
     if (!group.current) return
 
+    let predictionMs: number | null = null
+    let sampleAgeMs: number | null = null
+    let angularSpeedDegreesPerSecond: number | null = null
+    const renderedAtMs = Date.now()
+    renderDiagnostics.current.elapsedSeconds += delta
+    renderDiagnostics.current.frames += 1
+
+    const publishRenderDiagnostics = () => {
+      if (
+        !onPoseRenderDiagnostics ||
+        renderDiagnostics.current.elapsedSeconds < 0.5
+      ) {
+        return
+      }
+      onPoseRenderDiagnostics({
+        predictionMs,
+        renderFps:
+          renderDiagnostics.current.frames /
+          renderDiagnostics.current.elapsedSeconds,
+      })
+      renderDiagnostics.current.elapsedSeconds = 0
+      renderDiagnostics.current.frames = 0
+    }
+
+    const publishRenderedPose = () => {
+      if (
+        !onRenderedPoseChange ||
+        state.clock.elapsedTime - lastPosePublishAt.current < 0.1
+      ) {
+        return
+      }
+      lastPosePublishAt.current = state.clock.elapsedTime
+      onRenderedPoseChange([
+        group.current!.quaternion.x,
+        group.current!.quaternion.y,
+        group.current!.quaternion.z,
+        group.current!.quaternion.w,
+      ])
+    }
+
     const livePose = livePoseRef?.current
     if (livePose) {
-      targetQuaternion.current.set(...livePose.quaternion)
-      group.current.quaternion.slerp(
-        targetQuaternion.current,
-        1 - Math.exp(-delta * 20),
-      )
+      const kinematics = livePoseKinematicsRef?.current
+      if (kinematics) {
+        sampleAgeMs = Math.max(0, renderedAtMs - kinematics.sampledAtMacMs)
+        angularSpeedDegreesPerSecond =
+          (Math.hypot(...kinematics.rotationRate) * 180) / Math.PI
+        predictionMs = posePredictionHorizonMs(
+          kinematics.sampledAtMacMs,
+          renderedAtMs,
+        )
+        targetQuaternion.current.set(
+          ...predictQuaternion(
+            kinematics.quaternion,
+            kinematics.rotationRate,
+            predictionMs,
+          ),
+        )
+      } else {
+        targetQuaternion.current.set(...livePose.quaternion)
+      }
+      if (Number.isFinite(livePoseSmoothingRate)) {
+        group.current.quaternion.slerp(
+          targetQuaternion.current,
+          1 - Math.exp(-delta * livePoseSmoothingRate),
+        )
+      } else {
+        group.current.quaternion.copy(targetQuaternion.current)
+      }
       group.current.position.y +=
         (TABLETOP_PHONE_CENTER_Y - group.current.position.y) *
         (1 - Math.exp(-delta * 12))
+      publishRenderedPose()
+      onPoseRenderSample?.({
+        renderedAtMs,
+        frameIntervalMs: delta * 1_000,
+        sampleAgeMs,
+        predictionMs,
+        angularSpeedDegreesPerSecond,
+        predictionCapped:
+          predictionMs !== null &&
+          predictionMs >= MAX_POSE_PREDICTION_MS - 0.001,
+      })
+      publishRenderDiagnostics()
       return
     }
 
@@ -316,6 +413,8 @@ export function IPhone17Model({
       group.current.position.y +=
         (TABLETOP_PHONE_CENTER_Y - group.current.position.y) *
         (1 - Math.exp(-delta * 12))
+      publishRenderedPose()
+      publishRenderDiagnostics()
       return
     }
 
@@ -332,6 +431,8 @@ export function IPhone17Model({
       (target[2] + orientationRotation - group.current.rotation.z) * easing
     group.current.position.y =
       0.1 + (animate && view === 'hero' ? Math.sin(time * 0.8) * 0.025 : 0)
+    publishRenderedPose()
+    publishRenderDiagnostics()
   })
 
   return (

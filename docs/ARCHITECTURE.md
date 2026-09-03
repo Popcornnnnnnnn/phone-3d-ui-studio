@@ -38,6 +38,10 @@ The current iOS 27 path uses a locally signed SwiftUI host app and ScreenCapture
 
 Each frame and pose message carries a synchronized timestamp. The browser retains three seconds of raw quaternion history and uses spherical interpolation to select the pose at the WebRTC frame's `captureTime`; receiver pipeline delay is the fallback when the frame clock is unavailable. Calibration is applied after interpolation so changing the tabletop zero does not invalidate history. The UI exposes alignment mode, video-aligned delay and nearest pose-sample distance, and marks screen data stale after 1 second and pose data stale after 500 ms. These are observability thresholds, not yet full long-run acceptance results.
 
+Pose presentation is selectable at runtime. Synchronized mode uses the frame-clock history, Low latency uses the newest sample with fast smoothing, Instant removes 3D smoothing, and Ultra additionally requests 200 Hz device motion. In Ultra, each Three.js render extrapolates from the latest quaternion and Core Motion rotation rate, so a 120 Hz display can receive a fresh target between roughly 100 Hz sensor packets. Prediction is capped at 30 ms and every new sensor sample corrects the extrapolated path. The UI reports the actual device-limited sensor rate, 3D render rate, pose-arrival-gap p95, and prediction-correction angle because Core Motion may clamp the requested rate and network delivery can be uneven.
+
+Performance recording stores bounded numeric telemetry while active: pose arrival and sensor intervals, angular speed, prediction correction, render-frame intervals, sample age at render, prediction horizon, and cap hits. The completed schema-v2 report includes p50/p95/p99/max summaries plus raw numeric samples for correlation; it never contains captured screen pixels.
+
 The iOS companion therefore requires iOS 27; ReplayKit broadcast sample handlers are no longer supported on that release. The transport protocol deliberately keeps the capture API replaceable.
 
 ## Initial technology direction

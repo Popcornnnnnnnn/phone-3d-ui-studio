@@ -6,6 +6,13 @@ import {
 } from './model/iphone17'
 import { StudioScene } from './scene/StudioScene'
 import { findStudioPreset, studioPresets } from './studio/presets'
+import type { QuaternionTuple } from './studio/liveProtocol'
+import type { DetailedMetricSummary } from './studio/liveMeasurement'
+import {
+  buildPoseAccuracySnapshot,
+  type PoseAccuracySnapshot,
+} from './studio/poseDiagnostics'
+import { POSE_SMOOTHING_RATE } from './studio/posePresentation'
 import { useLivePhoneSource } from './studio/useLivePhoneSource'
 import { useLocalVideoSource } from './studio/useLocalVideoSource'
 
@@ -34,6 +41,33 @@ function formatPoseSyncMode(value: 'live' | 'frame-clock' | 'estimated') {
   return 'Latest pose'
 }
 
+function formatDegrees(value: number) {
+  return `${value.toFixed(1)}°`
+}
+
+function formatMetricTail(
+  metric: DetailedMetricSummary,
+  formatter: (value: number | null) => string = formatLatency,
+) {
+  return `${formatter(metric.p95Ms)} / ${formatter(metric.p99Ms)} / ${formatter(metric.maxMs)}`
+}
+
+function formatAxis(value: readonly [number, number, number]) {
+  return value.map((component) => component.toFixed(2)).join(', ')
+}
+
+function formatPoseVerdict(value: PoseAccuracySnapshot['verdict']) {
+  const labels: Record<PoseAccuracySnapshot['verdict'], string> = {
+    Ready: 'Ready at 0°',
+    'Rotate to 90°': 'Rotate to 90°',
+    'Hold steady': 'Hold steady',
+    'Transform mismatch': 'Transform mismatch',
+    'Axis mismatch': 'Axis mismatch',
+    Pass: '90° check passed',
+  }
+  return labels[value]
+}
+
 export function App() {
   const [presetId, setPresetId] = useState('pearl')
   const [animate, setAnimate] = useState(true)
@@ -44,6 +78,7 @@ export function App() {
   const [cameraResetRevision, setCameraResetRevision] = useState(0)
   const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
   const [sourceMode, setSourceMode] = useState<ScreenSourceMode>('live')
+  const [renderedPose, setRenderedPose] = useState<QuaternionTuple | null>(null)
   const preset = useMemo(() => findStudioPreset(presetId), [presetId])
   const localVideo = useLocalVideoSource()
   const livePhone = useLivePhoneSource()
@@ -59,6 +94,14 @@ export function App() {
     sourceMode === 'live' ? livePhone.error : localVideo.error
   const activeOrientation =
     sourceMode === 'live' ? livePhone.orientation : orientation
+  const poseAccuracy =
+    livePhone.poseDiagnostics && renderedPose
+      ? buildPoseAccuracySnapshot(
+          livePhone.poseDiagnostics.latestSensorRelative,
+          livePhone.poseDiagnostics.targetQuaternion,
+          renderedPose,
+        )
+      : null
 
   return (
     <main className="app-shell">
@@ -90,6 +133,27 @@ export function App() {
             livePoseRef={
               sourceMode === 'live' && livePhone.poseReady
                 ? livePhone.poseRef
+                : undefined
+            }
+            livePoseKinematicsRef={
+              sourceMode === 'live' && livePhone.poseReady
+                ? livePhone.ultraPoseKinematicsRef
+                : undefined
+            }
+            livePoseSmoothingRate={
+              POSE_SMOOTHING_RATE[livePhone.posePresentationMode]
+            }
+            onRenderedPoseChange={
+              sourceMode === 'live' ? setRenderedPose : undefined
+            }
+            onPoseRenderDiagnostics={
+              sourceMode === 'live'
+                ? livePhone.reportPoseRenderDiagnostics
+                : undefined
+            }
+            onPoseRenderSample={
+              sourceMode === 'live'
+                ? livePhone.recordPoseRenderSample
                 : undefined
             }
             liveFrameRenderRef={
@@ -357,6 +421,85 @@ export function App() {
               </button>
             ) : (
               <>
+                <div
+                  className="view-switcher two-column"
+                  role="group"
+                  aria-label="Pose presentation mode"
+                >
+                  <button
+                    className={
+                      livePhone.posePresentationMode === 'synchronized'
+                        ? 'view-button active'
+                        : 'view-button'
+                    }
+                    type="button"
+                    aria-pressed={
+                      livePhone.posePresentationMode === 'synchronized'
+                    }
+                    onClick={() =>
+                      livePhone.setPosePresentationMode('synchronized')
+                    }
+                  >
+                    Synchronized
+                  </button>
+                  <button
+                    className={
+                      livePhone.posePresentationMode === 'low-latency'
+                        ? 'view-button active'
+                        : 'view-button'
+                    }
+                    type="button"
+                    aria-pressed={
+                      livePhone.posePresentationMode === 'low-latency'
+                    }
+                    onClick={() =>
+                      livePhone.setPosePresentationMode('low-latency')
+                    }
+                  >
+                    Low latency
+                  </button>
+                  <button
+                    className={
+                      livePhone.posePresentationMode === 'instant'
+                        ? 'view-button active'
+                        : 'view-button'
+                    }
+                    type="button"
+                    aria-pressed={
+                      livePhone.posePresentationMode === 'instant'
+                    }
+                    onClick={() =>
+                      livePhone.setPosePresentationMode('instant')
+                    }
+                  >
+                    Instant
+                  </button>
+                  <button
+                    className={
+                      livePhone.posePresentationMode === 'ultra'
+                        ? 'view-button active'
+                        : 'view-button'
+                    }
+                    type="button"
+                    aria-pressed={
+                      livePhone.posePresentationMode === 'ultra'
+                    }
+                    onClick={() =>
+                      livePhone.setPosePresentationMode('ultra')
+                    }
+                  >
+                    Ultra
+                  </button>
+                </div>
+                <p className="source-description">
+                  {livePhone.posePresentationMode === 'synchronized'
+                    ? 'Matches the model pose to each displayed video frame.'
+                    : livePhone.posePresentationMode === 'low-latency'
+                      ? 'Uses the newest motion sample and faster model tracking; the screen may trail the shell.'
+                      : livePhone.posePresentationMode === 'instant'
+                        ? 'Uses the newest 60 Hz sample with no 3D smoothing.'
+                        : 'Requests the device ceiling, predicts to the next render, and applies no 3D smoothing.'}
+                </p>
                 <button
                   className="wide-button"
                   disabled={!livePhone.poseReady}
@@ -365,9 +508,65 @@ export function App() {
                 >
                   Calibrate tabletop pose
                 </button>
+                <button
+                  className="wide-button"
+                  disabled={!livePhone.poseReady}
+                  type="button"
+                  onClick={() => {
+                    livePhone.calibratePose()
+                    setView('front')
+                    setShowGrid(true)
+                    setShowAxes(true)
+                    setCameraResetRevision((value) => value + 1)
+                  }}
+                >
+                  Prepare 90° pose check
+                </button>
                 <p className="source-description">
-                  Lay the iPhone screen-up with the Dynamic Island pointing toward the Mac, then calibrate. Device motion stays aligned to the screen frame&apos;s capture time.
+                  Lay the iPhone screen-up with the Dynamic Island pointing toward the Mac, then calibrate. Synchronized mode aligns motion to the screen frame&apos;s capture time.
                 </p>
+                {livePhone.hasManualLevel && poseAccuracy && (
+                  <>
+                    <p className="source-description">
+                      Keep the phone flat, rotate it exactly 90° on the table, then hold for two seconds.
+                    </p>
+                    <div
+                      className="measurement-results pose-diagnostics"
+                      aria-label="90 degree pose check"
+                    >
+                      <div>
+                        <span>Check</span>
+                        <strong>{formatPoseVerdict(poseAccuracy.verdict)}</strong>
+                      </div>
+                      <div>
+                        <span>Latest sensor delta</span>
+                        <strong>{formatDegrees(poseAccuracy.sensorAngleDegrees)}</strong>
+                      </div>
+                      <div>
+                        <span>Video-synced target</span>
+                        <strong>{formatDegrees(poseAccuracy.targetAngleDegrees)}</strong>
+                      </div>
+                      <div>
+                        <span>Rendered model</span>
+                        <strong>{formatDegrees(poseAccuracy.renderedAngleDegrees)}</strong>
+                      </div>
+                      <div>
+                        <span>Target tracking error</span>
+                        <strong>{formatDegrees(poseAccuracy.trackingErrorDegrees)}</strong>
+                      </div>
+                      <div>
+                        <span>Table-axis alignment</span>
+                        <strong>
+                          {poseAccuracy.tableAxisAlignmentPercent.toFixed(1)}%
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Target world axis · X, Y, Z</span>
+                        <strong>{formatAxis(poseAccuracy.targetWorldAxis)}</strong>
+                      </div>
+                    </div>
+                  </>
+                )}
                 <p className="source-meta">
                   <span>Level reference</span>
                   <span>{livePhone.hasManualLevel ? 'Manual · set' : 'Automatic'}</span>
@@ -376,6 +575,41 @@ export function App() {
                   <span>Pose latency</span>
                   <span>{formatLatency(livePhone.stats.poseLatencyMs)}</span>
                 </p>
+                <p className="source-meta">
+                  <span>Pose sample rate</span>
+                  <span>
+                    {formatRate(livePhone.stats.poseActualHz, 'Hz')}
+                    {livePhone.stats.poseRequestedHz === null
+                      ? ''
+                      : ` · requested ${Math.round(livePhone.stats.poseRequestedHz)}`}
+                  </span>
+                </p>
+                {livePhone.posePresentationMode === 'ultra' && (
+                  <>
+                    <p className="source-meta">
+                      <span>Pose prediction</span>
+                      <span>{formatLatency(livePhone.stats.posePredictionMs)}</span>
+                    </p>
+                    <p className="source-meta">
+                      <span>3D render rate</span>
+                      <span>{formatRate(livePhone.stats.renderFps, 'fps')}</span>
+                    </p>
+                    <p className="source-meta">
+                      <span>Pose arrival gap p95</span>
+                      <span>{formatLatency(livePhone.stats.poseArrivalGapP95Ms)}</span>
+                    </p>
+                    <p className="source-meta">
+                      <span>Prediction correction</span>
+                      <span>
+                        {livePhone.stats.posePredictionCorrectionDegrees === null
+                          ? '—'
+                          : formatDegrees(
+                              livePhone.stats.posePredictionCorrectionDegrees,
+                            )}
+                      </span>
+                    </p>
+                  </>
+                )}
                 <p className="source-meta">
                   <span>Pose alignment</span>
                   <span>{formatPoseSyncMode(livePhone.stats.poseSyncMode)}</span>
@@ -396,7 +630,7 @@ export function App() {
             <section className="panel-section source-card">
               <div>
                 <p className="section-kicker">Latency measurement</p>
-                <h2>Capture to 3D render</h2>
+                <h2>Performance recording</h2>
               </div>
               <span
                 className={
@@ -408,7 +642,7 @@ export function App() {
                 {livePhone.measurement.status}
               </span>
               <p className="source-description">
-                Measures capture, JPEG encode, Wi-Fi relay, browser decode, and the next 3D paint. The report contains timing only—never screen pixels.
+                Records screen timing plus every pose packet and 3D render sample. The report contains timing and motion numbers only—never screen pixels.
               </p>
               {livePhone.measurement.status === 'running' ? (
                 <button
@@ -416,7 +650,7 @@ export function App() {
                   type="button"
                   onClick={livePhone.finishMeasurement}
                 >
-                  Finish measurement
+                  Stop and analyze
                 </button>
               ) : (
                 <button
@@ -426,8 +660,8 @@ export function App() {
                   onClick={livePhone.startMeasurement}
                 >
                   {livePhone.measurement.status === 'complete'
-                    ? 'Start new measurement'
-                    : 'Start measurement'}
+                    ? 'Start new recording'
+                    : 'Start diagnostic recording'}
                 </button>
               )}
               <dl className="live-stats">
@@ -444,6 +678,10 @@ export function App() {
                 <div>
                   <dt>Pose samples</dt>
                   <dd>{livePhone.measurement.poseSamples}</dd>
+                </div>
+                <div>
+                  <dt>3D render samples</dt>
+                  <dd>{livePhone.measurement.poseRenderSamples}</dd>
                 </div>
               </dl>
               {livePhone.measurement.report && (
@@ -489,6 +727,61 @@ export function App() {
                           livePhone.measurement.report.synchronization.screenPoseSkew
                             .p95Ms,
                         )}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Render gap p95 / p99 / max</span>
+                      <strong>
+                        {formatMetricTail(
+                          livePhone.measurement.report.render.frameInterval,
+                        )}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Pose arrival p95 / p99 / max</span>
+                      <strong>
+                        {formatMetricTail(
+                          livePhone.measurement.report.pose.arrivalGap,
+                        )}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Sample age p95 / p99 / max</span>
+                      <strong>
+                        {formatMetricTail(
+                          livePhone.measurement.report.render.sampleAge,
+                        )}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Correction p95 / p99 / max</span>
+                      <strong>
+                        {formatMetricTail(
+                          livePhone.measurement.report.pose
+                            .predictionCorrectionDegrees,
+                          (value) =>
+                            value === null ? '—' : formatDegrees(value),
+                        )}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Peak angular speed</span>
+                      <strong>
+                        {livePhone.measurement.report.pose
+                          .angularSpeedDegreesPerSecond.maxMs === null
+                          ? '—'
+                          : `${Math.round(
+                              livePhone.measurement.report.pose
+                                .angularSpeedDegreesPerSecond.maxMs,
+                            )}°/s`}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Prediction cap hits</span>
+                      <strong>
+                        {livePhone.measurement.report.render.predictionCapHitPercent.toFixed(
+                          1,
+                        )}%
                       </strong>
                     </div>
                   </div>

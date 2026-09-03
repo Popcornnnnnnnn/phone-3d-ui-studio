@@ -85,6 +85,14 @@ function broadcastToPoseBrowsers(data) {
   }
 }
 
+function broadcastToPosePhones(data) {
+  for (const [client, role] of clients) {
+    if (role === 'phone-pose' && client.readyState === WebSocket.OPEN) {
+      client.send(data)
+    }
+  }
+}
+
 const signalingBacklog = {
   'browser-webrtc': [],
   'phone-webrtc': [],
@@ -192,6 +200,8 @@ sockets.on('connection', (socket, request) => {
         const message = JSON.parse(data.toString())
         if (message.type === 'browser-receiver-status') {
           retainDiagnostic(diagnostics.receiverSamples, message)
+        } else if (message.type === 'pose-mode') {
+          broadcastToPosePhones(JSON.stringify(message))
         }
       } catch {
         // Ignore browser telemetry that is not valid control JSON.
