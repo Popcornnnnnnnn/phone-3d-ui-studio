@@ -21,6 +21,19 @@ export interface PoseMeasurementSample {
   bridgeRelayedAtMs: number | null
   browserReceivedAtMs: number
   clockRttMs: number | null
+  arrivalGapMs: number | null
+  sensorIntervalMs: number | null
+  angularSpeedDegreesPerSecond: number | null
+  predictionCorrectionDegrees: number | null
+}
+
+export interface PoseRenderMeasurementSample {
+  renderedAtMs: number
+  frameIntervalMs: number
+  sampleAgeMs: number | null
+  predictionMs: number | null
+  angularSpeedDegreesPerSecond: number | null
+  predictionCapped: boolean
 }
 
 export interface MetricSummary {
@@ -30,8 +43,13 @@ export interface MetricSummary {
   maxMs: number | null
 }
 
+export interface DetailedMetricSummary extends MetricSummary {
+  p99Ms: number | null
+  averageMs: number | null
+}
+
 export interface LiveMeasurementReport {
-  schemaVersion: 1
+  schemaVersion: 2
   startedAt: string
   endedAt: string
   durationMs: number
@@ -62,9 +80,26 @@ export interface LiveMeasurementReport {
     receivedSamples: number
     samplesPerSecond: number
     phoneToBrowser: MetricSummary
+    arrivalGap: DetailedMetricSummary
+    sensorInterval: DetailedMetricSummary
+    angularSpeedDegreesPerSecond: DetailedMetricSummary
+    predictionCorrectionDegrees: DetailedMetricSummary
+  }
+  render: {
+    receivedSamples: number
+    samplesPerSecond: number
+    frameInterval: DetailedMetricSummary
+    sampleAge: DetailedMetricSummary
+    prediction: DetailedMetricSummary
+    predictionCapHits: number
+    predictionCapHitPercent: number
   }
   synchronization: {
     screenPoseSkew: MetricSummary
+  }
+  raw: {
+    pose: PoseMeasurementSample[]
+    render: PoseRenderMeasurementSample[]
   }
 }
 
@@ -95,6 +130,23 @@ export function summarizeMilliseconds(
   }
 }
 
+export function summarizeDetailed(
+  values: Array<number | null>,
+): DetailedMetricSummary {
+  const sorted = finiteValues(values).sort((left, right) => left - right)
+  return {
+    samples: sorted.length,
+    p50Ms: percentile(sorted, 0.5),
+    p95Ms: percentile(sorted, 0.95),
+    p99Ms: percentile(sorted, 0.99),
+    maxMs: sorted.at(-1) ?? null,
+    averageMs:
+      sorted.length === 0
+        ? null
+        : sorted.reduce((sum, value) => sum + value, 0) / sorted.length,
+  }
+}
+
 function difference(later: number | null, earlier: number | null) {
   if (later === null || earlier === null) return null
   return Math.max(0, later - earlier)
@@ -105,6 +157,7 @@ export function buildLiveMeasurementReport(
   endedAtMs: number,
   frames: FrameMeasurementSample[],
   poses: PoseMeasurementSample[],
+  renderSamples: PoseRenderMeasurementSample[],
   droppedBeforeDecode: number,
 ): LiveMeasurementReport {
   const durationMs = Math.max(1, endedAtMs - startedAtMs)
@@ -114,7 +167,7 @@ export function buildLiveMeasurementReport(
   const codecs = new Set(frames.map((frame) => frame.codec))
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     startedAt: new Date(startedAtMs).toISOString(),
     endedAt: new Date(endedAtMs).toISOString(),
     durationMs,
@@ -187,11 +240,47 @@ export function buildLiveMeasurementReport(
           difference(pose.browserReceivedAtMs, pose.sampledAtMacMs),
         ),
       ),
+      arrivalGap: summarizeDetailed(poses.map((pose) => pose.arrivalGapMs)),
+      sensorInterval: summarizeDetailed(
+        poses.map((pose) => pose.sensorIntervalMs),
+      ),
+      angularSpeedDegreesPerSecond: summarizeDetailed(
+        poses.map((pose) => pose.angularSpeedDegreesPerSecond),
+      ),
+      predictionCorrectionDegrees: summarizeDetailed(
+        poses.map((pose) => pose.predictionCorrectionDegrees),
+      ),
+    },
+    render: {
+      receivedSamples: renderSamples.length,
+      samplesPerSecond: renderSamples.length / (durationMs / 1_000),
+      frameInterval: summarizeDetailed(
+        renderSamples.map((sample) => sample.frameIntervalMs),
+      ),
+      sampleAge: summarizeDetailed(
+        renderSamples.map((sample) => sample.sampleAgeMs),
+      ),
+      prediction: summarizeDetailed(
+        renderSamples.map((sample) => sample.predictionMs),
+      ),
+      predictionCapHits: renderSamples.filter(
+        (sample) => sample.predictionCapped,
+      ).length,
+      predictionCapHitPercent:
+        renderSamples.length === 0
+          ? 0
+          : (renderSamples.filter((sample) => sample.predictionCapped).length /
+              renderSamples.length) *
+            100,
     },
     synchronization: {
       screenPoseSkew: summarizeMilliseconds(
         frames.map((frame) => frame.poseScreenSkewMs),
       ),
+    },
+    raw: {
+      pose: poses,
+      render: renderSamples,
     },
   }
 }

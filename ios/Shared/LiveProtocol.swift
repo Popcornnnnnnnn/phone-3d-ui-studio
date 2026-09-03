@@ -4,8 +4,17 @@ struct PoseMessage: Encodable {
     let type = "pose"
     let timestampMs: Int64
     let quaternion: [Double]
+    let rotationRate: [Double]
+    let requestedHz: Double
+    let sampleIntervalMs: Double?
     let clockOffsetMs: Double?
     let clockRttMs: Double?
+}
+
+struct PoseModeCommand: Decodable {
+    let type: String
+    let mode: String
+    let requestedHz: Double?
 }
 
 struct FrameMetadataMessage: Encodable {

@@ -10,9 +10,15 @@ import {
   type ScreenOrientation,
 } from '../model/iphone17'
 import type { PoseSample } from '../studio/contracts'
+import type { QuaternionTuple } from '../studio/liveProtocol'
+import type { PoseRenderMeasurementSample } from '../studio/liveMeasurement'
 import type { StudioPreset } from '../studio/presets'
 import type { ScreenMedia } from '../studio/screenMedia'
-import type { LiveFrameRenderSignal } from '../studio/useLivePhoneSource'
+import type {
+  LiveFrameRenderSignal,
+  LivePoseKinematics,
+  PoseRenderDiagnostics,
+} from '../studio/useLivePhoneSource'
 import { IPhone17Model } from './IPhone17Model'
 import { StudioEnvironment } from './StudioEnvironment'
 
@@ -26,6 +32,11 @@ interface StudioSceneProps {
   orientation: ScreenOrientation
   screenMedia: ScreenMedia | null
   livePoseRef?: RefObject<PoseSample | null>
+  livePoseKinematicsRef?: RefObject<LivePoseKinematics | null>
+  livePoseSmoothingRate?: number
+  onRenderedPoseChange?: (quaternion: QuaternionTuple) => void
+  onPoseRenderDiagnostics?: (diagnostics: PoseRenderDiagnostics) => void
+  onPoseRenderSample?: (sample: PoseRenderMeasurementSample) => void
   liveFrameRenderRef?: RefObject<LiveFrameRenderSignal | null>
   onLiveFrameRendered?: (frameId: number, renderedAtMs: number) => void
   cameraResetRevision?: number
@@ -54,13 +65,30 @@ function LiveFrameRenderObserver({
 interface CameraSetup {
   position: [number, number, number]
   target: [number, number, number]
+  up: [number, number, number]
 }
 
 const uprightCameraSetups: Record<ReviewView, CameraSetup> = {
-  calibration: { position: [0, 0.1, 5.4], target: [0, 0.05, 0] },
-  hero: { position: [2.8, 1.5, 5.2], target: [0, 0.05, 0] },
-  front: { position: [0, 0.1, 5.4], target: [0, 0.05, 0] },
-  back: { position: [0, 0.1, -5.4], target: [0, 0.05, 0] },
+  calibration: {
+    position: [0, 0.1, 5.4],
+    target: [0, 0.05, 0],
+    up: [0, 1, 0],
+  },
+  hero: {
+    position: [2.8, 1.5, 5.2],
+    target: [0, 0.05, 0],
+    up: [0, 1, 0],
+  },
+  front: {
+    position: [0, 0.1, 5.4],
+    target: [0, 0.05, 0],
+    up: [0, 1, 0],
+  },
+  back: {
+    position: [0, 0.1, -5.4],
+    target: [0, 0.05, 0],
+    up: [0, 1, 0],
+  },
 }
 
 function cameraSetup(view: ReviewView, useTabletopStandard: boolean): CameraSetup {
@@ -71,18 +99,25 @@ function cameraSetup(view: ReviewView, useTabletopStandard: boolean): CameraSetu
     calibration: {
       position: [0, TABLETOP_PHONE_CENTER_Y, 5.4],
       target,
+      up: [0, 1, 0],
     },
     hero: {
       position: [2.9, TABLETOP_PHONE_CENTER_Y + 2.35, 4.75],
       target,
+      up: [0, 1, 0],
     },
     front: {
       position: [0, TABLETOP_PHONE_CENTER_Y + 5.55, 0.001],
       target,
+      // The camera looks almost exactly down world -Y. Using Three.js's
+      // default +Y up vector here is degenerate and makes screen roll
+      // visually ambiguous. World -Z is the calibrated phone's top edge.
+      up: [0, 0, -1],
     },
     back: {
       position: [0, TABLETOP_PHONE_CENTER_Y - 5.55, 0.001],
       target,
+      up: [0, 0, -1],
     },
   }
 
@@ -116,6 +151,7 @@ function ReviewCamera({
     const state = transition.current
     state.active = true
     state.elapsed = 0
+    camera.up.set(...setup.up)
     state.fromPosition.copy(camera.position)
     state.toPosition.set(...setup.position)
     state.fromTarget.copy(controlsRef.current?.target ?? state.currentTarget)
@@ -159,6 +195,11 @@ export function StudioScene({
   orientation,
   screenMedia,
   livePoseRef,
+  livePoseKinematicsRef,
+  livePoseSmoothingRate,
+  onRenderedPoseChange,
+  onPoseRenderDiagnostics,
+  onPoseRenderSample,
   liveFrameRenderRef,
   onLiveFrameRendered,
   cameraResetRevision = 0,
@@ -172,7 +213,13 @@ export function StudioScene({
     <Canvas
       shadows="basic"
       dpr={[1, 2]}
-      camera={{ position: initialCamera.position, fov: 34, near: 0.1, far: 100 }}
+      camera={{
+        position: initialCamera.position,
+        up: initialCamera.up,
+        fov: 34,
+        near: 0.1,
+        far: 100,
+      }}
       gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
     >
       <StudioEnvironment
@@ -247,6 +294,11 @@ export function StudioScene({
         orientation={orientation}
         screenMedia={screenMedia}
         livePoseRef={livePoseRef}
+        livePoseKinematicsRef={livePoseKinematicsRef}
+        livePoseSmoothingRate={livePoseSmoothingRate}
+        onRenderedPoseChange={onRenderedPoseChange}
+        onPoseRenderDiagnostics={onPoseRenderDiagnostics}
+        onPoseRenderSample={onPoseRenderSample}
         useTabletopStandard={useTabletopStandard}
       />
       <OrbitControls

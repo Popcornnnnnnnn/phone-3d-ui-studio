@@ -5,6 +5,8 @@ export type QuaternionTuple = readonly [
   w: number,
 ]
 
+export type Vector3Tuple = readonly [x: number, y: number, z: number]
+
 export interface BridgeStatusMessage {
   type: 'bridge-status'
   browsers: number
@@ -39,6 +41,9 @@ export interface LivePoseMessage {
   type: 'pose'
   timestampMs: number
   quaternion: QuaternionTuple
+  rotationRate: Vector3Tuple | null
+  requestedHz: number | null
+  sampleIntervalMs: number | null
   clockOffsetMs: number | null
   clockRttMs: number | null
   bridgeReceivedAtMs: number | null
@@ -123,10 +128,19 @@ export function parseLiveTextMessage(value: string): LiveTextMessage | null {
     message.quaternion.length === 4 &&
     message.quaternion.every(isFiniteNumber)
   ) {
+    const rotationRate =
+      Array.isArray(message.rotationRate) &&
+      message.rotationRate.length === 3 &&
+      message.rotationRate.every(isFiniteNumber)
+        ? (message.rotationRate as unknown as Vector3Tuple)
+        : null
     return {
       type: 'pose',
       timestampMs: message.timestampMs,
       quaternion: message.quaternion as unknown as QuaternionTuple,
+      rotationRate,
+      requestedHz: optionalFiniteNumber(message.requestedHz),
+      sampleIntervalMs: optionalFiniteNumber(message.sampleIntervalMs),
       clockOffsetMs: optionalFiniteNumber(message.clockOffsetMs),
       clockRttMs: optionalFiniteNumber(message.clockRttMs),
       bridgeReceivedAtMs: optionalFiniteNumber(message.bridgeReceivedAtMs),

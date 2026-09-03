@@ -44,6 +44,10 @@ ROADMAP.md             Date-based delivery checkpoints
 
 The current application contains a locally licensed iPhone 17 model with an independently addressable screen mesh, deterministic review views, local MP4 playback, and a live-input mode. A local bridge carries WebRTC screen video and timestamped Core Motion quaternions from the iOS 27 ScreenCaptureKit companion into the Three.js renderer. The browser retains a bounded pose history and aligns interpolated motion to each displayed video frame's capture clock. Tabletop calibration maps a screen-up iPhone with its Dynamic Island aimed toward the Mac to the studio floor, and **Reset standard view** returns the camera to a charging-port-level view. Formal reconnection and stability acceptance are still required. Confirmed model boundaries are recorded in [docs/references/iphone-17-black.md](docs/references/iphone-17-black.md).
 
+For pose-response experiments, the web UI can switch live between Synchronized, Low latency, Instant, and Ultra. Instant applies the latest received attitude without Three.js smoothing. Ultra also asks the iPhone for a 200 Hz Core Motion stream, reports the actual device-limited rate, and performs bounded angular-velocity prediction before every Three.js render instead of only when a network sample arrives. Its live diagnostics expose 3D render rate, pose-arrival p95, and prediction-correction error; it intentionally prioritizes shell response over screen/pose synchronization.
+
+The Performance recording control captures numeric screen, pose-packet, and per-render telemetry without screen pixels. Stopping a run summarizes p50/p95/p99/max tails for render gaps, pose arrival, sample age, angular speed, prediction correction, and prediction-cap hits; the downloadable JSON retains the bounded raw samples for offline diagnosis.
+
 ## Local development
 
 Requires Node.js 24 or newer.

@@ -138,10 +138,29 @@ final class ScreenCaptureController: NSObject, ObservableObject {
                 self.scheduleFrameSocketReconnect()
             }
         }
+        poseSocket.onTextMessage = { [weak self] text in
+            self?.handlePoseControl(text)
+        }
     }
 
     deinit {
         picker.remove(self)
+    }
+
+    private func handlePoseControl(_ text: String) {
+        guard
+            let data = text.data(using: .utf8),
+            let command = try? JSONDecoder().decode(
+                PoseModeCommand.self,
+                from: data
+            ),
+            command.type == "pose-mode"
+        else { return }
+
+        motion.setPresentationMode(
+            command.mode,
+            requestedHz: command.requestedHz
+        )
     }
 
     func chooseFullDisplay() {

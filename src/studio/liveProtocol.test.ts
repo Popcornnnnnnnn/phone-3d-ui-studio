@@ -14,12 +14,18 @@ describe('live phone protocol', () => {
           type: 'pose',
           timestampMs: 42,
           quaternion: [0, 0, 0, 1],
+          rotationRate: [0.1, 0.2, 0.3],
+          requestedHz: 200,
+          sampleIntervalMs: 10,
         }),
       ),
     ).toMatchObject({
       type: 'pose',
       timestampMs: 42,
       quaternion: [0, 0, 0, 1],
+      rotationRate: [0.1, 0.2, 0.3],
+      requestedHz: 200,
+      sampleIntervalMs: 10,
     })
   })
 

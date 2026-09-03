@@ -3,7 +3,9 @@
 This local prototype streams two inputs from an iPhone to the Mac bridge:
 
 - ScreenCaptureKit full-display video, JPEG-compressed at up to 15 fps.
-- Core Motion attitude quaternions at 60 Hz.
+- Core Motion attitude quaternions and rotation rate at 60 Hz. Ultra mode asks
+  Core Motion for 200 Hz; iOS clamps that request to the device ceiling and the
+  web UI reports the measured callback rate.
 
 Both remain in memory and are sent to the configured local WebSocket. The app
 does not save a screen recording.
