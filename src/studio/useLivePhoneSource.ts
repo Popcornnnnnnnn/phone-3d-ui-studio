@@ -30,6 +30,7 @@ import {
   rollingDecodedFps,
   type WebRTCReceiverSample,
 } from './webRTCStats'
+import { h264OnlyCodecPreferences } from './webRTCCodecPreferences'
 
 export type LivePhoneStatus = 'idle' | 'connecting' | 'ready' | 'error'
 export type PoseSyncMode = 'live' | 'frame-clock' | 'estimated'
@@ -362,21 +363,13 @@ export function useLivePhoneSource() {
       direction: 'recvonly',
     })
     const videoCapabilities = RTCRtpReceiver.getCapabilities('video')
-    if (videoCapabilities) {
-      const h264Codecs = videoCapabilities.codecs.filter(
-        (codec) => codec.mimeType.toLowerCase() === 'video/h264',
-      )
-      if (h264Codecs.length > 0) {
-        // The browser creates the offer, so the iPhone encoder factory's H.264
-        // preference cannot override a VP8-first offer. Put every supported
-        // H.264 profile first while retaining the remaining codecs as fallback.
-        videoTransceiver.setCodecPreferences([
-          ...h264Codecs,
-          ...videoCapabilities.codecs.filter(
-            (codec) => codec.mimeType.toLowerCase() !== 'video/h264',
-          ),
-        ])
-      }
+    const h264Codecs = h264OnlyCodecPreferences(videoCapabilities)
+    if (h264Codecs) {
+      // Keeping VP8 as a fallback allowed the native answer to select libvpx
+      // even though both peers advertise H.264 first. This local iPhone path
+      // requires H.264 so the encoder stays on VideoToolbox instead of the
+      // software VP8 encoder.
+      videoTransceiver.setCodecPreferences(h264Codecs)
     }
 
     const frameMetadataQueue: FrameMetadataMessage[] = []

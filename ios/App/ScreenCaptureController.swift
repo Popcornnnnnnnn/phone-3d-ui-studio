@@ -96,6 +96,8 @@ final class ScreenCaptureController: NSObject, ObservableObject {
     private var conversionTotalMs = 0.0
     private var conversionSamples: Int64 = 0
     private var conversionMaxMs = 0.0
+    private var webRTCDirectFrameCount: Int64 = 0
+    private var webRTCConvertedFrameCount: Int64 = 0
 
     override init() {
         super.init()
@@ -294,6 +296,8 @@ final class ScreenCaptureController: NSObject, ObservableObject {
             conversionTotalMs = 0
             conversionSamples = 0
             conversionMaxMs = 0
+            webRTCDirectFrameCount = 0
+            webRTCConvertedFrameCount = 0
         }
 
         let timer = DispatchSource.makeTimerSource(queue: captureQueue)
@@ -320,7 +324,9 @@ final class ScreenCaptureController: NSObject, ObservableObject {
                 presentationIntervalMaxMs,
                 conversionTotalMs,
                 conversionSamples,
-                conversionMaxMs
+                conversionMaxMs,
+                webRTCDirectFrameCount,
+                webRTCConvertedFrameCount
             )
         }
         var payload: [String: Any] = [
@@ -347,6 +353,8 @@ final class ScreenCaptureController: NSObject, ObservableObject {
             payload["conversionAverageMs"] = counters.9 / Double(counters.10)
             payload["conversionMaxMs"] = counters.11
         }
+        payload["webRTCDirectFrames"] = counters.12
+        payload["webRTCConvertedFrames"] = counters.13
 
         webRTCStreamer.readOutboundDiagnostics { [weak self] outbound in
             guard let self else { return }
@@ -453,8 +461,9 @@ final class ScreenCaptureController: NSObject, ObservableObject {
 
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         var image = CIImage(cvPixelBuffer: pixelBuffer)
+        let frameOrientation = imageOrientation(from: sampleBuffer)
 
-        if let orientation = imageOrientation(from: sampleBuffer) {
+        if let orientation = frameOrientation {
             image = image.oriented(orientation)
         }
 
@@ -470,27 +479,49 @@ final class ScreenCaptureController: NSObject, ObservableObject {
         let encodeStartedAtMs = LiveProtocol.timestampMs()
 
         if streamCodec == .webrtc {
-            let conversionStartedAt = ProcessInfo.processInfo.systemUptime
             let outputDimensions = h264OutputDimensions(
                 width: width,
                 height: height
             )
-            guard let outputPixelBuffer = h264PixelBuffer(
-                image: image,
-                extent: extent,
-                width: outputDimensions.width,
-                height: outputDimensions.height
-            ) else { return }
-            let conversionMs = (
-                ProcessInfo.processInfo.systemUptime - conversionStartedAt
-            ) * 1_000
-            webRTCStreamer.push(pixelBuffer: outputPixelBuffer, timestamp: timestamp)
+            let canSubmitCaptureBufferDirectly = (
+                frameOrientation == nil || frameOrientation == .up
+            ) && CVPixelBufferGetWidth(pixelBuffer) == outputDimensions.width
+                && CVPixelBufferGetHeight(pixelBuffer) == outputDimensions.height
+
+            let conversionMs: Double
+            if canSubmitCaptureBufferDirectly {
+                conversionMs = 0
+                webRTCStreamer.push(
+                    pixelBuffer: pixelBuffer,
+                    timestamp: timestamp
+                )
+            } else {
+                let conversionStartedAt = ProcessInfo.processInfo.systemUptime
+                guard let outputPixelBuffer = h264PixelBuffer(
+                    image: image,
+                    extent: extent,
+                    width: outputDimensions.width,
+                    height: outputDimensions.height
+                ) else { return }
+                conversionMs = (
+                    ProcessInfo.processInfo.systemUptime - conversionStartedAt
+                ) * 1_000
+                webRTCStreamer.push(
+                    pixelBuffer: outputPixelBuffer,
+                    timestamp: timestamp
+                )
+            }
             diagnosticLock.withLock {
                 submittedFrameCount += 1
                 acceptedFrameCount += 1
                 conversionTotalMs += conversionMs
                 conversionSamples += 1
                 conversionMaxMs = max(conversionMaxMs, conversionMs)
+                if canSubmitCaptureBufferDirectly {
+                    webRTCDirectFrameCount += 1
+                } else {
+                    webRTCConvertedFrameCount += 1
+                }
             }
             return
         }
