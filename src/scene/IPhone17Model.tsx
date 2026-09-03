@@ -2,7 +2,7 @@ import { RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
-import { Quaternion, type Group } from 'three'
+import { Color, DoubleSide, Quaternion, type Group } from 'three'
 import {
   IPHONE_17_SCENE,
   TABLETOP_PHONE_CENTER_Y,
@@ -149,6 +149,32 @@ function DynamicIslandSurface() {
   )
 }
 
+const bottomFaceVertexShader = /* glsl */ `
+  varying vec2 vUv;
+
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+
+const bottomFaceFragmentShader = /* glsl */ `
+  uniform vec3 centerColor;
+  uniform vec3 edgeColor;
+  varying vec2 vUv;
+
+  void main() {
+    vec2 centered = abs(vUv - 0.5) * 2.0;
+    float horizontalFade = smoothstep(0.7, 1.0, centered.x);
+    float verticalFade = smoothstep(0.35, 1.0, centered.y);
+    float edgeFade = max(horizontalFade, verticalFade);
+    float softSheen = exp(-pow((vUv.y - 0.58) * 4.2, 2.0)) * 0.028;
+    float alpha = 1.0 - smoothstep(0.72, 1.0, centered.x);
+    vec3 color = mix(centerColor, edgeColor, edgeFade) + softSheen;
+    gl_FragColor = vec4(color, alpha);
+  }
+`
+
 const bottomSpeakerCenters = [
   -0.342,
   -0.292,
@@ -160,28 +186,95 @@ const bottomSpeakerCenters = [
   0.432,
 ] as const
 
-function ImportedBottomInterior() {
+function ImportedBottomFace() {
   const { height } = IPHONE_17_SCENE
-  const innerY = -height / 2 + 0.003
+  const faceY = -height / 2 + 0.014
+  const faceGeometry = useMemo(
+    () => createRoundedRectangleGeometry(1.02, 0.1, 0.045, 28),
+    [],
+  )
+  const portRimGeometry = useMemo(
+    () => createRoundedRectangleGeometry(0.185, 0.046, 0.023, 24),
+    [],
+  )
+  const portOpeningGeometry = useMemo(
+    () => createRoundedRectangleGeometry(0.146, 0.028, 0.014, 24),
+    [],
+  )
+  const gradientUniforms = useMemo(
+    () => ({
+      centerColor: { value: new Color('#2c333b') },
+      edgeColor: { value: new Color('#11161c') },
+    }),
+    [],
+  )
+
+  useEffect(
+    () => () => {
+      faceGeometry.dispose()
+      portRimGeometry.dispose()
+      portOpeningGeometry.dispose()
+    },
+    [faceGeometry, portOpeningGeometry, portRimGeometry],
+  )
 
   return (
-    <group name="bottom-interior">
+    <group name="rebuilt-bottom-face">
+      <mesh
+        geometry={faceGeometry}
+        name="bottom-face-gradient"
+        position={[0, faceY, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <shaderMaterial
+          fragmentShader={bottomFaceFragmentShader}
+          side={DoubleSide}
+          toneMapped={false}
+          transparent
+          uniforms={gradientUniforms}
+          vertexShader={bottomFaceVertexShader}
+          depthWrite={false}
+        />
+      </mesh>
+
       {bottomSpeakerCenters.map((x) => (
-        <mesh key={x} position={[x, innerY, 0]}>
-          <cylinderGeometry args={[0.0225, 0.0225, 0.012, 24]} />
-          <meshBasicMaterial color="#000103" toneMapped={false} />
+        <mesh
+          key={x}
+          position={[x, faceY - 0.001, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <circleGeometry args={[0.0185, 32]} />
+          <meshBasicMaterial color="#010204" toneMapped={false} />
         </mesh>
       ))}
 
-      <RoundedBox
+      {[-0.145, 0.145].map((x) => (
+        <mesh
+          key={x}
+          position={[x, faceY - 0.0012, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <circleGeometry args={[0.009, 24]} />
+          <meshBasicMaterial color="#343a42" toneMapped={false} />
+        </mesh>
+      ))}
+
+      <mesh
+        geometry={portRimGeometry}
+        name="usb-c-rim"
+        position={[0, faceY - 0.002, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <meshBasicMaterial color="#4b525b" toneMapped={false} />
+      </mesh>
+      <mesh
+        geometry={portOpeningGeometry}
         name="usb-c-inner-tunnel"
-        args={[0.155, 0.012, 0.022]}
-        radius={0.011}
-        smoothness={6}
-        position={[0, innerY, 0]}
+        position={[0, faceY - 0.003, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
       >
         <meshBasicMaterial color="#000103" toneMapped={false} />
-      </RoundedBox>
+      </mesh>
     </group>
   )
 }
@@ -258,7 +351,7 @@ export function IPhone17Model({
       {hasLocalAsset ? (
         <Suspense fallback={<ProceduralIPhone17Shell />}>
           <LocalIPhone17Asset />
-          <ImportedBottomInterior />
+          <ImportedBottomFace />
         </Suspense>
       ) : (
         <ProceduralIPhone17Shell />

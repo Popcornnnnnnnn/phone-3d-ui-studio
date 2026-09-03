@@ -2,7 +2,6 @@ import { useGLTF } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
 import {
   Mesh,
-  MeshBasicMaterial,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
 } from 'three'
@@ -35,12 +34,6 @@ export function LocalIPhone17Asset() {
         metalnessMap: sourceBodyMaterial?.metalnessMap ?? null,
         roughnessMap: sourceBodyMaterial?.roughnessMap ?? null,
       }),
-      portRim: new MeshPhysicalMaterial({
-        color: '#8c9095',
-        metalness: 0.82,
-        roughness: 0.26,
-        clearcoat: 0.16,
-      }),
       cameraPlate: new MeshPhysicalMaterial({
         color: '#2b2c2d',
         metalness: 0.12,
@@ -67,10 +60,6 @@ export function LocalIPhone17Asset() {
         roughness: 0.18,
         clearcoat: 0.55,
       }),
-      cavity: new MeshBasicMaterial({
-        color: '#010204',
-        toneMapped: false,
-      }),
       logo: new MeshPhysicalMaterial({
         color: '#111214',
         metalness: 0.38,
@@ -96,7 +85,13 @@ export function LocalIPhone17Asset() {
         object.castShadow = true
         object.receiveShadow = false
 
-        if (object.name === '17-GlassRough' || object.name === '17-Matte') {
+        if (
+          object.name === '17-GlassRough' ||
+          object.name === '17-Matte' ||
+          object.name === '17-NetTop' ||
+          object.name === '17-USB' ||
+          /17-Screw/.test(object.name)
+        ) {
           object.visible = false
         } else if (
           object.name === '17-Body' ||
@@ -123,10 +118,6 @@ export function LocalIPhone17Asset() {
           )
         ) {
           object.material = materials.black
-        } else if (/17-USB|17-Screw/.test(object.name)) {
-          object.material = materials.portRim
-        } else if (object.name === '17-NetTop') {
-          object.material = materials.cavity
         }
       }
     })

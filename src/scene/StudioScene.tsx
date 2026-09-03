@@ -212,11 +212,11 @@ export function StudioScene({
       {view === 'calibration' && useTabletopStandard && (
         <rectAreaLight
           color={preset.fillColor}
-          height={0.9}
-          intensity={3.2}
-          position={[0, TABLETOP_PHONE_CENTER_Y + 0.22, 3.8]}
+          height={1.5}
+          intensity={1.55}
+          position={[0, TABLETOP_PHONE_CENTER_Y + 0.34, 3.8]}
           rotation={[0, 0, 0]}
-          width={2.8}
+          width={4.4}
         />
       )}
       {view === 'back' && useTabletopStandard && (
