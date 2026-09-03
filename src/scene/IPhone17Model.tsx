@@ -198,7 +198,7 @@ function ImportedBottomFace() {
     [],
   )
   const portOpeningGeometry = useMemo(
-    () => createRoundedRectangleGeometry(0.146, 0.028, 0.014, 24),
+    () => createRoundedRectangleGeometry(0.164, 0.034, 0.017, 24),
     [],
   )
   const gradientUniforms = useMemo(
