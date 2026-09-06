@@ -132,7 +132,7 @@ The controlled accuracy and durability gates remain **pending**. Initial live tr
 | Camera authorization and normal ARKit tracking | Observed on real iPhone; limited features recovered when aimed at the floor |
 | X/Y/Z endpoint and return error, 3 repetitions each | Pending |
 | 0/45/90 degree rotations and return | Pending |
-| Five-minute continuity | Pending |
+| Five-minute continuity | USB metadata stream observed for about 5 minutes with no gap above 250 ms; full visual / physical acceptance pending |
 | Camera obstruction / app background / network recovery | Pending |
 | External same-frame evidence and numeric trace | Pending |
 | Mirroring restart and screen/rotation regression | Pending |
@@ -199,6 +199,35 @@ the original position, the display read [-0.011, +0.003, +0.011] m, approximatel
 1.6 cm from the digital origin. The direction agrees with the prescribed setup;
 both physical endpoints were hand-estimated, so neither reading establishes
 metric accuracy. Screenshot: `browser-left-5cm-top-mac.png`.
+
+The user had no ruler and continued with approximate 20 cm functional checks.
+From a fresh origin, a reported leftward move of about 20 cm produced
+[-0.171, -0.002, -0.034] m. The reported return read [+0.048, -0.006, -0.020] m.
+Tracking remained live at both observations. Without marked physical endpoints,
+the difference cannot be assigned to tracking error or manual placement, and
+the 3 cm accuracy gate remains pending. Screenshot:
+`browser-approx-left-20cm.png`; raw metadata: `physical-approx-20cm.ndjson`.
+
+A separate origin was set for lifting. The user initially described a 20 cm lift,
+then corrected the estimate to about 10 cm. The display read
+[+0.092, +0.127, +0.257] m relative to that origin, with normal tracking. The
+vertical direction responded correctly, while substantial horizontal movement
+prevented this from being an isolated Y-axis accuracy trial. The user reported
+returning afterward, then asked to wrap up; no further physical checks were run.
+
+The USB metadata observer captured 299,969 ms in one ARKit session: 17,994 poses,
+all normal, maximum inter-arrival gap 34 ms, zero gaps over 250 ms. Synchronized
+software sample age was median 31.22 ms, P95 39.11 ms, maximum 51.09 ms.
+Analysis: `physical-approx-20cm-analysis.json`. This is approximately five minutes
+of healthy transport/ARKit status; it does not establish visible continuity,
+physical endpoint accuracy or photon-to-photon latency. Browser numeric recording
+was stopped, with its in-app download receipt still unverified.
+
+The manual session ended at the user's request after basic live motion and USB
+continuity had been demonstrated. Measured repetitions, isolated Z motion,
+controlled rotations, the complete recovery matrix, external same-frame video,
+and mirroring regression remain uncompleted acceptance items. Do not continue
+repeated approximate hand movements as a substitute for those measurements.
 
 Chrome's telemetry export opened a native Save dialog. After saving, the actual
 ARKit JSON was preserved as `browser-telemetry-physical-first.json`: 40,000 records
