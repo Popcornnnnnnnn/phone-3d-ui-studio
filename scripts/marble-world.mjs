@@ -42,7 +42,7 @@ export class MarbleWorld {
     }
     for (const p of outline) for (const z of [floor - 0.001, floor]) vertices.push(p[0], p[1], z)
     const floorShape = RAPIER.ColliderDesc.convexHull(new Float32Array(vertices))
-    this.surface = this.world.createCollider(material(floorShape.setFriction(0.45), 0.5, groups.tray), this.tray)
+    this.surface = this.world.createCollider(material(floorShape.setFriction(0.45), 0.35, groups.tray), this.tray)
     // Straight rails and rounded corner rails; only the central right opening is omitted.
     for (let i = 0; i < outline.length; i++) {
       const a = outline[i], b = outline[(i + 1) % outline.length]
@@ -71,7 +71,7 @@ export class MarbleWorld {
     const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setCcdEnabled(true)
       .setTranslation(...localToWorld([0, 0, G.screenZ + 0.0003], this.phone)).setRotation(quat(this.phone.quaternion))
       .setLinearDamping(0.08).setAngularDamping(0.6).setCanSleep(false))
-    const collider = this.world.createCollider(material(RAPIER.ColliderDesc.ball(G.radius).setMass(0.005).setFriction(0.45), 0.5, groups.active), body)
+    const collider = this.world.createCollider(material(RAPIER.ColliderDesc.ball(G.radius).setMass(0.005).setFriction(0.45), 0.35, groups.active), body)
     const ball = { id: 'ball-' + randomUUID(), body, collider, state: 'active', restTime: 0, airTime: 0, armed: false }
     this.balls.push(ball); this.activeBallId = ball.id; this.region = 'tray'; this.lastOutcome = ''
     return true
