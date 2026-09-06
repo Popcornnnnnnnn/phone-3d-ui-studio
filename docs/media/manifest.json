@@ -1,0 +1,44 @@
+{
+  "sourceCommit": "a4e466b",
+  "renderedWith": "Three.js + original procedural iPhone model",
+  "input": "Scripted trajectories; no physical phone recording",
+  "physics": "Rapier 0.20.0; 120 Hz; gravity 1.5 m/s\u00b2",
+  "assets": [
+    {
+      "file": "spatial-movement.gif",
+      "width": 960,
+      "height": 600,
+      "frames": 108,
+      "durationMs": 8060,
+      "bytes": 705079,
+      "sha256": "80f2d1ed77c9b02d06990d9551198a2a63844ac476eee2a2e1c93c59c44a120c"
+    },
+    {
+      "file": "toss-and-catch.gif",
+      "width": 960,
+      "height": 600,
+      "frames": 108,
+      "durationMs": 8060,
+      "bytes": 269214,
+      "sha256": "8f040bd24f3ba74170a05b4b1a00faa7f64d453354805d5a9e4db9a2d2ec86b0"
+    },
+    {
+      "file": "land-and-add.gif",
+      "width": 960,
+      "height": 600,
+      "frames": 108,
+      "durationMs": 8060,
+      "bytes": 293355,
+      "sha256": "826dceb2f1881b0565358b7cc46845e1752b6924aa9d49f11242b65857e7c0ae"
+    },
+    {
+      "file": "play-settings.gif",
+      "width": 960,
+      "height": 600,
+      "frames": 108,
+      "durationMs": 8060,
+      "bytes": 530656,
+      "sha256": "f856806f8cc8cdf713ccd92186e719af27755805c89778fbdfda23becce13c49"
+    }
+  ]
+}
