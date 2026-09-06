@@ -15,6 +15,10 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
     @Published private(set) var marblePresented = false
     @Published private(set) var marbleStatus = "Waiting"
     @Published private(set) var marbleGuidance = "Start a round from the Mac."
+    @Published private(set) var marbleCanAddBall = false
+    @Published private(set) var marbleNeedsBall = false
+    @Published private(set) var marbleContacts = 0
+    private var pendingAddCommand: String?
     let marbleBuffer = WorldSnapshotBuffer()
     private var lastMarbleUIAt = -Double.infinity
     private var dismissedMarbleEpoch: Int?
@@ -42,7 +46,7 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
                 self.reconnectAttempt = 0
                 self.sendWindow = SpatialSendWindow()
                 self.sendStatus()
-                self.socket.sendControl(text: "{\"type\":\"world-hello\",\"protocolVersion\":1}")
+                self.socket.sendControl(text: "{\"type\":\"world-hello\",\"protocolVersion\":2}")
             } else if state == .failed, self.gate.requested && self.gate.foreground {
                 self.scheduleReconnect()
             }
@@ -53,8 +57,12 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
             if value["type"] as? String == "spatial-ack", value["sessionId"] as? String == self.sessionId,
                let sequence = value["sequence"] as? NSNumber {
                 if let next = self.sendWindow.acknowledge(sequence.int64Value, now: ProcessInfo.processInfo.systemUptime) { self.socket.send(text: next.text) }
-            } else if value["type"] as? String == "world-welcome", value["protocolVersion"] as? Int == 1,
+            } else if value["type"] as? String == "world-welcome", value["protocolVersion"] as? Int == worldProtocolVersion,
                       let id = value["worldId"] as? String { self.marbleBuffer.welcome(id) }
+            else if value["type"] as? String == "world-result", value["commandId"] as? String == self.pendingAddCommand {
+                self.pendingAddCommand = nil
+                if value["ok"] as? Bool == false { self.marbleGuidance = value["reason"] as? String ?? "Restore tracking and try again." }
+            }
             else if let snapshot = try? JSONDecoder().decode(WorldSnapshot.self, from: data), snapshot.phoneSessionId == self.sessionId {
                 self.receiveWorld(snapshot)
             }
@@ -125,6 +133,7 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
             guard let self, self.gate.accepts(generation), self.socket.state != .connected else { return }
             self.socket.disconnect()
             self.connection = "Connection timed out"
+            self.guidance = "Keep iPhone and Mac on the same local network. Keep this app open, then restart tracking."
             self.scheduleReconnect()
         }
         connectTimeout = timeout
@@ -146,6 +155,7 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
 
     private func releaseResources() {
         marbleBuffer.disconnect()
+        pendingAddCommand = nil; marbleCanAddBall = false
         marbleStatus = "Paused"; marbleGuidance = "Restore tracking, then start a new round on the Mac."
         running = false
         session?.pause(); session?.delegate = nil; session = nil
@@ -189,9 +199,17 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
         guard socket.state == .connected, let data = try? JSONEncoder().encode(value), let text = String(data: data, encoding: .utf8) else { return }
         socket.sendControl(text: text)
     }
-    func sendWorldCommand(_ action: String) {
-        guard let snapshot = marbleBuffer.latest else { return }
-        sendWorld(WorldCommand(commandId: UUID().uuidString, worldId: snapshot.worldId, epoch: snapshot.epoch, action: action))
+    @discardableResult
+    func sendWorldCommand(_ action: String) -> String? {
+        guard socket.state == .connected, let snapshot = marbleBuffer.latest else { return nil }
+        let id = UUID().uuidString
+        sendWorld(WorldCommand(commandId: id, worldId: snapshot.worldId, epoch: snapshot.epoch, action: action))
+        return id
+    }
+    func addMarble() {
+        guard marbleCanAddBall, pendingAddCommand == nil else { return }
+        pendingAddCommand = sendWorldCommand("add-ball")
+        marbleCanAddBall = false
     }
     func exitMarble() {
         dismissedMarbleEpoch = marbleBuffer.latest?.epoch
@@ -207,10 +225,13 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
         else if snapshot.phase == "running", dismissedMarbleEpoch == nil || snapshot.epoch > dismissedMarbleEpoch! {
             if !marblePresented { marblePresented = true }
         }
-        if marbleBuffer.shouldHaptic && gate.foreground && marblePresented { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
         if now - lastMarbleUIAt > 100 || snapshot.phase != "running" {
             lastMarbleUIAt = now
-            marbleStatus = marbleBuffer.needsRestart ? "Paused" : snapshot.phase == "running" ? (snapshot.region == "returning" ? "Catch the marble" : "Marble live") : snapshot.phase.capitalized
+            if snapshot.activeBallId != nil { pendingAddCommand = nil }
+            marbleNeedsBall = snapshot.active && snapshot.activeBallId == nil
+            marbleCanAddBall = snapshot.canAddBall && !marbleBuffer.needsRestart && pendingAddCommand == nil
+            marbleContacts = snapshot.hitCount
+            marbleStatus = marbleBuffer.needsRestart ? "Paused" : snapshot.phase == "running" ? (snapshot.activeBallId == nil ? "Add a ball" : snapshot.region == "air" ? "Catch the ball" : "Tray live") : snapshot.phase.capitalized
             marbleGuidance = marbleBuffer.needsRestart ? "Start a new round on the Mac after tracking recovers." : snapshot.reason
         }
     }
@@ -219,6 +240,7 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
         let clock = socket.clockEstimate().flatMap { $0.rttMs <= 50 ? $0 : nil }
         let frame = marbleBuffer.render(atMs: time.timeIntervalSince1970 * 1000, clockOffsetMs: clock?.offsetMs)
         if !wasStale && marbleBuffer.needsRestart { sendWorldCommand("pause") }
+        if marbleBuffer.shouldHaptic && gate.foreground && marblePresented { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
         return frame
     }
 

@@ -11,8 +11,8 @@ const socket = new WebSocket(url)
 let stopped = false, count = 0, lastState = ''
 function stop() { if (stopped) return; stopped = true; socket.close(); output.end(); console.log(`Recorded ${count} numeric messages to ${path}.`) }
 output.on('error', (error) => { console.error(error.message); process.exitCode = 1; stop() })
-output.write(JSON.stringify({ schema: 'phone3d.marble.observer.v1', startedAtMs: Date.now(), evidence: 'Numeric observer states only. Not physical accuracy or visible latency proof.' }) + '\n')
-socket.on('open', () => socket.send(JSON.stringify({ type: 'world-hello', protocolVersion: 1 })))
+output.write(JSON.stringify({ schema: 'phone3d.marble.observer.v2', startedAtMs: Date.now(), evidence: 'Numeric observer states only. Not physical accuracy or visible latency proof.' }) + '\n')
+socket.on('open', () => socket.send(JSON.stringify({ type: 'world-hello', protocolVersion: 2 })))
 socket.on('message', (data) => {
   if (stopped) return
   const value = JSON.parse(data.toString())
@@ -21,8 +21,8 @@ socket.on('message', (data) => {
   }
   count++
   if (value.type === 'world-snapshot') {
-    socket.send(JSON.stringify({ type: 'world-ack', protocolVersion: 1, worldId: value.worldId, sequence: value.sequence }))
-    const state = `${value.source}/${value.phase}/${value.region}/catches=${value.catchCount}`
+    socket.send(JSON.stringify({ type: 'world-ack', protocolVersion: 2, worldId: value.worldId, sequence: value.sequence }))
+    const state = `${value.source}/${value.phase}/${value.region}/contacts=${value.hitCount}`
     if (state !== lastState) { lastState = state; console.log(state, value.reason) }
   }
 })

@@ -4,6 +4,8 @@ The app opens in **Spatial tracking** without starting the camera. Tap **Start t
 
 **Screen mirroring** keeps the previous live-screen workflow below. Switching modes stops the previous controller first; switching into screen mirroring does not automatically start sharing. Spatial tracking pauses in the background and requires recalibration after returning.
 
+For the current one-ball toss/catch experience and wireless checklist, see [S2.1 Elastic Tray](../docs/ELASTIC_TRAY.md).
+
 See [S1 setup and acceptance](../docs/SPATIAL_S1.md) for metric workspace calibration and limits.
 
 # iPhone live input

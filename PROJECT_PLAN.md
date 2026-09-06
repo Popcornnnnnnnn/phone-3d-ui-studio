@@ -30,3 +30,16 @@ Explicitly authorized prototype development from committed S1 baseline `6efefab`
 The bridge owns 120 Hz physics; Web and native Canvas render shared snapshots with a 50 ms buffer. One ball, one right exit, slow gravity, fixed-target Return and real collision catch are implemented. No five-ball expansion or wireless tuning is included.
 
 Software tests and exact-worktree synthetic browser checks precede signed device installation. Physical acceptance is a separate concentrated session: five complete cycles, one miss, interruption recovery, numerical traces and external same-frame video. S1 outstanding checks remain pending rather than being inferred from synthetic evidence. See [S2 delivery](docs/SPATIAL_S2.md).
+
+## S2.1 delivery
+
+Implemented from committed S2 `47b63935324f41023a43c1469d55c24eb8c52e26` in isolated branch `codex/elastic-tray`. Preserve S2 signed app and bridge configuration before changing the live installation. The original main/supporting and S1/S2 checkouts remain untouched.
+
+1. Fix finite-depth projection and complementary clipping on both displays.
+2. Add dissipative elastic tray motion, one-active/five-retained lifecycle and reliable phone addition.
+3. Upgrade Marble protocol to v2 and both renderers; preserve S1/mirroring contracts.
+4. Complete software tests, exact-copy ordinary-window browser verification and signed iPhone build.
+5. Install the reviewed bundle once, switch the existing bridge with rollback intact, then conduct one concentrated unplugged session.
+6. Deliver evidence by grade. Leave wireless acceptance pending until five minutes, ten contacts, three misses/additions, one reconnect and external same-frame footage are verified. Full-screen/Esc interaction is user-tested only.
+
+[Current experience and evidence](docs/ELASTIC_TRAY.md). Previous S2 Return rules remain historical and are not current product requirements.

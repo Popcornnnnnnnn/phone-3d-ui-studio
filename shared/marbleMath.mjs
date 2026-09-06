@@ -6,7 +6,7 @@ export const MARBLE_GEOMETRY = Object.freeze({
   width: IPHONE_17_MM.displayWidth / 1000, height: IPHONE_17_MM.displayHeight / 1000,
   screenZ: IPHONE_17_MM.depth / 2000 + 0.0008 * SPATIAL_MODEL_SCALE,
   cornerRadius: 0.135 * SPATIAL_MODEL_SCALE,
-  radius: 0.006, exitHalfWidth: 0.020, wallHeight: 0.012,
+  radius: 0.0075, exitHalfWidth: 0.020, wallHeight: 0.012,
   interpolationMs: 50, gravity: 1.5,
 })
 export function insideScreen(x, y, g = MARBLE_GEOMETRY) {
@@ -24,8 +24,10 @@ export function projectMarble(ball, phone, g = MARBLE_GEOMETRY) {
   const local = worldToLocal(ball.position, phone)
   const depth = local[2] - g.screenZ
   const radius = ball.radius ?? g.radius
-  // The phone displays the part of the sphere intersecting / behind its screen.
-  const visibleRadius = depth >= radius ? 0 : depth <= 0 ? radius : Math.sqrt(radius * radius - depth * depth)
+  // Project only the sphere's intersection with the finite shallow slot [-g.radius, 0].
+  // A distant sphere behind the phone must stay in the world, never on its screen.
+  const separation = Math.max(depth, -g.radius - depth, 0)
+  const visibleRadius = separation >= radius ? 0 : Math.sqrt(radius * radius - separation * separation)
   const q = new Quaternion(...phone.quaternion).invert().multiply(new Quaternion(...ball.quaternion))
   return { local, depth, radius: visibleRadius,
     marker: new Vector3(0, 0, 1).applyQuaternion(q).toArray(),
@@ -36,8 +38,13 @@ export function interpolateTransform(a, b, t) {
     quaternion: new Quaternion(...a.quaternion).slerp(new Quaternion(...b.quaternion), t).toArray() }
 }
 export function interpolateSnapshot(a, b, time) {
-  if (!a || a.epoch !== b.epoch || !a.phone || !b.phone || !a.ball || !b.ball || b.phase !== 'running') return b
+  if (!a || a.epoch !== b.epoch || !a.phone || !b.phone || b.phase !== 'running') return b
   const t = Math.max(0, Math.min(1, (time - a.serverTimeMs) / Math.max(1, b.serverTimeMs - a.serverTimeMs)))
-  return { ...b, phone: interpolateTransform(a.phone, b.phone, t),
-    ball: { ...b.ball, ...interpolateTransform(a.ball, b.ball, t) } }
+  // Birth, retirement and impact metadata become visible at their own sample time.
+  const discrete = t < 1 ? a : b
+  return { ...discrete, phone: interpolateTransform(a.phone, b.phone, t),
+    balls: discrete.balls.map((ball) => {
+      const from = a.balls.find((v) => v.id === ball.id), to = b.balls.find((v) => v.id === ball.id)
+      return from && to ? { ...ball, ...interpolateTransform(from, to, t) } : ball
+    }) }
 }

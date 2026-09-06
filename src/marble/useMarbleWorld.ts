@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { WorldClient } from './WorldClient'
+import { WORLD_VERSION } from '../../shared/worldProtocol.mjs'
 
 export function useMarbleWorld() {
   const [client] = useState(() => new WorldClient())
@@ -12,7 +13,7 @@ export function useMarbleWorld() {
       url.searchParams.set('role', 'browser-spatial')
       const current = new WebSocket(url); socket = current
       client.send = (value) => { if (current.readyState === WebSocket.OPEN) current.send(JSON.stringify(value)) }
-      current.onopen = () => { attempt = 0; client.send({ type: 'world-hello', protocolVersion: 1 }) }
+      current.onopen = () => { attempt = 0; client.send({ type: 'world-hello', protocolVersion: WORLD_VERSION }) }
       current.onmessage = (event) => { if (socket !== current || stopped) return; try { client.receive(JSON.parse(event.data)) } catch { /* Invalid metadata. */ } }
       current.onerror = () => current.close()
       current.onclose = () => {

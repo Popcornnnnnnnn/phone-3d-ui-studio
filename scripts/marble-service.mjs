@@ -1,9 +1,14 @@
 import { randomUUID } from 'node:crypto'
-import { initMarblePhysics, MarbleWorld, PHYSICS_DT } from './marble-world.mjs'
+import { initMarblePhysics, isTrayUp, MarbleWorld, PHYSICS_DT } from './marble-world.mjs'
 import { cameraToBody, makeCalibration, applyCalibration } from '../shared/spatialMath.mjs'
 import { MARBLE_GEOMETRY } from '../shared/marbleMath.mjs'
-import { parseWorldCommand } from '../shared/worldProtocol.mjs'
+import { parseWorldCommand, WORLD_VERSION } from '../shared/worldProtocol.mjs'
 
+// A v1 client can still show an actionable upgrade notice and send receipts without breaking S1.
+function legacySnapshot(s) {
+  return { ...s, protocolVersion: 1, phase: 'unsupported', reason: 'Elastic Tray needs the v2 iPhone app and Web page. Update the app and reload the page.',
+    active: false, ownerId: null, canStart: false, canReturn: false, catchCount: 0, catchTarget: [0, 0.2, 0], region: 'phone', phone: null, ball: null }
+}
 export class MarbleService {
   constructor(now = Date.now, { autoTick = true } = {}) {
     this.now = now; this.autoTick = autoTick; this.peers = new Map(); this.worldId = randomUUID()
@@ -13,7 +18,7 @@ export class MarbleService {
     this.engineReady = false; this.active = false; this.lastTick = now(); this.lastSnapshot = -Infinity; this.accumulator = 0
   }
   addPeer(socket, role) {
-    if (!this.peers.has(socket)) this.peers.set(socket, { socket, role, id: randomUUID(), enabled: false, awaiting: null, pending: null, commands: new Map() })
+    if (!this.peers.has(socket)) this.peers.set(socket, { socket, role, id: randomUUID(), version: null, awaiting: null, pending: null, commands: new Map() })
   }
   setPhone(source) {
     this.phoneSource = source; this.latest = null; this.source = null; this.phoneCapable = false
@@ -31,9 +36,7 @@ export class MarbleService {
       if (this.active) this.pause(message.reason)
     } else if (message.type === 'spatial-pose') {
       this.latest = message; this.poseReceivedAt = at
-      if (this.core && this.phase === 'running' && this.calibration && this.fresh(at)) {
-        this.core.setPhoneTarget(applyCalibration(cameraToBody(message), this.calibration))
-      }
+      if (this.core && this.phase === 'running' && this.calibration && this.fresh(at)) this.core.setPhoneTarget(applyCalibration(cameraToBody(message), this.calibration))
     }
   }
   fresh(at = this.now()) {
@@ -48,26 +51,28 @@ export class MarbleService {
     peer.socket.send(JSON.stringify(message))
   }
   offer(peer, snapshot) {
-    if (!peer.enabled || peer.socket.readyState !== 1) return
+    if (!peer.version || peer.socket.readyState !== 1) return
     if (peer.awaiting) { peer.pending = snapshot; return }
     if (peer.socket.bufferedAmount > 16 * 1024) { peer.socket.close(4008, 'world snapshot congested'); return }
     peer.awaiting = { sequence: snapshot.sequence, sentAt: this.now() }
-    peer.socket.send(JSON.stringify(snapshot))
+    peer.socket.send(JSON.stringify(peer.version === 1 ? legacySnapshot(snapshot) : snapshot))
   }
   handle(socket, value) {
     if (!value?.type?.startsWith('world-')) return false
     const peer = this.peers.get(socket)
     if (!peer) return true
-    if (value.type === 'world-hello' && value.protocolVersion === 1) {
-      peer.enabled = true
-      if (peer.role === 'phone' && this.phoneSource?.socket === socket) this.phoneCapable = true
-      this.control(peer, { type: 'world-welcome', protocolVersion: 1, clientId: peer.id, worldId: this.worldId })
-      if (!this.initializing) this.initializing = initMarblePhysics().then(() => { this.engineReady = true }).catch(() => { this.reason = 'Physics could not initialize. Restart the bridge.' })
+    if (value.type === 'world-hello') {
+      if (![1, WORLD_VERSION].includes(value.protocolVersion)) {
+        this.control(peer, { type: 'world-upgrade', protocolVersion: WORLD_VERSION, reason: 'Update the iPhone app and reload the Web page.' }); return true
+      }
+      peer.version = value.protocolVersion
+      if (peer.role === 'phone' && this.phoneSource?.socket === socket) this.phoneCapable = peer.version === WORLD_VERSION
+      this.control(peer, { type: 'world-welcome', protocolVersion: peer.version, clientId: peer.id, worldId: this.worldId })
+      if (peer.version === WORLD_VERSION && !this.initializing) this.initializing = initMarblePhysics().then(() => { this.engineReady = true }).catch(() => { this.reason = 'Physics could not initialize. Restart the bridge.' })
       if (this.autoTick && !this.timer) { this.lastTick = this.now(); this.timer = setInterval(() => this.tick(), 8); this.timer.unref?.() }
-      this.emitSnapshot()
-      return true
+      this.emitSnapshot(); return true
     }
-    if (!peer.enabled || value.protocolVersion !== 1 || value.worldId !== this.worldId) return true
+    if (!peer.version || value.protocolVersion !== peer.version || value.worldId !== this.worldId) return true
     if (value.type === 'world-ack') {
       if (peer.awaiting?.sequence !== value.sequence) return true
       peer.awaiting = null
@@ -75,23 +80,25 @@ export class MarbleService {
       if (pending) this.offer(peer, pending)
       return true
     }
+    if (value.type !== 'world-command') return true
+    if (typeof value.commandId !== 'string' || value.commandId.length < 1 || value.commandId.length > 128) return true
+    if (peer.commands.has(value.commandId)) { this.control(peer, peer.commands.get(value.commandId)); return true }
     const command = parseWorldCommand(value)
-    if (!command) return true
-    if (peer.commands.has(command.commandId)) { this.control(peer, peer.commands.get(command.commandId)); return true }
     let reason = '', ok = false
-    if (command.epoch !== this.epoch) reason = 'Round changed. Use the current controls.'
-    else if (peer.role === 'phone' && !['pause', 'stop'].includes(command.action)) reason = 'Start and control rounds from the Mac.'
+    if (!command) reason = 'This command is not supported. Update the app and reload the page.'
+    else if (command.epoch !== this.epoch) reason = 'Round changed. Use the current controls.'
+    else if (peer.role === 'phone' && this.phoneSource?.socket !== socket) reason = 'This iPhone connection is no longer current.'
+    else if (peer.role === 'phone' && command.action === 'start') reason = 'Start and calibrate from the Mac.'
     else if (command.action === 'start') {
       if (this.phase === 'running' && this.ownerId !== peer.id) reason = 'Another page controls this round.'
       else if (!this.engineReady || !this.fresh()) reason = 'Wait for normal tracking and clock synchronization.'
       else {
-        const calibration = makeCalibration(cameraToBody(this.latest))
-        if (!calibration) reason = 'Hold screen up, with the phone top toward the Mac.'
+        const body = cameraToBody(this.latest), calibration = makeCalibration(body)
+        if (!calibration || !isTrayUp(body)) reason = 'Hold the screen facing up and nearly level, with the top toward the Mac.'
         else {
-          this.core?.free(); this.calibration = calibration
-          this.core = new MarbleWorld(applyCalibration(cameraToBody(this.latest), calibration))
+          this.core?.free(); this.calibration = calibration; this.core = new MarbleWorld(applyCalibration(body, calibration))
           this.ownerId = peer.id; this.epoch++; this.phase = 'running'; this.active = true
-          this.reason = 'Tilt toward the right opening to pour the marble.'
+          this.reason = 'Gently lift the tray to toss the ball, then catch it.'
           this.accumulator = 0; this.lastTick = this.now(); ok = true
         }
       }
@@ -100,19 +107,17 @@ export class MarbleService {
     else if (command.action === 'stop') {
       this.core?.free(); this.core = null; this.calibration = null; this.active = false; this.ownerId = null
       this.epoch++; this.phase = 'ready'; ok = true
-    } else if (!this.core || !this.fresh() || !['running', 'lost'].includes(this.phase)) reason = 'Restore tracking and start a new round.'
-    else if (command.action === 'reset') {
-      this.core.resetBall(applyCalibration(cameraToBody(this.latest), this.calibration))
-      this.epoch++; this.phase = 'running'; this.reason = 'Ball reset. Tilt toward the right opening.'; ok = true
-    } else if (command.action === 'return') {
-      ok = this.core.launchReturn(); reason = ok ? 'Move the phone into the marked catch zone.' : 'Wait until the ball rests on the ground.'
-      if (ok) this.reason = reason
+    } else if (!this.core || !this.fresh() || this.phase !== 'running') reason = 'Restore tracking and start a new round.'
+    else if (command.action === 'add-ball') {
+      // Check both the latest sample and the simulated tray, without teleporting the kinematic body.
+      const up = isTrayUp(cameraToBody(this.latest))
+      ok = up && this.core.addBall()
+      reason = ok ? 'New ball added. Gently toss and catch it.' : this.core.activeBallId ? 'Keep playing the current ball.' : 'Hold the screen facing up and nearly level to add a ball.'
     }
-    const result = { type: 'world-result', protocolVersion: 1, commandId: command.commandId, ok, reason, epoch: this.epoch }
-    peer.commands.set(command.commandId, result)
+    const result = { type: 'world-result', protocolVersion: peer.version, commandId: value.commandId, ok, reason, epoch: this.epoch }
+    peer.commands.set(value.commandId, result)
     if (peer.commands.size > 128) peer.commands.delete(peer.commands.keys().next().value)
-    this.control(peer, result); this.emitSnapshot()
-    return true
+    this.control(peer, result); this.emitSnapshot(); return true
   }
   pause(reason) {
     if (!this.active) return
@@ -121,40 +126,37 @@ export class MarbleService {
   }
   tick(at = this.now()) {
     const elapsed = at - this.lastTick; this.lastTick = at
-    if (this.active && this.phase === 'running' && (!this.fresh(at) || elapsed > 250 || elapsed < 0)) {
-      this.pause('Tracking paused or delayed. Restore tracking and start a new round.')
-    }
+    if (this.active && this.phase === 'running' && (!this.fresh(at) || elapsed > 250 || elapsed < 0)) this.pause('Tracking paused or delayed. Keep the app open, check the local network, then start a new round.')
     for (const peer of this.peers.values()) {
-      if (peer.awaiting && at - peer.awaiting.sentAt > 250 && (peer.id === this.ownerId || peer.role === 'phone')) this.pause('A display stopped receiving fresh state. Reconnect and start a new round.')
+      if (peer.awaiting && at - peer.awaiting.sentAt > 250 && (peer.id === this.ownerId || peer.role === 'phone')) this.pause('A display stopped receiving fresh state. Check the local network and start a new round.')
       if (peer.awaiting && at - peer.awaiting.sentAt > 1000) peer.socket.close(4008, 'world snapshot receipt timed out')
     }
     if (this.phase === 'running' && this.core) {
       this.accumulator += elapsed / 1000
       let steps = 0
-      while (this.accumulator >= PHYSICS_DT && steps++ < 8) { this.core.step(); this.accumulator -= PHYSICS_DT }
-      if (this.core.lost) { this.phase = 'lost'; this.reason = 'Ball left the workspace. Reset ball to try again.' }
+      while (this.accumulator >= PHYSICS_DT && steps++ < 8) {
+        this.core.step(at - this.accumulator * 1000 + PHYSICS_DT * 1000); this.accumulator -= PHYSICS_DT
+      }
     }
     if (at - this.lastSnapshot >= (this.phase === 'running' ? 1000 / 60 : 100)) { this.lastSnapshot = at; this.emitSnapshot() }
   }
   snapshot() {
     let phase = this.phase, reason = this.reason
+    const fresh = this.fresh()
     if (!this.active) {
-      phase = !this.phoneSource ? 'waiting' : !this.phoneCapable ? 'unsupported' : this.fresh() && this.engineReady ? 'ready' : 'waiting'
-      reason = !this.phoneSource ? 'Open the iPhone app and start Spatial tracking.' : !this.phoneCapable ? 'Install the S2 iPhone app to use Marble.' : phase === 'ready' ? 'Hold screen up, top toward the Mac, then start round.' : 'Waiting for normal tracking and clock synchronization.'
+      phase = !this.phoneSource ? 'waiting' : !this.phoneCapable ? 'unsupported' : fresh && this.engineReady ? 'ready' : 'waiting'
+      reason = !this.phoneSource ? 'Open the iPhone app on the same local network and start Spatial tracking.' : !this.phoneCapable ? 'Install the v2 Elastic Tray app to use this mode.' : phase === 'ready' ? 'Screen up, top toward the Mac. Start to set your origin.' : 'Waiting for normal tracking and clock synchronization. Keep the app in the foreground.'
+    } else if (phase === 'running' && this.core) {
+      reason = !this.core.activeBallId ? this.core.lastOutcome : this.core.region === 'air' ? 'Move the tray under the ball to catch it.' : this.core.hitCount > 0 ? 'Nice contact. Gently toss the ball again.' : 'Gently lift the tray to toss the ball, then catch it.'
+      if (!this.core.activeBallId && !this.core.canAddBall) reason = 'Hold the screen facing up and nearly level, then tap Add ball on your phone.'
     }
-    if (phase === 'running' && this.core) {
-      reason = this.core.canReturn ? 'Click Return, then move the phone into the fixed catch zone.'
-        : this.core.region === 'returning' ? 'Catch the descending marble in the marked zone.'
-        : this.core.region === 'phone' && this.core.catchCount > 0 ? 'Caught! Tilt right to pour again.'
-        : this.core.region === 'world' ? 'Let the marble settle on the ground.' : reason
-    }
-    return { type: 'world-snapshot', protocolVersion: 1, worldId: this.worldId, epoch: this.epoch,
+    const state = this.core?.snapshot()
+    return { type: 'world-snapshot', protocolVersion: WORLD_VERSION, worldId: this.worldId, epoch: this.epoch,
       sequence: this.sequence++, serverTimeMs: this.now(), phase, reason, ownerId: this.ownerId,
       phoneSessionId: this.phoneSource?.sessionId ?? null, phoneConnectionId: this.phoneSource?.connectionId ?? null,
-      source: this.source ?? null, active: this.active, canStart: this.engineReady && this.fresh(),
-      geometry: MARBLE_GEOMETRY,
-      phone: null, ball: null, catchCount: 0, catchTarget: [0, 0.2, 0], region: 'phone', canReturn: false,
-      ...this.core?.snapshot(),
+      source: this.source ?? null, active: this.active, canStart: this.engineReady && fresh,
+      geometry: MARBLE_GEOMETRY, phone: null, balls: [], activeBallId: null, hitCount: 0, lastImpact: null, region: 'needs-ball',
+      ...state, canAddBall: !!state?.canAddBall && phase === 'running' && fresh && isTrayUp(cameraToBody(this.latest)),
     }
   }
   emitSnapshot() { const s = this.snapshot(); for (const peer of this.peers.values()) this.offer(peer, s) }

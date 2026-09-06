@@ -11,11 +11,12 @@ export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, hei
   c.lineTo(edge, edge); c.lineTo(edge, height - edge); c.lineTo(width - edge, height - edge)
   c.lineTo(width - edge, height / 2 + gap); c.stroke()
   c.fillStyle = '#9ae4c1'; c.font = '600 13px system-ui'; c.textAlign = 'right'; c.fillText('→', width - 13, height / 2 + 5)
-  if (s?.ball && s.phone) {
-    const p = projectMarble(s.ball, s.phone, g), x = p.u * width, y = p.v * height, r = p.radius * scale
+  const ball = s?.balls.find((b) => b.id === s.activeBallId)
+  if (ball && s?.phone) {
+    const p = projectMarble(ball, s.phone, g), x = p.u * width, y = p.v * height, r = p.radius * scale
     if (r > 0) {
       c.save(); c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.clip()
-      const fullRadius = s.ball.radius * scale
+      const fullRadius = ball.radius * scale
       const gradient = c.createRadialGradient(x - fullRadius * 0.3, y - fullRadius * 0.35, fullRadius * 0.05, x, y, fullRadius)
       gradient.addColorStop(0, '#d5ffc0'); gradient.addColorStop(0.45, '#a4df83'); gradient.addColorStop(1, '#438c62')
       c.fillStyle = gradient; c.fillRect(x - fullRadius, y - fullRadius, fullRadius * 2, fullRadius * 2)

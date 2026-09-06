@@ -27,16 +27,17 @@ const interval = setInterval(() => {
   }))
 }, 1000 / 60)
 socket.on('open', () => {
-  if (marble) socket.send(JSON.stringify({ type: 'world-hello', protocolVersion: 1 }))
+  if (marble) socket.send(JSON.stringify({ type: 'world-hello', protocolVersion: 2 }))
   process.stdout.write('Synthetic spatial producer connected. Commands accepted on stdin.\n')
 })
-let worldState = ''
+let worldState = '', latestWorld = null
 socket.on('message', (bytes) => {
   const value = JSON.parse(bytes.toString())
   if (value.type === 'world-snapshot') {
-    socket.send(JSON.stringify({ type: 'world-ack', protocolVersion: 1, worldId: value.worldId, sequence: value.sequence }))
-    const state = `${value.phase}/${value.region}/${value.canReturn}/${value.catchCount}`
-    if (state !== worldState) { worldState = state; process.stdout.write(JSON.stringify({ syntheticWorld: state, ball: value.ball?.position }) + '\n') }
+    latestWorld = value
+    socket.send(JSON.stringify({ type: 'world-ack', protocolVersion: 2, worldId: value.worldId, sequence: value.sequence }))
+    const state = `${value.phase}/${value.region}/${value.canAddBall}/${value.hitCount}`
+    if (state !== worldState) { worldState = state; process.stdout.write(JSON.stringify({ syntheticWorld: state, balls: value.balls, activeBallId: value.activeBallId }) + '\n') }
   }
 })
 socket.on('error', (error) => process.stderr.write(error.message + '\n'))
@@ -44,6 +45,8 @@ const input = createInterface({ input: process.stdin })
 input.on('line', (line) => {
   try {
     const command = JSON.parse(line)
+    if (command.action && latestWorld) socket.send(JSON.stringify({ type: 'world-command', protocolVersion: 2,
+      commandId: crypto.randomUUID(), worldId: latestWorld.worldId, epoch: latestWorld.epoch, action: command.action }))
     if (command.position) position = command.position
     if (command.rotation) rotation = command.rotation
     if (command.state) state = command.state

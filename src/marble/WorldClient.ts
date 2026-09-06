@@ -1,4 +1,4 @@
-import { parseWorldSnapshot, type WorldSnapshot, type WorldAction } from '../../shared/worldProtocol.mjs'
+import { parseWorldSnapshot, WORLD_VERSION, type WorldSnapshot, type WorldAction } from '../../shared/worldProtocol.mjs'
 import { interpolateSnapshot } from '../../shared/marbleMath.mjs'
 
 export class WorldClient {
@@ -20,10 +20,12 @@ export class WorldClient {
   receive(value: unknown, now = Date.now()) {
     if (!value || typeof value !== 'object') return
     const v = value as Record<string, unknown>
-    if (v.type === 'world-welcome' && v.protocolVersion === 1 && typeof v.clientId === 'string' && typeof v.worldId === 'string') {
+    if (v.type === 'world-welcome' && v.protocolVersion === WORLD_VERSION && typeof v.clientId === 'string' && typeof v.worldId === 'string') {
       if (this.worldId !== v.worldId) { this.latest = null; this.frames = []; this.visual = null }
       this.worldId = v.worldId; this.clientId = v.clientId; this.connected = true; return
     }
+    if (v.type === 'world-upgrade') { this.message = 'Update the bridge and iPhone app for Elastic Tray.'; return }
+    if (v.type === 'world-welcome' && v.protocolVersion !== WORLD_VERSION) { this.message = 'Update the bridge for Elastic Tray v2.'; return }
     if (v.type === 'world-result' && typeof v.reason === 'string') { this.message = v.reason; return }
     const s = parseWorldSnapshot(v)
     if (!s || s.worldId !== this.worldId || (this.latest && (s.epoch < this.latest.epoch || s.sequence <= this.latest.sequence))) return
@@ -31,7 +33,7 @@ export class WorldClient {
     const gap = now - this.receivedAt > 250 || now - s.serverTimeMs > 250 || s.serverTimeMs - now > 50
     const epochChanged = previous?.epoch !== s.epoch
     this.latest = s; this.receivedAt = now; this.connected = true
-    this.send({ type: 'world-ack', protocolVersion: 1, worldId: s.worldId, sequence: s.sequence })
+    this.send({ type: 'world-ack', protocolVersion: WORLD_VERSION, worldId: s.worldId, sequence: s.sequence })
     this.record({ event: 'world-received', receivedAtMs: now, ...s })
     if (epochChanged) { this.frames = []; this.needsRestart = false }
     if (gap && previous?.phase === 'running' && !epochChanged) this.stale()
@@ -43,7 +45,7 @@ export class WorldClient {
   }
   command(action: WorldAction) {
     if (!this.latest || !this.worldId || !this.connected) return
-    this.send({ type: 'world-command', protocolVersion: 1, worldId: this.worldId, epoch: this.latest.epoch,
+    this.send({ type: 'world-command', protocolVersion: WORLD_VERSION, worldId: this.worldId, epoch: this.latest.epoch,
       commandId: crypto.randomUUID(), action })
   }
   stale() {
@@ -62,10 +64,10 @@ export class WorldClient {
     for (const frame of this.frames) { b = frame; if (frame.serverTimeMs >= time) break; a = frame }
     this.visual = interpolateSnapshot(a, b, time)
     this.record({ event: 'render-submission', atMs: now, sequence: this.visual.sequence, epoch: this.visual.epoch,
-      phone: this.visual.phone, ball: this.visual.ball })
+      phone: this.visual.phone, balls: this.visual.balls, activeBallId: this.visual.activeBallId })
     return this.visual
   }
   startRecording() { this.records = []; this.droppedRecords = 0; this.recording = true }
-  report() { this.recording = false; return { schema: 'phone3d.marble.v1', units: 'meters',
+  report() { this.recording = false; return { schema: 'phone3d.marble.v2', units: 'meters',
     evidence: 'Software states and render submissions; not physical acceptance or visible latency.', droppedRecords: this.droppedRecords, records: this.records } }
 }

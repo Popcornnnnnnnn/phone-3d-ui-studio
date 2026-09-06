@@ -1,0 +1,86 @@
+# S2.1 无线弹力托盘
+
+交付状态：**软件完成，无线体验待验收**。新版已签名构建、安装并启动；正式桥接已切到本轮副本。已确认拔线后经 Mac Wi-Fi 接口收到 ARKit 数据；第一段记录有 6 次接触和 1 次落地，随后显示回执超时并重连。无线五分钟体验、触感及手机/电脑同框录像尚未完成。S1 精度、恢复、投屏和机身外参补项继续保留。
+
+## 现在怎么玩
+
+1. 打开本轮 Chrome 页面：<http://127.0.0.1:16317/?experience=marble>。普通窗口即可；全屏及 Esc 由用户自己测试。
+2. iPhone 与 Mac 接同一局域网。安装完后拔掉 USB，在 **Phone 3D Studio** 选择 **Spatial tracking → Start tracking**，保持 App 前台。
+3. 手机屏幕朝上、顶部朝 Mac，后摄对着有纹理的桌面或书面。网页显示就绪后点 **Start round**；这一步校准并生成第一颗球。
+4. 轻轻抬起再放低手机，让球离开托盘；移动手机接住它。接触计数增加，手机轻震一次。球能从右侧出口滚出。
+5. 首次落地就结束这颗球的玩法，手机显示 **Add ball**。拿平手机后点击，生成新 ID 的球。旧球保留在地面，最多五颗（包含活动球）；第六次补入时移除最早痕迹。
+6. 追踪/连接异常时两端冻结。检查同网、保持 App 前台，待追踪恢复后点 **Recalibrate & restart**。这会明确开始新回合；不会自动回到手机或悄悄继续。
+
+无线沿用 `ws://forge.local:4319/`；USB 是回退链路，不是玩法要求。网页地址是 Mac 本地入口，不需要在手机浏览器打开。若局域网隔离或主机名无法解析，连接仍会失败；未实测前不把同网配置当作无线验收。
+
+## 本版行为
+
+- 一个权威物理世界，Rapier 0.20.0、120 Hz，双端最多 60 Hz 快照、50 ms 插值，250 ms 失效冻结。
+- 半径 7.5 mm（直径 15 mm），重力 1.5 m/s²。活动球/槽底恢复系数 0.5，挡板 0.2，地面 0.1，组合取最小值，并保留阻尼。
+- 弹起能量由实际运动学托盘速度提供。没有自动发球、保底弹起、吸附、Return 或自动重生。
+- 离开槽底至少 40 ms 后重新撞到正面，记录一次有序接触事件。持续接触不会连续计数，震动按呈现时刻去重。
+- 旧球落地后只与地面碰撞；落稳后移除物理刚体，保留外观和位置，不能被手机拾回。越界球直接移除，允许主动补球。
+- 投影只包含显示平面与槽底之间的有限空间。Web 对应部分使用互补裁剪；手机背后的地面球不再因旋转误投影到屏幕。落地痕迹只在 Web 世界绘制。
+- Marble 协议 v2 支持球列表、活动球 ID、补球状态和有序事件；旧 Return 命令被拒绝，旧 S2 客户端提示升级。S1 位姿和投屏协议保持兼容。
+
+## 真机反馈调整
+
+2026-09-06 首次无线体验后，用户反馈弹性太强、球偏小：活动球和槽底恢复系数从 0.8 降为 **0.5**；半径从 6 mm 改为 **7.5 mm**（直径 15 mm）。这两项覆盖原 S2.1 计划的初始参数。物理和 Web 共用新尺寸，iPhone 使用快照中的尺寸，不需要第二次安装。调整后项目检查与 Swift 测试再次通过。
+
+## 本轮软件证据
+
+所有证据来自 `/Users/forge/.codex/worktrees/elastic-tray/phone-3d-ui-studio`。`captures/elastic-tray/` 保持本机忽略，不随源码提交。
+
+| 检查 | 结果 | 记录 |
+| --- | --- | --- |
+| 项目检查 | ESLint、TypeScript、383 项测试、生产构建通过 | `check.log` |
+| Swift 测试 | 55 项通过，包含共享投影、50 ms 身份插值、震动时刻及旧数据拒绝 | `swift-test.log` |
+| iPhone 签名构建 | BUILD SUCCEEDED，严格递归签名验证通过 | `xcodebuild.log`、本轮 `ios/build-spatial/` |
+| 安装和启动 | 同一 App 完成一次安装，并启动成功 | `device-install.json`、`device-launch.json` |
+| 有限投影回归 | 前后边界、部分进入、右出口；固定地面球与高 20 cm 手机，偏航每 15° 至 360°；Swift/Web 使用同一数值夹具 | `shared/fixtures/marble-frames.json`、相关测试 |
+| 物理和生命周期 | 真实位移输入产生抛起、固定托盘无增能且弹跳衰减、接触去重、右侧出球、落地退休、新 ID、五颗上限、越界不重生、旧刚体移除 | `scripts/marble-world.test.mjs` |
+| 协议与恢复 | 控制权、观察者拒绝、手机补球幂等、旧命令/会话、快照积压、250 ms 断流和重连冻结 | `scripts/marble-service.test.mjs`、S1 回归测试 |
+| 实际工作副本普通窗口 | Start、出球、地面痕迹、旋转 90° 后仍在地面、手机来源补球、追踪受限冻结/恢复仍需重校准；无浏览器 warning/error | `browser-*.png`、`synthetic-browser.jsonl` |
+| 正式桥接 | 原 4319/4320 LaunchAgent 指向本轮副本，保留其他配置字段 | `bridge-after.plist` |
+
+浏览器输入明确标注 **Synthetic test input**，不能作为真实 ARKit 或无线证据。二维投影数值一致也不代替用户观察跨屏过渡、触感和可见延迟。大 JavaScript 包体积提示仍是既有非阻塞构建提示。
+
+## 集中无线验收
+
+只做一轮连续体验，不再反复徒手估距。
+
+- 拔掉 USB，记录手机与 Mac 同网，以及桥接对端路由确实走 Wi-Fi。
+- 连续体验至少 5 分钟，完成至少 10 次轻抛后正面接触、3 次落地后手机补球。检查多次补球后始终只有一颗可玩、最多五颗可见。
+- 检查轻颠才抛起、静止会耗散；地面球在转动手机时不突然出现在手机画面。
+- 中间做一次断连/恢复：出现明确暂停，重新校准后恢复；旧球不自动传回手机。
+- 使用外部设备拍下真实手机与电脑同框画面。数值记录用于核对事件，不证明手感、物理精度或用户可见延迟。
+- 全屏和 Esc 由用户完成，Codex 本轮不操作。
+
+当前完成软件、安装和初步 Wi-Fi 连接/数值事件验证；第一段 6 次接触、1 次落地不足以完成五分钟验收，且发生过回执超时。初始记录为 `device-session.jsonl`，降低弹性后的准备阶段为 `wireless-softened.jsonl`，后续尺寸调整单独记档。用户暂不体验时，维持“软件完成，无线体验待验收”，不宣称通过。
+
+数值记录命令（只观察，不抢控制权）：
+
+```sh
+node scripts/marble-record.mjs ws://127.0.0.1:4319 captures/elastic-tray/wireless-new.jsonl
+```
+
+## 启动与回退
+
+基线：S2 `47b63935324f41023a43c1469d55c24eb8c52e26`。当前分支：`codex/elastic-tray`。原主目录、S1 和 S2 副本保留。
+
+本轮 Web：
+
+```sh
+npm run dev -- --host 0.0.0.0 --port 16317 --strictPort
+```
+
+正式桥接由现有 `com.forge.phone3duistudio.bridge` LaunchAgent 管理，不重复运行另一份 4319 实例。独立合成检查可改用端口 16319/16320，并在测试页明确设置 bridge 参数；禁止把合成手机接到真实 4319。
+
+本机回退内容：
+
+- `captures/elastic-tray/rollback-s2/Phone3DUIStudio.app`：S2 签名 App。
+- `captures/elastic-tray/rollback-s2/SHA256.json`：文件校验。
+- `captures/elastic-tray/bridge-before.plist`：S2 桥接完整配置。
+- S2 源码：`/Users/forge/.codex/worktrees/spatial-s2/phone-3d-ui-studio`。
+
+需要回退时，停止现有桥接，恢复 `bridge-before.plist`，待旧 job 完全卸载后重新 bootstrap；安装上述 S2 App，再打开 15317 的 S2 页面。Web、桥接和 App 必须配套回退。首次切换时 launchd 尚未完成卸载导致 bootstrap 返回 5；确认 job 已卸载后重试成功，未重复安装 App。

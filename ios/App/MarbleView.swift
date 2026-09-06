@@ -19,7 +19,7 @@ struct MarbleView: View {
                     rails.addLines([CGPoint(x: size.width - 5, y: 5), CGPoint(x: 5, y: 5), CGPoint(x: 5, y: size.height - 5), CGPoint(x: size.width - 5, y: size.height - 5), CGPoint(x: size.width - 5, y: size.height / 2 + gap)])
                     context.stroke(rails, with: .color(Color(red: 76/255, green: 126/255, blue: 105/255)), lineWidth: 2)
                     context.draw(Text("→").font(.system(size: 13, weight: .semibold)).foregroundColor(Color(red: 154/255, green: 228/255, blue: 193/255)), at: CGPoint(x: size.width - 20, y: size.height / 2))
-                    guard let phone = state.phone, let ball = state.ball else { return }
+                    guard let phone = state.phone, let ball = state.activeBall else { return }
                     let p = WorldMath.projection(ball, phone, g), r = p.radius * scale
                     guard r > 0 else { return }
                     let center = CGPoint(x: p.u * size.width, y: p.v * size.height), full = ball.radius * scale
@@ -41,14 +41,23 @@ struct MarbleView: View {
             VStack {
                 HStack {
                     Text(controller.marbleBuffer.needsRestart ? "Paused" : controller.marbleStatus).font(.caption.weight(.medium))
+                    Text("\(controller.marbleContacts) contacts").font(.caption2).opacity(0.7)
                     Spacer()
                     Button("Exit") { controller.exitMarble() }.font(.caption.weight(.semibold))
                 }.padding(.horizontal, 24).padding(.top, 65)
                 Spacer()
-                VStack(spacing: 5) {
+                VStack(spacing: 12) {
+                    if controller.marbleNeedsBall {
+                        Button("Add ball") { controller.addMarble() }
+                            .font(.headline).padding(.horizontal, 30).padding(.vertical, 12)
+                            .background(Color(red: 154/255, green: 228/255, blue: 193/255), in: Capsule())
+                            .foregroundStyle(background)
+                            .disabled(!controller.marbleCanAddBall)
+                            .opacity(controller.marbleCanAddBall ? 1 : 0.45)
+                    }
                     Text(controller.marbleBuffer.needsRestart ? "Restore tracking. Start a new round on the Mac." : controller.marbleGuidance).font(.caption).multilineTextAlignment(.center)
-                    Text("S2 · slow demo · 1.5 m/s²").font(.system(size: 10))
-                }.padding(.horizontal, 25).padding(.bottom, 35).allowsHitTesting(false)
+                    Text("S2.1 · slow demo · 1.5 m/s²").font(.system(size: 10))
+                }.padding(.horizontal, 25).padding(.bottom, 35)
             }.foregroundStyle(Color(red: 154/255, green: 228/255, blue: 193/255))
         }.ignoresSafeArea()
     }
