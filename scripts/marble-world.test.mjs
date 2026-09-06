@@ -83,6 +83,16 @@ describe('elastic tray authoritative physics and lifecycle', () => {
     expect(w.canAddBall).toBe(false); expect(w.addBall()).toBe(false)
     w.setPhoneTarget(flat); step(w, 2); expect(w.addBall()).toBe(true)
   })
+  it('does not report predictive contacts several millimeters above the tray as a catch', () => {
+    const w = create()
+    w.activeBall.body.setTranslation({ x: 0, y: 0.2 + G.screenZ + 0.005, z: 0 }, true)
+    step(w, 1)
+    expect(w.contact(w.activeBall.collider, w.surface)).toBe(false)
+    until(w, () => w.hitCount === 1)
+    expect(w.activeBall.body.translation().y - 0.2 - G.screenZ).toBeLessThan(0.0004)
+    step(w, 240)
+    expect(w.hitCount).toBe(1)
+  })
   it('projects only the finite slot, with partial spheres at both depth boundaries and the exit', () => {
     const ball = { quaternion: flat.quaternion, radius: G.radius }
     const at = (x, d) => projectMarble({ ...ball, position: localToWorld([x, 0, G.screenZ + d], flat) }, flat)

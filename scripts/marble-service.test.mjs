@@ -113,4 +113,22 @@ describe('world control, freshness and bounded snapshots', () => {
     expect(command(browser, 'start').ok).toBe(false)
   })
 
+  it('routes new poses through the sample clock and pauses an implausible jump before collision', () => {
+    const { s, browser, command, advance } = setup(); command(browser, 'start')
+    const phone = structuredClone(s.core.phone), ball = structuredClone(s.core.snapshot().balls[0])
+    const pose = { ...s.latest, sampledAtMs: 1017, positionMeters: [0, 0.2, 0] }
+    advance(17); s.receivePose(pose)
+    expect(s.phase).toBe('paused'); expect(s.reason).toContain('jumped')
+    expect(s.core.phone).toEqual(phone)
+    // Position may settle under gravity before the rejected sample; it must not gain launch speed.
+    expect(s.core.snapshot().balls[0].id).toBe(ball.id)
+    expect(s.core.snapshot().balls[0].velocity[1]).toBeLessThan(0.01)
+  })
+  it('recalibration replaces the sampling clock and does not replay the previous trajectory', () => {
+    const { s, browser, command } = setup(); command(browser, 'start')
+    const oldMotion = s.motion; command(browser, 'pause'); command(browser, 'start')
+    expect(s.motion).not.toBe(oldMotion)
+    expect(s.motion.pose.position).toEqual([0, 0.2, 0])
+  })
+
 })

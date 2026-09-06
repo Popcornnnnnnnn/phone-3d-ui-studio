@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { TrayMotion } from './tray-motion.mjs'
 import { initMarblePhysics, isTrayUp, MarbleWorld, PHYSICS_DT } from './marble-world.mjs'
 import { cameraToBody, makeCalibration, applyCalibration } from '../shared/spatialMath.mjs'
 import { MARBLE_GEOMETRY } from '../shared/marbleMath.mjs'
@@ -12,7 +13,7 @@ function legacySnapshot(s) {
 export class MarbleService {
   constructor(now = Date.now, { autoTick = true } = {}) {
     this.now = now; this.autoTick = autoTick; this.peers = new Map(); this.worldId = randomUUID()
-    this.epoch = 0; this.sequence = 0; this.ownerId = null; this.core = null; this.calibration = null
+    this.epoch = 0; this.sequence = 0; this.ownerId = null; this.core = null; this.calibration = null; this.motion = null
     this.phoneSource = null; this.latest = null; this.poseReceivedAt = -Infinity; this.phoneCapable = false
     this.phase = 'waiting'; this.reason = 'Start Spatial tracking on the iPhone.'
     this.engineReady = false; this.active = false; this.lastTick = now(); this.lastSnapshot = -Infinity; this.accumulator = 0
@@ -36,7 +37,10 @@ export class MarbleService {
       if (this.active) this.pause(message.reason)
     } else if (message.type === 'spatial-pose') {
       this.latest = message; this.poseReceivedAt = at
-      if (this.core && this.phase === 'running' && this.calibration && this.fresh(at)) this.core.setPhoneTarget(applyCalibration(cameraToBody(message), this.calibration))
+      if (this.motion && this.phase === 'running' && this.calibration && this.fresh(at)) {
+        const result = this.motion.push(applyCalibration(cameraToBody(message), this.calibration), message.sampledAtMs)
+        if (result === 'jump') this.pause('Tracking jumped. Hold the phone above a textured surface and recalibrate.')
+      }
     }
   }
   fresh(at = this.now()) {
@@ -97,6 +101,7 @@ export class MarbleService {
         if (!calibration || !isTrayUp(body)) reason = 'Hold the screen facing up and nearly level, with the top toward the Mac.'
         else {
           this.core?.free(); this.calibration = calibration; this.core = new MarbleWorld(applyCalibration(body, calibration))
+          this.motion = new TrayMotion(this.core.phone, this.latest.sampledAtMs, this.now())
           this.ownerId = peer.id; this.epoch++; this.phase = 'running'; this.active = true
           this.reason = 'Gently lift the tray to toss the ball, then catch it.'
           this.accumulator = 0; this.lastTick = this.now(); ok = true
@@ -105,7 +110,7 @@ export class MarbleService {
     } else if (peer.role !== 'phone' && this.ownerId !== peer.id) reason = 'This page is an observer.'
     else if (command.action === 'pause') { this.pause('Round paused. Restore tracking and start a new round.'); this.ownerId = null; ok = true }
     else if (command.action === 'stop') {
-      this.core?.free(); this.core = null; this.calibration = null; this.active = false; this.ownerId = null
+      this.core?.free(); this.core = null; this.calibration = null; this.motion = null; this.active = false; this.ownerId = null
       this.epoch++; this.phase = 'ready'; ok = true
     } else if (!this.core || !this.fresh() || this.phase !== 'running') reason = 'Restore tracking and start a new round.'
     else if (command.action === 'add-ball') {
@@ -135,7 +140,11 @@ export class MarbleService {
       this.accumulator += elapsed / 1000
       let steps = 0
       while (this.accumulator >= PHYSICS_DT && steps++ < 8) {
-        this.core.step(at - this.accumulator * 1000 + PHYSICS_DT * 1000); this.accumulator -= PHYSICS_DT
+        const stepAt = at - this.accumulator * 1000 + PHYSICS_DT * 1000
+        const phone = this.motion.step(stepAt, PHYSICS_DT)
+        if (!phone) { this.pause('Phone motion samples stopped. Restore tracking and recalibrate.'); break }
+        this.core.setPhoneTarget(phone)
+        this.core.step(stepAt); this.accumulator -= PHYSICS_DT
       }
     }
     if (at - this.lastSnapshot >= (this.phase === 'running' ? 1000 / 60 : 100)) { this.lastSnapshot = at; this.emitSnapshot() }
@@ -156,6 +165,7 @@ export class MarbleService {
       phoneSessionId: this.phoneSource?.sessionId ?? null, phoneConnectionId: this.phoneSource?.connectionId ?? null,
       source: this.source ?? null, active: this.active, canStart: this.engineReady && fresh,
       geometry: MARBLE_GEOMETRY, phone: null, balls: [], activeBallId: null, hitCount: 0, lastImpact: null, region: 'needs-ball',
+      motion: this.motion?.diagnostics() ?? null,
       ...state, canAddBall: !!state?.canAddBall && phase === 'running' && fresh && isTrayUp(cameraToBody(this.latest)),
     }
   }

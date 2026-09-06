@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import RAPIER from '@dimforge/rapier3d-compat'
 import { Quaternion, Vector3 } from 'three'
-import { MARBLE_GEOMETRY as G, insideScreen, localToWorld, worldToLocal, interpolateTransform } from '../shared/marbleMath.mjs'
+import { MARBLE_GEOMETRY as G, insideScreen, localToWorld, worldToLocal } from '../shared/marbleMath.mjs'
 
 let initialized
 export const initMarblePhysics = () => initialized ??= RAPIER.init()
@@ -18,12 +18,13 @@ const material = (collider, restitution, collisionGroups) => collider.setRestitu
 export class MarbleWorld {
   constructor(phone) {
     this.world = new RAPIER.World({ x: 0, y: -G.gravity, z: 0 })
+    // Rapier scales contact tolerances from a typical dynamic object's size.
+    // The default 1 m scale produces centimeter-wide predictive contacts here.
+    this.world.lengthUnit = G.radius * 2
     this.world.timestep = PHYSICS_DT
     this.world.integrationParameters.maxCcdSubsteps = 4
     this.phone = structuredClone(phone)
-    this.previousTarget = this.phone
     this.target = this.phone
-    this.targetProgress = 1
     this.tray = this.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased()
       .setTranslation(...phone.position).setRotation(quat(phone.quaternion)))
     const floor = G.screenZ - G.radius
@@ -80,14 +81,15 @@ export class MarbleWorld {
     this.balls = this.balls.filter((b) => b !== ball)
     if (this.activeBallId === ball.id) { this.activeBallId = null; this.region = 'needs-ball' }
   }
-  setPhoneTarget(phone) {
-    this.previousTarget = this.phone
-    this.target = structuredClone(phone)
-    this.targetProgress = 0
-  }
+  // Called once per fixed step with an already reconstructed sampling-time pose.
+  setPhoneTarget(phone) { this.target = structuredClone(phone) }
   contact(a, b) {
     let contact = false
-    this.world.contactPair(a, b, (manifold) => { if (manifold.numSolverContacts() > 0) contact = true })
+    this.world.contactPair(a, b, (manifold) => {
+      for (let i = 0; i < manifold.numSolverContacts(); i++) {
+        if (manifold.solverContactDist(i) <= G.radius * 0.04) contact = true
+      }
+    })
     return contact
   }
   ballState(ball) {
@@ -95,8 +97,7 @@ export class MarbleWorld {
       velocity: xyz(ball.body.linvel()), angularVelocity: xyz(ball.body.angvel()), radius: G.radius } : ball.final
   }
   step(atMs = this.steps * PHYSICS_DT * 1000) {
-    this.targetProgress = Math.min(1, this.targetProgress + PHYSICS_DT * 60)
-    this.phone = interpolateTransform(this.previousTarget, this.target, this.targetProgress)
+    this.phone = this.target
     this.tray.setNextKinematicTranslation(vec(this.phone.position))
     this.tray.setNextKinematicRotation(quat(this.phone.quaternion))
     this.world.step(); this.steps++
@@ -125,7 +126,9 @@ export class MarbleWorld {
             }
             ball.airTime = 0; this.region = 'tray'
           } else {
-            ball.airTime += PHYSICS_DT
+            // Sub-millimeter gaps from contact tolerances and sensor noise are
+            // still resting contact, not a new toss/haptic cycle.
+            if (depth > 0.002 || !insideScreen(local[0], local[1]) || ball.airTime > 0) ball.airTime += PHYSICS_DT
             if (ball.airTime >= 0.04) ball.armed = true
             this.region = 'air'
           }
