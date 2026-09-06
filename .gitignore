@@ -4,6 +4,12 @@ dist/
 .vite/
 coverage/
 *.tsbuildinfo
+ios/build/
+ios/build-device/
+ios/build-spatial/
+ios/.build/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 
 # Local configuration and secrets
 .env
@@ -27,3 +33,6 @@ exports/
 *.log
 *.sqlite
 *.sqlite3
+
+# Locally licensed 3D assets (never redistribute)
+public/local-assets/

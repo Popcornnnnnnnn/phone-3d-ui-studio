@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phone Studio · same-frame quality evidence</title>
+    <style>
+      body{font:16px system-ui;background:#141619;color:#eee;margin:24px}button,a,select{font:inherit;margin:8px;padding:8px;color:inherit}button,select{background:#303842}a{color:#9dd4ff}pre{white-space:pre-wrap;font:13px monospace}section{display:flex;gap:16px;align-items:flex-start;overflow:auto}figure{margin:0;flex-shrink:0}canvas{display:block;max-width:none}h2{font-size:16px}p{max-width:1000px;line-height:1.5}#images.preview canvas{width:320px;height:auto}#images.preview figure{width:320px}
+    </style>
+  </head>
+  <body>
+    <h1>Same-frame browser quality evidence</h1>
+    <a href="/">Return to live Phone Studio</a>
+    <p>Exact pre-encode input → saved H.264 IDR → Chrome WebCodecs → production screen shader.
+      iPhone samples are 960 × 2088; Mac-generated color controls are 640 × 384 and are not device evidence.
+      Each comparison uses matching source pixels, front-facing, no contain/perspective rescaling.
+      Preview is scaled only for layout. This replay does not measure wireless delay, moving P-frames, the live 3D viewport, or photons.</p>
+    <label>Sample <select id="sample"><option value="15">iPhone · 15 Mbps</option><option value="10">iPhone · 10 Mbps</option><option value="5">iPhone · 5 Mbps</option><option value="color-control">Mac color · untagged control</option><option value="color-explicit">Mac color · explicit candidate</option><option value="device-color-after">iPhone · installed color repair · 15 Mbps</option></select></label>
+    <button id="run">Run exact-frame replay</button><button id="scale">Show 1:1 pixels</button>
+    <p id="status" role="status">Ready. No phone connection is created by this page.</p>
+    <div id="downloads"></div><pre id="readout"></pre><details><summary>Full metrics and provenance</summary><pre id="summary"></pre></details><section id="images" class="preview"></section>
+    <script type="module" src="/src/diagnostics/browserQualityReview.ts"></script>
+  </body>
+</html>

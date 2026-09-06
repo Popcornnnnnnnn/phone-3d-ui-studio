@@ -1,60 +1,53 @@
 # Phone 3D UI Studio
 
-A reusable desktop studio for presenting a phone UI on a controllable 3D device, with camera presets, lighting, backgrounds, recording, and—after the content-production MVP is stable—live screen and device-pose synchronization.
+A real iPhone becomes a tray in a shared Web 3D world. Gently toss a ball, move to catch it, and tap **Add ball** on your phone after a miss.
 
-- GitHub repository: <https://github.com/Popcornnnnnnnn/phone-3d-ui-studio>
-- Delivery board: <https://github.com/users/Popcornnnnnnnn/projects/3>
+**Developer preview — not a one-click consumer install.** The desktop workspace runs from this repository. Playing requires Xcode 27, your own iPhone signing and a physical iPhone on iOS 27. No generally installable iPhone binary or TestFlight invitation is included. Wireless interruptions and formal physical acceptance remain open.
 
-## Project status
+## Start the desktop workspace
 
-- Accepted: M0 project foundation; M2 screen-video vertical slice
-- Active: M1 iPhone 17 visual rework candidate; previous geometry-only acceptance was reopened
-- Baseline start: 2026-09-02
-- Target content-production MVP: 2026-09-18
-- Target live-sync release candidate: 2026-10-09
-- Target acceptance: 2026-10-12
-- Current review item: [M1 — visually recalibrate the iPhone 17 asset](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/2)
-- Next M2 work item after visual sign-off: [reusable studio and camera presets](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/5)
+Use Node.js **24+** on a Mac:
 
-The schedule assumes one primary developer, a Mac and iPhone available for testing, and no App Store release requirement. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the estimate, gates, and acceptance criteria.
-
-## Product boundary
-
-The project deliberately separates two deliverables:
-
-1. **Content-production MVP** — prerecorded phone-screen video on a 3D phone, reusable studio presets, camera motion, and recording.
-2. **Live-sync extension** — live phone-screen transport and real-device orientation synchronization.
-
-The first deliverable is independently useful and does not wait for iOS capture constraints to be solved.
-
-## Repository structure
-
-```text
-docs/                  Architecture and decision records
-src/model/             Calibrated device dimensions and tests
-src/scene/             Three.js model and studio scene
-.github/               Issue templates and project automation metadata
-PROJECT_PLAN.md        Schedule, milestones, effort, risks, acceptance gates
-ROADMAP.md             Date-based delivery checkpoints
+```sh
+npm ci
+npm start
 ```
 
-The current application contains an original procedural iPhone 17 black reference model, an independently addressable screen mesh, deterministic front/back review views, three visual presets, simulated motion, orbit controls, and explicit screen/pose source contracts. A local video can be selected, played, paused, reset, and mapped to the screen with non-stretching portrait/landscape contain scaling. Confirmed dimensions and approximation boundaries are recorded in [docs/references/iphone-17-black.md](docs/references/iphone-17-black.md). Live capture, camera timeline, final-scene recording, and saved project state are not implemented yet.
+Open the **Studio ready** URL printed in the terminal, normally <http://127.0.0.1:4317/?experience=marble>. This starts both the bridge and Web server; **Ctrl+C stops both**. Occupied ports produce an explanation without stopping another instance.
 
-## Local development
+A procedural phone model is included. The privately licensed GLB under `public/local-assets/` is **optional** and never redistributed.
 
-Requires Node.js 24 or newer.
+[中文首次安装指南](docs/QUICKSTART.zh-CN.md) · [iPhone build details](ios/README.md) · [Release readiness](docs/RELEASE_READINESS.md)
 
-```bash
-npm install
-npm run dev
+## Play settings
+
+In **Marble → Play settings**:
+
+| Setting | Default | Range |
+| --- | --- | --- |
+| Movement scale | 50%: real 20 cm → virtual 10 cm | 25–100% |
+| Ball diameter | 15 mm | 10–20 mm |
+| Bounce | 0.35 | 0–0.8 |
+
+Click **Start round**, or **Apply & restart** after editing, while tracking is ready. This recalibrates and clears previous balls while retaining the observation camera. The bridge owns the parameters for that round; the phone and every browser use its snapshots. Another page cannot change a running controller's round. Rotation stays 1:1; the S1 **Tracking** mode retains metric 1:1 translation.
+
+One ball is active and at most five balls are retained including ground traces. The bridge runs Rapier at 120 Hz; both screens render snapshots with a 50 ms presentation buffer. Demonstration gravity is 1.5 m/s². Real tray motion supplies energy; no automatic launch, Return or recovery teleport is used.
+
+## Development and verification
+
+```sh
+npm run check
+swift test --package-path ios
 ```
 
-The local studio runs at <http://127.0.0.1:4317>. Run the complete verification suite with `npm run check`.
+`npm run bridge` and `npm run dev` remain available separately. For an isolated instance:
 
-## Working rules
+```sh
+PHONE_STUDIO_PORT=17317 PHONE_BRIDGE_PORT=17319 PHONE_BRIDGE_FRAME_PORT=17320 npm start
+```
 
-- Keep source, generated media, captured phone content, secrets, and build caches separate.
-- Never commit captured personal phone screens, signing material, provisioning profiles, `.env` files, or recordings.
-- Local video selection uses an in-memory object URL; the app does not copy, upload, or serialize the selected file path.
-- A visually convincing render is not proof that live capture or pose synchronization works.
-- Every milestone closes only after its acceptance check is recorded in the corresponding GitHub issue.
+Use the printed Web URL, which includes the selected bridge. Set the iPhone's `LiveBridgeURL` to that Mac's LAN address and bridge port before building. Web is loopback-only; the phone communicates with the LAN bridge. Use a trusted local network; the prototype has no authenticated pairing or cloud access.
+
+Camera images stay on the iPhone in spatial mode. Automated/synthetic tests do not establish physical accuracy, visible latency or five-minute wireless reliability. See [experience and evidence](docs/ELASTIC_TRAY.md).
+
+**Spatial interaction is the main track.** Screen mirroring, image quality and transport performance remain a supporting track. Choose **Screen mirroring** on both devices for the prior workflow. [Product goal](docs/PRODUCT_GOAL.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](ROADMAP.md). Previous plans remain under `docs/legacy/` and `experiments/`.

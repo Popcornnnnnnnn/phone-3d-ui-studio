@@ -1,0 +1,88 @@
+name: Phone3DUIStudio
+options:
+  bundleIdPrefix: com.phone3dui
+  deploymentTarget:
+    iOS: "27.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    DEVELOPMENT_TEAM: R26X7B8XDT
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"
+packages:
+  WebRTC:
+    url: https://github.com/stasel/WebRTC.git
+    exactVersion: 152.0.0
+targets:
+  Phone3DUIStudio:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Phone 3D Studio
+        UILaunchScreen: {}
+        NSLocalNetworkUsageDescription: Connects directly to your Mac to stream the live screen and device pose.
+        NSMotionUsageDescription: Uses device motion to drive the matching 3D phone pose on your Mac.
+        NSCameraUsageDescription: Tracks your phone position in space. Camera images stay on this device and are not streamed or saved.
+        NSScreenCaptureUsageDescription: Streams your selected iPhone display directly to your Mac for the live 3D preview.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - screen-capture
+        LiveBridgeURL: ws://forge.local:4319/?role=phone
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.phone3dui.studio
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - sdk: ARKit.framework
+      - sdk: ScreenCaptureKit.framework
+      - package: WebRTC
+      - target: Phone3DBroadcastExtension
+        embed: true
+  Phone3DBroadcastExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BroadcastExtension/SampleHandler.swift
+      - path: Shared/FrameRateGate.swift
+      - path: Shared/H264Encoder.swift
+      - path: Shared/LiveProtocol.swift
+      - path: Shared/LiveSocket.swift
+      - path: Shared/MotionStreamer.swift
+    info:
+      path: BroadcastExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Phone 3D Broadcast
+        LiveBridgeURL: ws://forge.local:4319/?role=phone
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSLocalNetworkUsageDescription: Streams the captured screen and device pose directly to your Mac on the local network.
+        NSMotionUsageDescription: Uses device motion to drive the matching 3D phone pose on your Mac.
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.broadcast-services-upload
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SampleHandler
+          RPBroadcastProcessMode: RPBroadcastProcessModeSampleBuffer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.phone3dui.studio.broadcast
+        PRODUCT_NAME: Phone3DBroadcastExtension
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - sdk: ReplayKit.framework
+      - sdk: VideoToolbox.framework

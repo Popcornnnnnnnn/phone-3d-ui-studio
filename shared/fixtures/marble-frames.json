@@ -1,0 +1,3687 @@
+[
+  {
+    "name": "center",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.204014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.006
+    }
+  },
+  {
+    "name": "right_edge",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 2,
+      "serverTimeMs": 1100,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.033285,
+            0.204014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.0,
+      "v": 0.5,
+      "radius": 0.006
+    }
+  },
+  {
+    "name": "partial_entry",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 3,
+      "serverTimeMs": 1200,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.207014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.005196152422706632
+    }
+  },
+  {
+    "name": "outside_front",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 4,
+      "serverTimeMs": 1300,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.211014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0
+    }
+  },
+  {
+    "name": "translated",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 5,
+      "serverTimeMs": 1400,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.02,
+            0.204014896,
+            -0.01
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.8004356316659156,
+      "v": 0.4309344567995027,
+      "radius": 0.006
+    }
+  },
+  {
+    "name": "slot_back",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.198014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.006
+    }
+  },
+  {
+    "name": "partial_back",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.195014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.005196152422706632
+    }
+  },
+  {
+    "name": "outside_back",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.191014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_0",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0.0,
+          0.0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.4013068949977465,
+      "v": 0.5,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_15",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7010573846499779,
+          0.09229595564125725,
+          0.09229595564125725,
+          0.7010573846499779
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.370595607290733,
+      "v": 0.6072528676438376,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_30",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.6830127018922194,
+          0.18301270189221933,
+          0.18301270189221933,
+          0.6830127018922194
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.2805546676741222,
+      "v": 0.7071966296014918,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_45",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.6532814824381883,
+          0.2705980500730985,
+          0.2705980500730985,
+          0.6532814824381883
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.1373202173830983,
+      "v": 0.7930202836604243,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_60",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.6123724356957946,
+          0.35355339059327373,
+          0.35355339059327373,
+          0.6123724356957946
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.9506534474988735,
+      "v": 0.8588750896268134,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_75",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.560985526796931,
+          0.43045933457687946,
+          0.43045933457687946,
+          0.560985526796931
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.7332753899076347,
+      "v": 0.900273151304262,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_90",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.5000000000000001,
+          0.5,
+          0.5,
+          0.5000000000000001
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.9143932592029835,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_105",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.43045933457687946,
+          0.560985526796931,
+          0.560985526796931,
+          0.43045933457687946
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.26672461009236514,
+      "v": 0.900273151304262,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_120",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.35355339059327384,
+          0.6123724356957946,
+          0.6123724356957946,
+          0.35355339059327384
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.04934655250112685,
+      "v": 0.8588750896268135,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_135",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.27059805007309856,
+          0.6532814824381883,
+          0.6532814824381883,
+          0.27059805007309856
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": -0.1373202173830982,
+      "v": 0.7930202836604244,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_150",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.18301270189221933,
+          0.6830127018922194,
+          0.6830127018922194,
+          0.18301270189221933
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": -0.2805546676741222,
+      "v": 0.7071966296014918,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_165",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.09229595564125735,
+          0.7010573846499779,
+          0.7010573846499779,
+          0.09229595564125735
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": -0.37059560729073293,
+      "v": 0.6072528676438377,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_180",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -4.329780281177467e-17,
+          0.7071067811865476,
+          0.7071067811865476,
+          4.329780281177467e-17
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": -0.40130689499774663,
+      "v": 0.5,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_195",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.09229595564125728,
+          0.7010573846499779,
+          0.7010573846499779,
+          -0.09229595564125728
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": -0.37059560729073293,
+      "v": 0.3927471323561624,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_210",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.1830127018922194,
+          0.6830127018922194,
+          0.6830127018922194,
+          -0.1830127018922194
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": -0.28055466767412207,
+      "v": 0.2928033703985081,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_225",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.2705980500730985,
+          0.6532814824381883,
+          0.6532814824381883,
+          -0.2705980500730985
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": -0.1373202173830984,
+      "v": 0.20697971633957563,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_240",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.3535533905932737,
+          0.6123724356957946,
+          0.6123724356957946,
+          -0.3535533905932737
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.04934655250112624,
+      "v": 0.1411249103731867,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_255",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.43045933457687946,
+          0.560985526796931,
+          0.560985526796931,
+          -0.43045933457687946
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.26672461009236537,
+      "v": 0.099726848695738,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_270",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.5,
+          0.5000000000000001,
+          0.5000000000000001,
+          -0.5
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.49999999999999983,
+      "v": 0.08560674079701641,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_285",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.5609855267969309,
+          0.4304593345768796,
+          0.4304593345768796,
+          -0.5609855267969309
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.7332753899076343,
+      "v": 0.09972684869573795,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_300",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.6123724356957946,
+          0.35355339059327373,
+          0.35355339059327373,
+          -0.6123724356957946
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.9506534474988735,
+      "v": 0.14112491037318659,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_315",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.6532814824381883,
+          0.2705980500730986,
+          0.2705980500730986,
+          -0.6532814824381883
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.137320217383098,
+      "v": 0.20697971633957551,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_330",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.6830127018922193,
+          0.18301270189221952,
+          0.18301270189221952,
+          -0.6830127018922193
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.2805546676741217,
+      "v": 0.292803370398508,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_345",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.7010573846499779,
+          0.09229595564125725,
+          0.09229595564125725,
+          -0.7010573846499779
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.370595607290733,
+      "v": 0.39274713235616243,
+      "radius": 0
+    }
+  },
+  {
+    "name": "ground_yaw_360",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          0.7071067811865476,
+          8.659560562354934e-17,
+          8.659560562354934e-17,
+          -0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0.06,
+            0.006,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.006,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 1.4013068949977465,
+      "v": 0.4999999999999999,
+      "radius": 0
+    }
+  },
+  {
+    "name": "larger_center",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.0075,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.204014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.0075,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.0075
+    }
+  },
+  {
+    "name": "larger_partial_front",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.0075,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.207764896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.0075,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.006495190528383289
+    }
+  },
+  {
+    "name": "larger_partial_back",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.0075,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.192764896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.0075,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.006495190528383289
+    }
+  },
+  {
+    "name": "larger_far_behind",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.0075,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.00401489599999999,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.0075,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1"
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0
+    }
+  },
+  {
+    "name": "settings-10mm-center",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.005,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.204014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.005,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1",
+      "settings": {
+        "movementScale": 0.5,
+        "ballDiameterMm": 10,
+        "restitution": 0.35
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.005
+    }
+  },
+  {
+    "name": "settings-10mm-front-partial",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.005,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.206514896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.005,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1",
+      "settings": {
+        "movementScale": 0.5,
+        "ballDiameterMm": 10,
+        "restitution": 0.35
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.004330127018922193
+    }
+  },
+  {
+    "name": "settings-10mm-back-partial",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.005,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.196514896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.005,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1",
+      "settings": {
+        "movementScale": 0.5,
+        "ballDiameterMm": 10,
+        "restitution": 0.35
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.004330127018922193
+    }
+  },
+  {
+    "name": "settings-10mm-behind",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.005,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.193514896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.005,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1",
+      "settings": {
+        "movementScale": 0.5,
+        "ballDiameterMm": 10,
+        "restitution": 0.35
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0
+    }
+  },
+  {
+    "name": "settings-20mm-center",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.01,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.204014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.01,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1",
+      "settings": {
+        "movementScale": 0.5,
+        "ballDiameterMm": 20,
+        "restitution": 0.35
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.01
+    }
+  },
+  {
+    "name": "settings-20mm-front-partial",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.01,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.209014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.01,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1",
+      "settings": {
+        "movementScale": 0.5,
+        "ballDiameterMm": 20,
+        "restitution": 0.35
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.008660254037844387
+    }
+  },
+  {
+    "name": "settings-20mm-back-partial",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.01,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.189014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.01,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1",
+      "settings": {
+        "movementScale": 0.5,
+        "ballDiameterMm": 20,
+        "restitution": 0.35
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.008660254037844387
+    }
+  },
+  {
+    "name": "settings-20mm-behind",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 2,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "active": true,
+      "region": "tray",
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.01,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "canAddBall": false,
+      "hitCount": 0,
+      "lastImpact": null,
+      "balls": [
+        {
+          "id": "marble-1",
+          "position": [
+            0,
+            0.183014896,
+            0
+          ],
+          "quaternion": [
+            -0.7071067811865476,
+            0,
+            0,
+            0.7071067811865476
+          ],
+          "velocity": [
+            0,
+            0,
+            0
+          ],
+          "angularVelocity": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.01,
+          "state": "active"
+        }
+      ],
+      "activeBallId": "marble-1",
+      "settings": {
+        "movementScale": 0.5,
+        "ballDiameterMm": 20,
+        "restitution": 0.35
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0
+    }
+  }
+]

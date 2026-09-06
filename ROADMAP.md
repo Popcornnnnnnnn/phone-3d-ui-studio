@@ -1,56 +1,23 @@
 # Roadmap
 
-## Accepted progress
+## Main track: spatial interaction
 
-- 2026-09-02 — M0 project foundation accepted ahead of its 2026-09-04 target.
-- 2026-09-02 — M1 calibrated iPhone 17 black model accepted ahead of its 2026-09-09 target.
-- 2026-09-02 — M2 screen-video texture and orientation slice accepted ahead of its 2026-09-13 target.
-- 2026-09-02 — M1 visual acceptance reopened after the geometry-correct render failed recognizable iPhone 17 fidelity review; revised candidate awaits visual sign-off.
+| Milestone | Outcome | Gate |
+|---|---|---|
+| S1 — 6DoF foundation | ARKit camera pose drives a gravity-aligned Web workspace; calibration and recovery are explicit | Software checks plus measured physical-device acceptance |
+| S2 — One marble | One object crosses the screen boundary and can be caught back into the phone | Prototype development allowed; formal collision acceptance requires remaining S1 checks |
+| S2.1 — Wireless elastic tray | Real-motion toss/catch, phone Add ball, one active ball and at most five visible traces | Five minutes unplugged, ten contacts, three misses/additions and interruption recovery |
+| S3 — Multiple marbles | Explore five active marbles and further physical interactions | Defer scope until S2.1 and remaining S1 collision prerequisites pass |
 
-## Week 1 — 2026-09-02 to 2026-09-06
+S1 software is delivered and installed. Basic physical movement and about five
+minutes of USB metadata continuity have been observed; formal physical acceptance
+remains pending. Follow the [中文体验与验收说明](docs/S1_QUICKSTART.zh-CN.md) for
+self-guided use and the remaining checks. Detailed evidence lives in
+[SPATIAL_S1.md](docs/SPATIAL_S1.md). S2 is retained as a historical rollback. S2.1 replaces Return with real-motion toss/catch and explicit phone addition; wireless physical acceptance remains pending. See [S2.1 delivery](docs/ELASTIC_TRAY.md). New calendar promises are
+not inferred from the old live-screen schedule.
 
-- Complete repository and CI foundation.
-- Lock the first architecture and asset contracts.
-- Start the static 3D phone scene.
+## Supporting track: live-screen quality and performance
 
-Checkpoint: a fresh checkout runs the renderer skeleton and the M0 issue contains verification evidence.
+Preserve existing screen mirroring, latency instrumentation, picture-quality findings and stability work. Resume supporting optimization separately; only measured shared blockers take priority during S1.
 
-## Week 2 — 2026-09-07 to 2026-09-13
-
-- Finish the phone model integration and screen mesh.
-- Add prerecorded video texture and portrait/landscape calibration.
-- Add the first studio and camera presets.
-
-Checkpoint: a supplied UI recording plays correctly on the 3D phone.
-
-## Week 3 — 2026-09-14 to 2026-09-20
-
-- Finish preset persistence, camera timeline, and recording.
-- Produce and review the content-production MVP reference export.
-- Begin the iPhone live-screen spike only after MVP acceptance.
-
-Checkpoint: the content-production MVP is usable independently of live sync.
-
-## Week 4 — 2026-09-21 to 2026-09-27
-
-- Complete the live-screen feasibility gate.
-- Measure latency and select or reject the capture route.
-- Build quaternion transport and coordinate calibration.
-
-Checkpoint: both risk spikes have evidence and an explicit decision.
-
-## Week 5 — 2026-09-28 to 2026-10-04
-
-- Integrate live screen and pose.
-- Add pairing, reconnect, stale-state handling, and timestamp alignment.
-- Run repeated physical-device sessions.
-
-Checkpoint: integrated beta survives normal orientation and connectivity changes.
-
-## Week 6 — 2026-10-05 to 2026-10-11
-
-- Stabilize the integrated beta.
-- Complete onboarding, troubleshooting, packaging, and regression checks.
-- Produce the release-candidate recording and clean-machine verification.
-
-Checkpoint: release candidate is ready for physical-device acceptance on 2026-10-12.
+The previous M0–M6 dates and completion history remain in the [historical roadmap](docs/legacy/live-twin-roadmap.md).

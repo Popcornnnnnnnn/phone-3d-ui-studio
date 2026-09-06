@@ -1,0 +1,126 @@
+import { parseSpatialMessage, SPATIAL_STALE_MS, type SpatialPose } from '../../shared/spatialProtocol.mjs'
+import { SPATIAL_START, cameraToBody, makeCalibration, applyCalibration, type Calibration, type Transform } from '../../shared/spatialMath.mjs'
+export { SPATIAL_MODEL_SCALE, SPATIAL_START, CAMERA_IN_BODY, CAMERA_FROM_BODY, cameraToBody, makeCalibration, applyCalibration, type Calibration, type Transform } from '../../shared/spatialMath.mjs'
+import { CAMERA_IN_BODY } from '../../shared/spatialMath.mjs'
+export type TrackingPhase = 'connecting' | 'disconnected' | 'initializing' | 'calibrate' | 'tracking' | 'limited' | 'stale' | 'error'
+
+export class SpatialTracker {
+  phase: TrackingPhase = 'connecting'
+  reason = 'Connecting to the local bridge.'
+  sessionId: string | null = null
+  connectionId: string | null = null
+  sequence = -1
+  latest: SpatialPose | null = null
+  source: SpatialPose['source'] | null = null
+  receivedAtMs = -Infinity
+  calibration: Calibration | null = null
+  rendered: Transform = { position: [...SPATIAL_START], quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] }
+  renderedAtMs: number | null = null
+  bridgeReceivedAtMs: number | null = null
+  revision = 0
+  recording = false
+  records: object[] = []
+  // Five minutes at 60 Hz input + up to 240 Hz display, with room for status.
+  recordLimit = 100_000
+  droppedRecords = 0
+  private record(value: object) {
+    if (!this.recording) return
+    if (this.records.length < this.recordLimit) this.records.push(value)
+    else this.droppedRecords += 1
+  }
+  startRecording() { this.records = []; this.droppedRecords = 0; this.recording = true }
+  invalidate(phase: TrackingPhase, reason: string) {
+    if (this.calibration) this.revision += 1
+    this.calibration = null
+    this.phase = phase
+    this.reason = reason
+  }
+  disconnect(reason = 'Open the iPhone app and start Spatial tracking.') {
+    this.invalidate('disconnected', reason)
+    this.sessionId = null; this.connectionId = null; this.latest = null; this.source = null; this.sequence = -1
+  }
+  receive(value: unknown, now = Date.now()) {
+    if (!value || typeof value !== 'object') return
+    const envelope = value as Record<string, unknown>
+    if (envelope.type === 'spatial-link') {
+      if (envelope.connected !== true) { this.disconnect(); return }
+      if (typeof envelope.sessionId !== 'string' || typeof envelope.connectionId !== 'string') return
+      if (this.connectionId === envelope.connectionId && this.sessionId === envelope.sessionId) return
+      this.invalidate('initializing', 'Waiting for a fresh tracking frame.')
+      this.sessionId = envelope.sessionId; this.connectionId = envelope.connectionId
+      this.sequence = -1; this.latest = null; this.source = null
+      this.record({ event: 'session', atMs: now, sessionId: this.sessionId, connectionId: this.connectionId })
+      return
+    }
+    const sample = parseSpatialMessage(value)
+    if (!sample || sample.sessionId !== this.sessionId ||
+        envelope.connectionId !== this.connectionId || sample.sequence <= this.sequence) return
+    this.sequence = sample.sequence
+    this.source = sample.source
+    this.record({ event: 'received', receivedAtMs: now, ...sample, connectionId: this.connectionId, bridgeReceivedAtMs: envelope.bridgeReceivedAtMs })
+    if (sample.trackingState !== 'normal') {
+      this.latest = null
+      const phase = ['denied', 'unsupported', 'error'].includes(sample.trackingState) ? 'error'
+        : sample.trackingState === 'initializing' ? 'initializing' : 'limited'
+      this.invalidate(phase, sample.reason)
+      return
+    }
+    if (sample.type !== 'spatial-pose') return
+    // Detect a gap even when a timer/render was throttled while the tab was hidden.
+    if (now - this.receivedAtMs > SPATIAL_STALE_MS && this.calibration) {
+      this.invalidate('stale', 'Tracking resumed. Set origin again to continue.')
+    }
+    this.latest = sample
+    this.receivedAtMs = now
+    this.bridgeReceivedAtMs = typeof envelope.bridgeReceivedAtMs === 'number' ? envelope.bridgeReceivedAtMs : null
+    if (this.isFresh(now)) {
+      this.phase = this.calibration ? 'tracking' : 'calibrate'
+      this.reason = this.calibration ? 'Live position and orientation.' : 'Tracking is ready. Hold the phone screen-up and set origin.'
+    } else this.invalidate('stale', 'The latest tracking sample is delayed. Wait for fresh tracking.')
+  }
+  sampleAge(now = Date.now()): number | null {
+    const s = this.latest
+    if (!s || s.clockOffsetMs === null || s.clockRttMs === null || s.clockRttMs > 50) return null
+    const age = now - (s.sampledAtMs + s.clockOffsetMs)
+    return age >= -50 ? Math.max(0, age) : null
+  }
+  isFresh(now = Date.now()) {
+    return this.latest !== null && now - this.receivedAtMs <= SPATIAL_STALE_MS &&
+      (this.sampleAge(now) ?? 0) <= SPATIAL_STALE_MS
+  }
+  checkFreshness(now = Date.now()) {
+    if (this.latest && !this.isFresh(now)) {
+      this.invalidate('stale', 'Tracking paused or delayed. Restore tracking, then set origin again.')
+    }
+  }
+  setOrigin(now = Date.now()) {
+    this.checkFreshness(now)
+    if (!this.isFresh(now) || !this.latest) return false
+    const calibration = makeCalibration(cameraToBody(this.latest))
+    if (!calibration) {
+      this.reason = 'Hold the screen facing up, with its top pointing toward the Mac.'
+      return false
+    }
+    this.calibration = calibration; this.phase = 'tracking'; this.revision += 1
+    this.reason = 'Origin set. Move the phone in any direction.'
+    this.record({ event: 'calibration', atMs: now, origin: calibration.origin.toArray(), yaw: calibration.yaw.toArray() })
+    return true
+  }
+  render(now = Date.now()) {
+    this.checkFreshness(now)
+    if (this.phase === 'tracking' && this.calibration && this.latest) {
+      this.rendered = applyCalibration(cameraToBody(this.latest), this.calibration)
+      this.renderedAtMs = now
+      this.record({ event: 'render-submission', atMs: now, sessionId: this.sessionId,
+        sequence: this.sequence, sampleAgeMs: this.sampleAge(now), ...this.rendered })
+    }
+    return this.rendered
+  }
+  report() {
+    this.recording = false
+    return { schema: 'phone3d.spatial.v1', units: 'meters', origin: 'ARCamera',
+      cameraInBodyApproxMeters: CAMERA_IN_BODY, initialDisplayPositionMeters: SPATIAL_START,
+      timingEvidence: 'CPU render submission, not visible photon latency',
+      physicalAcceptance: 'not established by this telemetry', droppedRecords: this.droppedRecords, records: this.records }
+  }
+}

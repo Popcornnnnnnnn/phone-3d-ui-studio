@@ -11,6 +11,20 @@ describe('studio presets', () => {
     expect(findStudioPreset('missing').id).toBe(studioPresets[0].id)
   })
 
+  it('uses the daylight environment as the default preset', () => {
+    expect(studioPresets).toHaveLength(2)
+    expect(studioPresets[0]).toMatchObject({
+      id: 'pearl',
+      name: 'Daylight',
+      daylight: true,
+    })
+    expect(studioPresets[1]).toMatchObject({
+      id: 'warm',
+      name: 'Night',
+      daylight: false,
+    })
+  })
+
   it('keep light intensities within the initial renderer budget', () => {
     for (const preset of studioPresets) {
       expect(preset.keyLight).toBeGreaterThan(0)

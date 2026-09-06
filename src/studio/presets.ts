@@ -1,40 +1,46 @@
 export interface StudioPreset {
   id: string
   name: string
-  background: string
-  floor: string
-  accent: string
+  daylight: boolean
+  backgroundTop: string
+  backgroundBottom: string
+  backgroundAccent: string
+  shadow: string
+  keyColor: string
+  fillColor: string
+  rimColor: string
   keyLight: number
   fillLight: number
 }
 
 export const studioPresets: readonly StudioPreset[] = [
   {
-    id: 'graphite',
-    name: 'Graphite',
-    background: '#15171a',
-    floor: '#202228',
-    accent: '#d1ff5a',
-    keyLight: 3.5,
-    fillLight: 1.1,
+    id: 'pearl',
+    name: 'Daylight',
+    daylight: true,
+    backgroundTop: '#9fc8e2',
+    backgroundBottom: '#d9e8ec',
+    backgroundAccent: '#7fa9c3',
+    shadow: '#516779',
+    keyColor: '#fff3dc',
+    fillColor: '#a9d8f5',
+    rimColor: '#e8f6ff',
+    keyLight: 3.35,
+    fillLight: 1.35,
   },
   {
-    id: 'paper',
-    name: 'Soft Paper',
-    background: '#e5e2da',
-    floor: '#d0ccc2',
-    accent: '#1f54ff',
-    keyLight: 2.9,
-    fillLight: 1.7,
-  },
-  {
-    id: 'signal',
-    name: 'Signal Blue',
-    background: '#0b1930',
-    floor: '#13233c',
-    accent: '#51b8ff',
-    keyLight: 3.9,
-    fillLight: 0.9,
+    id: 'warm',
+    name: 'Night',
+    daylight: false,
+    backgroundTop: '#344a62',
+    backgroundBottom: '#101a27',
+    backgroundAccent: '#5e6372',
+    shadow: '#07101a',
+    keyColor: '#fff7ed',
+    fillColor: '#b7d7f1',
+    rimColor: '#9bcaf0',
+    keyLight: 3.45,
+    fillLight: 1.55,
   },
 ] as const
 
