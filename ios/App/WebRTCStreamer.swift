@@ -30,6 +30,7 @@ final class WebRTCStreamer: NSObject {
     private var peerConnection: RTCPeerConnection?
     private var pendingRemoteCandidates: [RTCIceCandidate] = []
     private var hasRemoteDescription = false
+    private var activeSessionId: String?
     private var h264PreferenceApplied = false
     private var h264PreferenceCodecCount = 0
     private var h264PreferenceError: String?
@@ -146,6 +147,7 @@ final class WebRTCStreamer: NSObject {
         peerConnection = nil
         pendingRemoteCandidates.removeAll(keepingCapacity: true)
         hasRemoteDescription = false
+        activeSessionId = nil
         state = .idle
     }
 
@@ -228,12 +230,14 @@ final class WebRTCStreamer: NSObject {
         switch type {
         case "webrtc-offer":
             guard let sdp = message["sdp"] as? String else { return }
-            acceptOffer(sdp)
+            acceptOffer(sdp, sessionId: message["sessionId"] as? String)
         case "webrtc-candidate":
             guard
                 let sdp = message["candidate"] as? String,
                 let lineIndex = message["sdpMLineIndex"] as? Int
             else { return }
+            let sessionId = message["sessionId"] as? String
+            guard sessionId == activeSessionId else { return }
             let candidate = RTCIceCandidate(
                 sdp: sdp,
                 sdpMLineIndex: Int32(lineIndex),
@@ -249,7 +253,11 @@ final class WebRTCStreamer: NSObject {
         }
     }
 
-    private func acceptOffer(_ sdp: String) {
+    private func acceptOffer(_ sdp: String, sessionId: String?) {
+        if sessionId == activeSessionId,
+           peerConnection?.remoteDescription != nil {
+            return
+        }
         // A browser refresh creates a brand-new DTLS/ICE identity. Reusing the
         // old native peer can leave the phone "connected" to the dead tab, so
         // replace it whenever a negotiated peer receives a fresh offer.
@@ -263,9 +271,12 @@ final class WebRTCStreamer: NSObject {
             state = .failed
             return
         }
+        activeSessionId = sessionId
         let offer = RTCSessionDescription(type: .offer, sdp: sdp)
         peerConnection.setRemoteDescription(offer) { [weak self] error in
             guard let self else { return }
+            guard self.peerConnection === peerConnection,
+                  self.activeSessionId == sessionId else { return }
             guard error == nil else {
                 self.state = .failed
                 return
@@ -288,14 +299,19 @@ final class WebRTCStreamer: NSObject {
                     self?.state = .failed
                     return
                 }
+                guard self.peerConnection === peerConnection,
+                      self.activeSessionId == sessionId else { return }
                 peerConnection.setLocalDescription(answer) { [weak self] error in
                     guard let self else { return }
+                    guard self.peerConnection === peerConnection,
+                          self.activeSessionId == sessionId else { return }
                     guard error == nil else {
                         self.state = .failed
                         return
                     }
                     self.sendJSON([
                         "type": "webrtc-answer",
+                        "sessionId": sessionId ?? NSNull(),
                         "sdp": answer.sdp
                     ])
                 }
@@ -359,6 +375,7 @@ extension WebRTCStreamer: RTCPeerConnectionDelegate {
         guard self.peerConnection === peerConnection else { return }
         sendJSON([
             "type": "webrtc-candidate",
+            "sessionId": activeSessionId ?? NSNull(),
             "candidate": candidate.sdp,
             "sdpMid": candidate.sdpMid ?? NSNull(),
             "sdpMLineIndex": Int(candidate.sdpMLineIndex)

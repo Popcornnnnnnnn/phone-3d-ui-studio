@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var capture = ScreenCaptureController()
+    @Environment(\.scenePhase) private var scenePhase
 
     private let bridgeURL = Bundle.main.object(
         forInfoDictionaryKey: "LiveBridgeURL"
@@ -16,7 +17,7 @@ struct ContentView: View {
                         captureCard
                         connectionCard
 
-                        if capture.captureState.isActive {
+                        if capture.captureState == .streaming {
                             benchmarkCard
                         }
 
@@ -31,16 +32,47 @@ struct ContentView: View {
                 .navigationBarTitleDisplayMode(.inline)
             }
 
-            if let benchmarkRun = capture.benchmarkRun {
+            if let benchmarkRun = capture.benchmarkStimulusRun {
                 StreamBenchmarkView(
                     run: benchmarkRun,
                     cancel: capture.cancelBenchmark
                 )
+                .onAppear { capture.updateBenchmarkStimulusVisibility(id: benchmarkRun.id, visible: true) }
+                .onDisappear { capture.updateBenchmarkStimulusVisibility(id: benchmarkRun.id, visible: false) }
                 .transition(.opacity)
                 .zIndex(1)
             }
+
+            if capture.transportPreparationID != nil {
+                VStack(spacing: 12) {
+                    Text("Preparing wireless test")
+                        .font(.headline)
+                    Text("Keep this app open. The test starts automatically.")
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                        let phase = context.date.timeIntervalSinceReferenceDate
+                            .truncatingRemainder(dividingBy: 1)
+                        Capsule()
+                            .fill(.green)
+                            .frame(width: 40, height: 8)
+                            .offset(x: (phase - 0.5) * 160)
+                            .frame(width: 200, height: 8)
+                    }
+                }
+                .padding(24)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+                .padding(24)
+                .allowsHitTesting(false)
+                .zIndex(2)
+            }
         }
-        .animation(.easeInOut(duration: 0.2), value: capture.benchmarkRun)
+        .animation(
+            .easeInOut(duration: 0.2),
+            value: capture.benchmarkStimulusRun?.id
+        )
+        .onAppear { capture.updateAppForeground(scenePhase == .active) }
+        .onChange(of: scenePhase) { _, phase in capture.updateAppForeground(phase == .active) }
     }
 
     private var heroCard: some View {
@@ -106,13 +138,11 @@ struct ContentView: View {
     private var captureCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeading(
-                eyebrow: capture.captureState.isActive ? "CAPTURE ACTIVE" : "START CAPTURE",
-                title: capture.captureState.isActive ? "Your display is live" : "Share your display"
+                eyebrow: captureCardEyebrow,
+                title: captureCardTitle
             )
 
-            Text(capture.captureState.isActive
-                 ? "You can leave this app and use your phone normally."
-                 : "Choose Full Display in the iOS sheet. Nothing is recorded or stored by this app.")
+            Text(captureCardDetail)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -131,10 +161,13 @@ struct ContentView: View {
                 Button {
                     capture.chooseFullDisplay()
                 } label: {
-                    Label("Choose Full Display", systemImage: "rectangle.on.rectangle.angled")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                    Label(
+                        "Start ScreenCaptureKit",
+                        systemImage: "rectangle.on.rectangle.angled"
+                    )
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
@@ -153,10 +186,22 @@ struct ContentView: View {
                     Text(codecDescription)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    Divider()
+
+                    Text("Legacy ReplayKit fallback")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    BroadcastPickerButton()
+
+                    Text("ScreenCaptureKit is the measured low-latency path. ReplayKit remains available only as a compatibility fallback and is not used by performance benchmarks.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
                 .padding(.top, 10)
             } label: {
-                Label("Streaming mode", systemImage: "slider.horizontal.3")
+                Label("Capture settings and fallback", systemImage: "slider.horizontal.3")
                     .font(.subheadline.weight(.semibold))
             }
             .tint(.primary)
@@ -179,9 +224,14 @@ struct ContentView: View {
 
             statusRow(
                 title: "Control & motion",
-                value: capture.socketState.rawValue,
-                color: socketColor
+                value: capture.poseSocketState.rawValue,
+                color: capture.poseSocketState == .connected ? .green : .secondary
             )
+
+            if capture.streamCodec == .h264 {
+                statusRow(title: "Video route", value: capture.videoRouteDescription,
+                    color: socketColor)
+            }
 
             if capture.streamCodec == .webrtc {
                 Divider()
@@ -214,8 +264,8 @@ struct ContentView: View {
             .buttonStyle(.borderedProminent)
             .tint(.indigo)
             .disabled(
-                capture.webRTCState != .connected ||
-                    capture.benchmarkRun != nil
+                !capture.videoTransportConnected ||
+                    capture.benchmarkStimulusRun != nil
             )
         }
         .cardStyle()
@@ -262,7 +312,7 @@ struct ContentView: View {
             return "Needs attention"
         }
         if capture.captureState == .streaming,
-           capture.webRTCState == .connected {
+           capture.videoTransportConnected {
             return "Live on your Mac"
         }
         if capture.captureState.isActive {
@@ -286,13 +336,52 @@ struct ContentView: View {
             return .red
         }
         if capture.captureState == .streaming,
-           capture.webRTCState == .connected {
+           capture.videoTransportConnected {
             return .green
         }
         if capture.captureState.isActive {
             return .orange
         }
         return .secondary
+    }
+
+    private var captureCardEyebrow: String {
+        switch capture.captureState {
+        case .idle, .failed:
+            return "START CAPTURE"
+        case .choosing:
+            return "SELECT DISPLAY"
+        case .starting:
+            return "CAPTURE STARTING"
+        case .streaming:
+            return "CAPTURE ACTIVE"
+        }
+    }
+
+    private var captureCardTitle: String {
+        switch capture.captureState {
+        case .idle, .failed:
+            return "Share your display"
+        case .choosing:
+            return "Choose Full Display"
+        case .starting:
+            return "Starting screen capture"
+        case .streaming:
+            return "Your display is live"
+        }
+    }
+
+    private var captureCardDetail: String {
+        switch capture.captureState {
+        case .idle, .failed:
+            return "Tap Start ScreenCaptureKit, then choose Full Display in the system sheet. Nothing is stored by this app."
+        case .choosing:
+            return "The stream has not started yet. Select Full Display in the system sheet to continue."
+        case .starting:
+            return "The selected display is opening. Video will appear on the Mac when the first frame arrives."
+        case .streaming:
+            return "You can leave this app and use your phone normally."
+        }
     }
 
     private var socketColor: Color {
@@ -324,9 +413,9 @@ struct ContentView: View {
     private var codecDescription: String {
         switch capture.streamCodec {
         case .webrtc:
-            return "Lowest-latency adaptive video. Recommended for normal use."
+            return "Adaptive VP8 fallback when the hardware H.264 path is unavailable."
         case .h264:
-            return "High-detail 960 px fallback video over WebSocket."
+            return "Lowest-delay 960 px hardware video. Recommended for normal use."
         case .jpeg:
             return "Independent JPEG frames with stale-frame dropping."
         }

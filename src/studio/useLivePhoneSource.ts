@@ -1,22 +1,53 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three'
+import {
+  CanvasTexture,
+  LinearFilter,
+  SRGBColorSpace,
+  VideoFrameTexture,
+  type Texture,
+} from 'three'
 import type { ScreenOrientation } from '../model/iphone17'
+import {
+  summarizeLiveRenderSchedulerRun,
+  type LiveRenderScheduler,
+  type LiveRenderSchedulerSnapshot,
+} from '../scene/liveRenderScheduler'
 import type { PoseSample } from './contracts'
 import {
   buildLiveMeasurementReport,
+  captureContentIsVerifiedFresh,
+  conservativeCaptureAtMacMs,
+  highResolutionEpochNowMs,
+  snapshotBrowserDecoderHealthCounters,
+  summarizeBrowserDecoderHealth,
+  type BrowserDecoderHealthCounters,
+  type BrowserDecoderResetReason,
   type FrameMeasurementSample,
   type LiveMeasurementReport,
+  type MeasurementConfigurationFingerprint,
   type PoseMeasurementSample,
   type PoseRenderMeasurementSample,
 } from './liveMeasurement'
+import {
+  hasLiveFrameEnvelopeMagic,
+  parseLiveFrameEnvelope,
+} from './liveFrameEnvelope'
 import {
   multiplyQuaternions,
   normalizeQuaternion,
   parseLiveTextMessage,
   relativeQuaternion,
+  type BrowserBenchmarkPrepareMessage,
+  type BrowserDecoderAcceleration,
+  type BrowserDecoderMode,
+  type CaptureState,
+  type CaptureSource,
+  type EncoderTuning,
   type FrameMetadataMessage,
+  type H264BitstreamFormat,
   type LivePoseMessage,
   type QuaternionTuple,
+  type ThermalState,
   type Vector3Tuple,
 } from './liveProtocol'
 import {
@@ -35,6 +66,10 @@ import {
   usesVideoAlignedPose,
   usesPosePrediction,
 } from './posePresentation'
+import {
+  studioRenderConfigurationFromSearch,
+  type StudioRenderConfiguration,
+} from './renderConfiguration'
 import {
   predictQuaternion,
   ULTRA_REQUESTED_POSE_HZ,
@@ -67,6 +102,8 @@ export interface LivePhoneStats {
   poseArrivalGapP95Ms: number | null
   renderFps: number | null
   codec: 'jpeg' | 'h264' | 'webrtc' | null
+  captureState: CaptureState | null
+  capturedFrames: number
   webRTCCodecMimeType: string | null
   webRTCBitrateMbps: number | null
   webRTCDecodeMs: number | null
@@ -81,6 +118,9 @@ export interface LivePhoneStats {
 
 export interface LiveFrameRenderSignal {
   frameId: number
+  schedulerGeneration: number
+  renderRequestedAtMs: number
+  texture: Texture
 }
 
 export interface LivePoseDiagnostics {
@@ -113,16 +153,571 @@ export interface LiveMeasurementState {
 
 interface ActiveMeasurement {
   startedAtMs: number
+  runId: string | null
+  configuration: MeasurementConfigurationFingerprint
   frames: Map<number, FrameMeasurementSample>
   poses: PoseMeasurementSample[]
   poseRenders: PoseRenderMeasurementSample[]
   droppedBeforeDecode: number
+  decoderHealthStarted: BrowserDecoderHealthCounters | null
+  renderSchedulerStarted: LiveRenderSchedulerSnapshot
+}
+
+interface EncoderMeasurementConfiguration {
+  targetFps: number | null
+  encoderProfile: 'legacy' | 'low-latency' | null
+  encoderTuningRequested: EncoderTuning
+  encoderTuningActive: EncoderTuning | null
+  producerSessionId: string | null
+  captureSource: CaptureSource | null
+  captureShortEdgeRequested: number | null
+  captureShortEdgeActive: number | null
+  captureWidthActive: number | null
+  captureHeightActive: number | null
+  captureStreamGeneration: number | null
+  thermalState: ThermalState | null
+  frameAckWindow: 1 | 2 | 3 | null
+}
+
+const thermalStateOrder: readonly ThermalState[] = [
+  'nominal',
+  'fair',
+  'serious',
+  'critical',
+]
+
+export function worstObservedThermalState(
+  current: ThermalState | null,
+  observed: ThermalState | null,
+) {
+  if (observed === null) return current
+  if (current === null) return observed
+  return thermalStateOrder.indexOf(observed) > thermalStateOrder.indexOf(current)
+    ? observed
+    : current
+}
+
+function updateMeasurementThermalState(
+  active: ActiveMeasurement | null,
+  observed: ThermalState | null,
+  phase: 'heartbeat' | 'completed' = 'heartbeat',
+) {
+  if (!active || observed === null) return
+  const parameters = active.configuration.parameters
+  if (phase === 'completed') parameters.thermalStateEnd = observed
+  const current =
+    typeof parameters.thermalStateWorstObserved === 'string'
+      ? (parameters.thermalStateWorstObserved as ThermalState)
+      : null
+  const worst = worstObservedThermalState(current, observed)
+  parameters.thermalStateWorstObserved = worst
+  parameters.thermalContaminated =
+    worst === 'serious' || worst === 'critical'
+}
+
+interface BrowserDecoderRuntimeConfiguration {
+  browserConfigId: string | null
+  generation: number
+  requestedMode: BrowserDecoderMode
+  appliedMode: BrowserDecoderMode
+  configuredAcceleration: BrowserDecoderAcceleration
+  prepareDurationMs: number | null
+}
+
+interface PendingBrowserPrepare {
+  runId: string
+  browserConfigId: string
+  generation: number
+  decoderMode: BrowserDecoderMode
+  decoderAcceleration: BrowserDecoderAcceleration
+  requestedAtMs: number
+}
+
+export function browserPrepareReadyAck(
+  pending: PendingBrowserPrepare | null,
+  runtime: BrowserDecoderRuntimeConfiguration,
+  frameId: number,
+  renderedGeneration: number | undefined,
+  renderedAtMs: number,
+) {
+  if (
+    !pending ||
+    renderedGeneration !== pending.generation ||
+    runtime.generation !== pending.generation ||
+    runtime.browserConfigId !== pending.browserConfigId
+  ) {
+    return null
+  }
+  const prepareDurationMs = Math.max(0, renderedAtMs - pending.requestedAtMs)
+  return {
+    type: 'browser-benchmark-prepare-ack' as const,
+    status: 'ready' as const,
+    runId: pending.runId,
+    browserConfigId: pending.browserConfigId,
+    browserConfigGeneration: pending.generation,
+    decoderModeRequested: pending.decoderMode,
+    decoderModeApplied: runtime.appliedMode,
+    decoderAccelerationConfigured: runtime.configuredAcceleration,
+    renderedFrameId: frameId,
+    preparedAtMs: renderedAtMs,
+    prepareDurationMs,
+  }
+}
+
+function measurementProducerMatches(
+  active: ActiveMeasurement,
+  producerSessionId: string | null,
+  captureSource: CaptureSource | null,
+) {
+  if (!active.runId) return true
+  return (
+    producerSessionId !== null &&
+    captureSource !== null &&
+    active.configuration.parameters.producerSessionId === producerSessionId &&
+    active.configuration.parameters.captureSource === captureSource
+  )
 }
 
 interface PendingFrame {
-  bytes: ArrayBuffer
+  bytes: Uint8Array<ArrayBuffer>
   metadata: FrameMetadataMessage | null
   browserReceivedAtMs: number
+}
+
+interface PendingTextureUpload<T> {
+  frameId: number
+  source: T
+}
+
+export function currentTextureUploadFrameId<T>(
+  pending: PendingTextureUpload<T> | null,
+  currentSource: T | null,
+  textureSource: unknown,
+) {
+  return pending && pending.source === currentSource && currentSource === textureSource
+    ? pending.frameId
+    : null
+}
+
+interface CurrentValueRef<T> {
+  current: T
+}
+
+export function commitStateIfChanged<T>(
+  currentRef: CurrentValueRef<T>,
+  next: T,
+  commit: (value: T) => void,
+  equals: (current: T, next: T) => boolean = Object.is,
+) {
+  if (equals(currentRef.current, next)) return false
+  currentRef.current = next
+  commit(next)
+  return true
+}
+
+function sameScreenMedia(current: ScreenMedia | null, next: ScreenMedia | null) {
+  if (current === next) return true
+  if (!current || !next || current.kind !== next.kind) return false
+  if (
+    current.name !== next.name ||
+    current.width !== next.width ||
+    current.height !== next.height
+  ) {
+    return false
+  }
+  return current.kind === 'texture' && next.kind === 'texture'
+    ? current.texture === next.texture
+    : current.kind === 'video' &&
+        next.kind === 'video' &&
+        current.element === next.element
+}
+
+function useDeduplicatedState<T>(
+  initialValue: T,
+  equals: (current: T, next: T) => boolean = Object.is,
+) {
+  const [value, setValue] = useState(initialValue)
+  const currentRef = useRef(value)
+  const commit = useCallback(
+    (next: T) => commitStateIfChanged(currentRef, next, setValue, equals),
+    [equals],
+  )
+  return [value, commit, currentRef] as const
+}
+
+export type H264DecoderMode = BrowserDecoderMode
+export type H264DecoderResetReason = BrowserDecoderResetReason
+
+export interface H264DecoderSelection {
+  mode: H264DecoderMode
+  hardwareAcceleration: HardwareAcceleration
+}
+
+export interface H264DecoderDiagnostics {
+  resets: number
+  errors: number
+  resetReasons: Record<H264DecoderResetReason, number>
+  lastResetReason: H264DecoderResetReason | null
+}
+
+export interface H264DecoderBacklogPolicy {
+  name: 'default' | 'hardware-avcc' | 'transport-window-3'
+  maxQueueSize: number
+  maxPendingFrames: number
+  maxFrameAgeMs: number
+}
+
+const DEFAULT_H264_DECODER_BACKLOG_POLICY: H264DecoderBacklogPolicy = {
+  name: 'default',
+  maxQueueSize: 2,
+  maxPendingFrames: 2,
+  maxFrameAgeMs: 75,
+}
+// Three in-flight source frames can arrive together after Wi-Fi scheduling.
+// Keep the same age deadline, but do not reset a healthy dependency chain
+// merely because its third frame arrives before the first decode callback.
+const WINDOW_THREE_H264_DECODER_BACKLOG_POLICY: H264DecoderBacklogPolicy = {
+  name: 'transport-window-3',
+  maxQueueSize: 3,
+  maxPendingFrames: 3,
+  maxFrameAgeMs: 75,
+}
+// A hardware decoder may retain several submitted frames while its pipeline
+// starts, even when the stream has no B-frames. Resetting after two frames
+// prevents the first output from ever arriving. This window is deliberately
+// bounded: at 30 fps it permits startup, but a 250 ms output stall still
+// discards the dependency chain and requests a fresh IDR.
+const HARDWARE_AVCC_DECODER_BACKLOG_POLICY: H264DecoderBacklogPolicy = {
+  name: 'hardware-avcc',
+  maxQueueSize: 8,
+  maxPendingFrames: 8,
+  maxFrameAgeMs: 250,
+}
+const H264_DECODER_REJECTED_ERROR =
+  'The browser H.264 decoder rejected the live stream.'
+const LIVE_FRAME_DECODE_ERROR =
+  'The live bridge sent a frame this browser could not decode.'
+
+const DEFAULT_H264_DECODER_SELECTION: H264DecoderSelection = {
+  mode: 'software',
+  hardwareAcceleration: 'prefer-software',
+}
+const DEFAULT_H264_BITSTREAM_FORMAT: H264BitstreamFormat = 'annex-b'
+
+export function h264DecoderSelectionFromSearch(
+  search: string,
+): H264DecoderSelection {
+  const requestedMode = new URLSearchParams(search).get('decoder')
+  if (requestedMode === 'hardware') {
+    return { mode: requestedMode, hardwareAcceleration: 'prefer-hardware' }
+  }
+  if (requestedMode === 'auto') {
+    return { mode: requestedMode, hardwareAcceleration: 'no-preference' }
+  }
+  return DEFAULT_H264_DECODER_SELECTION
+}
+
+export function h264BitstreamFormatFromSearch(
+  search: string,
+): H264BitstreamFormat {
+  const parameters = new URLSearchParams(search)
+  const requestedFormat = parameters.get('h264')
+  if (requestedFormat === 'annex-b' || requestedFormat === 'avcc') {
+    return requestedFormat
+  }
+  return parameters.get('decoder') === 'hardware'
+    ? 'avcc'
+    : DEFAULT_H264_BITSTREAM_FORMAT
+}
+
+export function sendH264FormatAfterReceiverStatus(
+  sendReceiverStatus: () => void,
+  sendOutputFormat: () => void,
+) {
+  // Both sends use the same pose WebSocket, so this call order is also the
+  // bridge receive order. The status can acquire the browser lease before the
+  // bridge validates the client-scoped format command.
+  sendReceiverStatus()
+  sendOutputFormat()
+}
+
+export function browserReceiverStatusHeartbeatDue(
+  nowMs: number,
+  lastSentAtMs: number | null,
+  minimumIntervalMs = 1_000,
+) {
+  if (!Number.isFinite(nowMs) || minimumIntervalMs <= 0) return false
+  return (
+    lastSentAtMs === null ||
+    !Number.isFinite(lastSentAtMs) ||
+    nowMs < lastSentAtMs ||
+    nowMs - lastSentAtMs >= minimumIntervalMs
+  )
+}
+
+export function decodeH264DecoderDescription(
+  descriptionBase64: string | null,
+) {
+  if (!descriptionBase64 || descriptionBase64.length > 16 * 1024) return null
+  try {
+    const binary = globalThis.atob(descriptionBase64)
+    const description = new Uint8Array(binary.length)
+    for (let index = 0; index < binary.length; index += 1) {
+      description[index] = binary.charCodeAt(index)
+    }
+    return description.length >= 7 && description[0] === 1
+      ? description
+      : null
+  } catch {
+    return null
+  }
+}
+
+export function buildH264DecoderConfig(
+  codec: string,
+  decoderSelection: H264DecoderSelection,
+  bitstreamFormat: H264BitstreamFormat,
+  descriptionBase64: string | null,
+): VideoDecoderConfig | null {
+  const configuration: VideoDecoderConfig = {
+    codec,
+    optimizeForLatency: true,
+    hardwareAcceleration: decoderSelection.hardwareAcceleration,
+  }
+  if (bitstreamFormat === 'annex-b') return configuration
+
+  const description = decodeH264DecoderDescription(descriptionBase64)
+  return description ? { ...configuration, description } : null
+}
+
+export function h264DecoderBacklogPolicy(
+  decoderSelection: H264DecoderSelection,
+  bitstreamFormat: H264BitstreamFormat,
+  frameAckWindow: number | null = null,
+): H264DecoderBacklogPolicy {
+  return decoderSelection.hardwareAcceleration === 'prefer-hardware' &&
+    bitstreamFormat === 'avcc'
+    ? HARDWARE_AVCC_DECODER_BACKLOG_POLICY
+    : frameAckWindow === 3
+      ? WINDOW_THREE_H264_DECODER_BACKLOG_POLICY
+      : DEFAULT_H264_DECODER_BACKLOG_POLICY
+}
+
+export function h264DecoderConfigurationKey(
+  codec: string,
+  bitstreamFormat: H264BitstreamFormat,
+  descriptionBase64: string | null,
+  decoderSelection: H264DecoderSelection,
+  browserConfigGeneration: number,
+) {
+  return [
+    codec,
+    bitstreamFormat,
+    descriptionBase64 ?? '',
+    decoderSelection.hardwareAcceleration,
+    browserConfigGeneration,
+  ].join('|')
+}
+
+export function buildH264MeasurementConfiguration({
+  decoderSelection,
+  bitstreamFormat = DEFAULT_H264_BITSTREAM_FORMAT,
+  devicePixelRatio,
+  renderConfiguration,
+  sourceTargetFps = 30,
+  encoderProfile = 'low-latency',
+  encoderTuning = 'default',
+  encoderTuningRequested = encoderTuning,
+  browserConfigId = null,
+  browserConfigGeneration = 1,
+  browserPrepareDurationMs = null,
+  decoderModeRequested = decoderSelection.mode,
+  decoderModeApplied = decoderSelection.mode,
+  captureShortEdgeRequested = null,
+  captureShortEdgeActive = null,
+  captureWidthActive = null,
+  captureHeightActive = null,
+  captureStreamGeneration = null,
+  thermalStateStart = null,
+  thermalStateEnd = null,
+  thermalStateWorstObserved = thermalStateStart,
+  thermalContaminated =
+    thermalStateWorstObserved === 'serious' ||
+    thermalStateWorstObserved === 'critical',
+  producerSessionId = null,
+  captureSource = null,
+  renderSchedulerModeApplied,
+  renderSchedulerGeneration = 1,
+  frameAckWindow = null,
+}: {
+  decoderSelection: H264DecoderSelection
+  bitstreamFormat?: H264BitstreamFormat
+  devicePixelRatio?: number
+  renderConfiguration?: StudioRenderConfiguration
+  sourceTargetFps?: number
+  encoderProfile?: 'legacy' | 'low-latency'
+  encoderTuning?: EncoderTuning
+  encoderTuningRequested?: EncoderTuning
+  browserConfigId?: string | null
+  browserConfigGeneration?: number
+  browserPrepareDurationMs?: number | null
+  decoderModeRequested?: BrowserDecoderMode
+  decoderModeApplied?: BrowserDecoderMode
+  captureShortEdgeRequested?: number | null
+  captureShortEdgeActive?: number | null
+  captureWidthActive?: number | null
+  captureHeightActive?: number | null
+  captureStreamGeneration?: number | null
+  thermalStateStart?: ThermalState | null
+  thermalStateEnd?: ThermalState | null
+  thermalStateWorstObserved?: ThermalState | null
+  thermalContaminated?: boolean
+  producerSessionId?: string | null
+  captureSource?: CaptureSource | null
+  renderSchedulerModeApplied?: StudioRenderConfiguration['renderScheduleMode']
+  renderSchedulerGeneration?: number
+  frameAckWindow?: 1 | 2 | 3 | null
+}): MeasurementConfigurationFingerprint {
+  const backlogPolicy = h264DecoderBacklogPolicy(
+    decoderSelection,
+    bitstreamFormat,
+    frameAckWindow,
+  )
+  const activeRenderConfiguration =
+    renderConfiguration ??
+    studioRenderConfigurationFromSearch('', devicePixelRatio ?? 1)
+  const canvasShadowMode =
+    activeRenderConfiguration.canvasShadows === false
+      ? 'disabled'
+      : activeRenderConfiguration.canvasShadows
+  const dprPolicy = Array.isArray(activeRenderConfiguration.canvasDpr)
+    ? `clamp-${activeRenderConfiguration.canvasDpr[0]}-${activeRenderConfiguration.canvasDpr[1]}`
+    : `fixed-${activeRenderConfiguration.canvasDpr}`
+  const activeRenderSchedulerMode =
+    renderSchedulerModeApplied ?? activeRenderConfiguration.renderScheduleMode
+  const parameters = {
+    bridgeEnvelope: 'P3D1',
+    browserDevicePixelRatio:
+      activeRenderConfiguration.browserDevicePixelRatio,
+    decoderAcceleration: decoderSelection.hardwareAcceleration,
+    decoderAccelerationConfigured: decoderSelection.hardwareAcceleration,
+    decoderBacklogPolicy: backlogPolicy.name,
+    frameAckWindow,
+    decoderMaxFrameAgeMs: backlogPolicy.maxFrameAgeMs,
+    decoderMaxPendingFrames: backlogPolicy.maxPendingFrames,
+    decoderMaxQueueSize: backlogPolicy.maxQueueSize,
+    decoderMode: decoderSelection.mode,
+    decoderModeRequested,
+    decoderModeApplied,
+    browserConfigId,
+    browserConfigGeneration,
+    browserPrepareDurationMs,
+    captureShortEdgeRequested,
+    captureShortEdgeActive,
+    captureWidthActive,
+    captureHeightActive,
+    captureStreamGeneration,
+    thermalStateStart,
+    thermalStateEnd,
+    thermalStateWorstObserved,
+    thermalContaminated,
+    devicePixelRatio: activeRenderConfiguration.browserDevicePixelRatio,
+    encoderProfile,
+    encoderTuning,
+    encoderTuningRequested,
+    producerSessionId,
+    captureSource,
+    h264Codec: 'metadata-derived',
+    h264BitstreamFormatRequested: bitstreamFormat,
+    h264OptimizeForLatency: true,
+    renderAntialias: activeRenderConfiguration.antialias,
+    renderCanvasShadows: canvasShadowMode,
+    renderDevicePixelRatio: activeRenderConfiguration.effectiveDpr,
+    renderDprPolicy: dprPolicy,
+    renderPowerPreference: activeRenderConfiguration.powerPreference,
+    renderPreset: activeRenderConfiguration.preset,
+    renderSchedulerCapHz: activeRenderConfiguration.renderScheduleCapHz,
+    renderSchedulerGeneration,
+    renderSchedulerModeApplied: activeRenderSchedulerMode,
+    renderSchedulerModeRequested:
+      activeRenderConfiguration.renderScheduleMode,
+    renderSchedulerPhaseCreditFrames:
+      activeRenderConfiguration.renderSchedulePhaseCreditFrames,
+    renderSoftShadows: activeRenderConfiguration.softShadows,
+    sourceTargetFps,
+    transportAckPacing: 'phone-raw-tcp-nodelay-p3d1-ack-window1-v4',
+    videoTexture: 'VideoFrameTexture',
+  }
+  return {
+    fingerprint: `rawtcp-nodelay-w${frameAckWindow ?? 'unknown'}-h264-${encoderProfile}-tuning${encoderTuning}-requested${encoderTuningRequested}-${bitstreamFormat}-${decoderModeRequested}-${decoderModeApplied}-${decoderSelection.hardwareAcceleration}-bc${browserConfigId ?? 'manual'}-bg${browserConfigGeneration}-capture${captureShortEdgeRequested ?? 'unknown'}-active${captureShortEdgeActive ?? 'unknown'}-${captureWidthActive ?? 'unknown'}x${captureHeightActive ?? 'unknown'}-generation${captureStreamGeneration ?? 'unknown'}-fps${sourceTargetFps}-q${backlogPolicy.maxQueueSize}-p${backlogPolicy.maxPendingFrames}-a${backlogPolicy.maxFrameAgeMs}-render${activeRenderConfiguration.preset}-dpr${activeRenderConfiguration.effectiveDpr}-aa${activeRenderConfiguration.antialias ? 1 : 0}-shadow${canvasShadowMode}-soft${activeRenderConfiguration.softShadows ? 1 : 0}-schedule${activeRenderConfiguration.renderScheduleMode}-${activeRenderSchedulerMode}-sg${renderSchedulerGeneration}-cap${activeRenderConfiguration.renderScheduleCapHz ?? 'native'}-credit${activeRenderConfiguration.renderSchedulePhaseCreditFrames}-source${captureSource ?? 'unknown'}-session${producerSessionId ?? 'unknown'}`,
+    parameters,
+  }
+}
+
+export function h264DecoderBacklogResetReason(
+  decodeQueueSize: number,
+  pendingFrames: number,
+  oldestPendingFrameAgeMs: number,
+  policy: H264DecoderBacklogPolicy = DEFAULT_H264_DECODER_BACKLOG_POLICY,
+): Exclude<H264DecoderResetReason, 'configuration' | 'error'> | null {
+  if (decodeQueueSize >= policy.maxQueueSize) return 'queue'
+  if (pendingFrames >= policy.maxPendingFrames) return 'pending'
+  if (oldestPendingFrameAgeMs > policy.maxFrameAgeMs) return 'age'
+  return null
+}
+
+export function initialH264DecoderDiagnostics(): H264DecoderDiagnostics {
+  return {
+    resets: 0,
+    errors: 0,
+    resetReasons: {
+      queue: 0,
+      pending: 0,
+      age: 0,
+      configuration: 0,
+      error: 0,
+    },
+    lastResetReason: null,
+  }
+}
+
+export function recordH264DecoderReset(
+  current: H264DecoderDiagnostics,
+  reason: H264DecoderResetReason,
+): H264DecoderDiagnostics {
+  return {
+    resets: current.resets + 1,
+    errors: current.errors + (reason === 'error' ? 1 : 0),
+    resetReasons: {
+      ...current.resetReasons,
+      [reason]: current.resetReasons[reason] + 1,
+    },
+    lastResetReason: reason,
+  }
+}
+
+export function liveFrameErrorAfterSuccessfulDecode(
+  currentError: string | null,
+) {
+  if (
+    currentError === H264_DECODER_REJECTED_ERROR ||
+    currentError === LIVE_FRAME_DECODE_ERROR
+  ) {
+    return null
+  }
+  return currentError
+}
+
+export function nextValidFrameLatencyMs(
+  currentLatencyMs: number | null,
+  decodedAtMs: number,
+  captureAtMacMs: number | null,
+) {
+  if (captureAtMacMs === null) return currentLatencyMs
+  const latencyMs = decodedAtMs - captureAtMacMs
+  return Number.isFinite(latencyMs) && latencyMs >= 0
+    ? latencyMs
+    : currentLatencyMs
 }
 
 const initialStats: LivePhoneStats = {
@@ -141,6 +736,8 @@ const initialStats: LivePhoneStats = {
   poseArrivalGapP95Ms: null,
   renderFps: null,
   codec: null,
+  captureState: null,
+  capturedFrames: 0,
   webRTCCodecMimeType: null,
   webRTCBitrateMbps: null,
   webRTCDecodeMs: null,
@@ -151,6 +748,26 @@ const initialStats: LivePhoneStats = {
   webRTCJitterTargetMs: null,
   webRTCPacketLossPercent: null,
   webRTCRoundTripMs: null,
+}
+
+export function bridgeReconnectDelayMs(attempt: number) {
+  return Math.min(5_000, 250 * 2 ** Math.max(0, attempt))
+}
+
+export function screenStreamIsStale(
+  nowMs: number,
+  lastFrameAtMs: number | null,
+  lastCaptureHeartbeatAtMs: number | null,
+  firstCaptureHeartbeatAtMs: number | null = lastCaptureHeartbeatAtMs,
+) {
+  // Once pixels have arrived, only pixel freshness can prove that the screen
+  // is still moving through the complete pipeline. An encoder heartbeat can
+  // stay healthy while transport, decode, or texture presentation is frozen.
+  if (lastFrameAtMs !== null) return nowMs - lastFrameAtMs > 1_000
+  if (firstCaptureHeartbeatAtMs !== null) {
+    return nowMs - firstCaptureHeartbeatAtMs > 2_500
+  }
+  return false
 }
 
 const initialMeasurement: LiveMeasurementState = {
@@ -189,19 +806,58 @@ function percentile(values: number[], percentileValue: number) {
   return sorted[index]
 }
 
+let cachedBrowserClientId: string | null = null
+const browserClientIdSessionKey = 'phone-3d-ui-studio.browser-client-id'
+
+export interface BrowserClientIdStorage {
+  getItem: (key: string) => string | null
+  setItem: (key: string, value: string) => void
+}
+
+export function browserClientIdForSession(
+  storage: BrowserClientIdStorage,
+  createId: () => string,
+) {
+  try {
+    const stored = storage.getItem(browserClientIdSessionKey)
+    if (stored && stored.length <= 128) return stored
+    const created = createId()
+    storage.setItem(browserClientIdSessionKey, created)
+    return created
+  } catch {
+    return createId()
+  }
+}
+
+function getBrowserClientId() {
+  cachedBrowserClientId ??= browserClientIdForSession(
+    window.sessionStorage,
+    () => window.crypto.randomUUID(),
+  )
+  return cachedBrowserClientId
+}
+
+function browserBridgeUrl(role: string) {
+  const query = new URLSearchParams({ role, clientId: getBrowserClientId() })
+  return `ws://${window.location.hostname}:4319/?${query}`
+}
+
 export function getDefaultBridgeUrl() {
-  return `ws://${window.location.hostname}:4319/?role=browser`
+  return browserBridgeUrl('browser')
 }
 
 export function getPoseBridgeUrl() {
-  return `ws://${window.location.hostname}:4319/?role=browser-pose`
+  return browserBridgeUrl('browser-pose')
 }
 
 export function getWebRTCBridgeUrl() {
-  return `ws://${window.location.hostname}:4319/?role=browser-webrtc`
+  return browserBridgeUrl('browser-webrtc')
 }
 
-export function useLivePhoneSource() {
+export function useLivePhoneSource(
+  renderConfiguration: StudioRenderConfiguration,
+  liveRenderScheduler: LiveRenderScheduler,
+) {
   const socketRef = useRef<WebSocket | null>(null)
   const poseSocketRef = useRef<WebSocket | null>(null)
   const webRTCSignalRef = useRef<WebSocket | null>(null)
@@ -210,6 +866,8 @@ export function useLivePhoneSource() {
   const webRTCFrameRequestRef = useRef<number | null>(null)
   const webRTCStatsTimerRef = useRef<number | null>(null)
   const textureRef = useRef<CanvasTexture | null>(null)
+  const videoFrameTextureRef = useRef<VideoFrameTexture | null>(null)
+  const decodedVideoFrameRef = useRef<VideoFrame | null>(null)
   const videoDecoderRef = useRef<VideoDecoder | null>(null)
   const rawPoseRef = useRef<QuaternionTuple | null>(null)
   const poseHistoryRef = useRef<TimedPoseQuaternion[]>([])
@@ -222,25 +880,78 @@ export function useLivePhoneSource() {
     useRef<PosePresentationMode>('synchronized')
   const liveFrameRenderRef = useRef<LiveFrameRenderSignal | null>(null)
   const lastFrameReceivedRef = useRef<number | null>(null)
+  const lastFrameRenderedRef = useRef<number | null>(null)
+  const lastReceiverStatusSentAtRef = useRef<number | null>(null)
   const lastPoseReceivedRef = useRef<number | null>(null)
+  const lastCaptureHeartbeatRef = useRef<number | null>(null)
+  const firstCaptureHeartbeatRef = useRef<number | null>(null)
+  const shouldReconnectRef = useRef(false)
+  const reconnectAttemptRef = useRef(0)
+  const reconnectTimerRef = useRef<number | null>(null)
+  const connectRef = useRef<() => void>(() => {})
+  const receiverStatusSenderRef = useRef<() => void>(() => {})
+  const h264DecoderSelectionRef = useRef<H264DecoderSelection>(
+    DEFAULT_H264_DECODER_SELECTION,
+  )
+  const h264BitstreamFormatRef = useRef<H264BitstreamFormat>(
+    DEFAULT_H264_BITSTREAM_FORMAT,
+  )
+  const browserDecoderRuntimeRef = useRef<BrowserDecoderRuntimeConfiguration>({
+    browserConfigId: null,
+    generation: 1,
+    requestedMode: DEFAULT_H264_DECODER_SELECTION.mode,
+    appliedMode: DEFAULT_H264_DECODER_SELECTION.mode,
+    configuredAcceleration:
+      DEFAULT_H264_DECODER_SELECTION.hardwareAcceleration,
+    prepareDurationMs: null,
+  })
+  const pendingBrowserPrepareRef = useRef<PendingBrowserPrepare | null>(null)
+  const decodedFrameGenerationRef = useRef(new Map<number, number>())
   const activeMeasurementRef = useRef<ActiveMeasurement | null>(null)
-  const [media, setMedia] = useState<ScreenMedia | null>(null)
-  const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
+  const browserDecoderHealthCountersRef =
+    useRef<BrowserDecoderHealthCounters | null>(null)
+  const encoderMeasurementConfigurationRef =
+    useRef<EncoderMeasurementConfiguration>({
+      targetFps: null,
+      encoderProfile: null,
+      encoderTuningRequested: 'default',
+      encoderTuningActive: null,
+      producerSessionId: null,
+      captureSource: null,
+      captureShortEdgeRequested: null,
+      captureShortEdgeActive: null,
+      captureWidthActive: null,
+      captureHeightActive: null,
+      captureStreamGeneration: null,
+      thermalState: null,
+      frameAckWindow: null,
+    })
+  const [media, commitMedia] = useDeduplicatedState<ScreenMedia | null>(
+    null,
+    sameScreenMedia,
+  )
+  const [orientation, commitOrientation] =
+    useDeduplicatedState<ScreenOrientation>('portrait')
   const [poseReady, setPoseReady] = useState(false)
   const [hasManualLevel, setHasManualLevel] = useState(false)
-  const [screenStale, setScreenStale] = useState(false)
+  const [screenStale, commitScreenStale] = useDeduplicatedState(false)
   const [poseStale, setPoseStale] = useState(false)
   const [posePresentationMode, setPosePresentationModeState] =
     useState<PosePresentationMode>('synchronized')
   const [poseDiagnostics, setPoseDiagnostics] =
     useState<LivePoseDiagnostics | null>(null)
-  const [status, setStatus] = useState<LivePhoneStatus>('idle')
-  const [error, setError] = useState<string | null>(null)
+  const [status, commitStatus] = useDeduplicatedState<LivePhoneStatus>('idle')
+  const [error, commitError, currentErrorRef] =
+    useDeduplicatedState<string | null>(null)
   const [stats, setStats] = useState<LivePhoneStats>(initialStats)
   const [measurement, setMeasurement] =
     useState<LiveMeasurementState>(initialMeasurement)
 
   const releaseResources = useCallback(() => {
+    if (reconnectTimerRef.current !== null) {
+      window.clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
     const socket = socketRef.current
     socketRef.current = null
     if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000)
@@ -273,6 +984,10 @@ export function useLivePhoneSource() {
 
     textureRef.current?.dispose()
     textureRef.current = null
+    videoFrameTextureRef.current?.dispose()
+    videoFrameTextureRef.current = null
+    decodedVideoFrameRef.current?.close()
+    decodedVideoFrameRef.current = null
     if (videoDecoderRef.current?.state !== 'closed') {
       videoDecoderRef.current?.close()
     }
@@ -285,14 +1000,22 @@ export function useLivePhoneSource() {
     previousUltraPoseKinematicsRef.current = null
     liveFrameRenderRef.current = null
     lastFrameReceivedRef.current = null
+    lastFrameRenderedRef.current = null
+    pendingBrowserPrepareRef.current = null
+    decodedFrameGenerationRef.current.clear()
+    browserDecoderHealthCountersRef.current = null
+    lastReceiverStatusSentAtRef.current = null
     lastPoseReceivedRef.current = null
+    lastCaptureHeartbeatRef.current = null
+    firstCaptureHeartbeatRef.current = null
+    receiverStatusSenderRef.current = () => {}
   }, [])
 
-  const finishMeasurement = useCallback(() => {
+  const finalizeMeasurement = useCallback((publishBenchmarkReport: boolean) => {
     const active = activeMeasurementRef.current
     if (!active) return
     activeMeasurementRef.current = null
-    const endedAtMs = Date.now()
+    const endedAtMs = highResolutionEpochNowMs()
     const frames = [...active.frames.values()]
     const report = buildLiveMeasurementReport(
       active.startedAtMs,
@@ -301,7 +1024,33 @@ export function useLivePhoneSource() {
       active.poses,
       active.poseRenders,
       active.droppedBeforeDecode,
+      {
+        runId: active.runId ?? undefined,
+        configuration: active.configuration,
+        decoderHealth: summarizeBrowserDecoderHealth(
+          active.decoderHealthStarted,
+          browserDecoderHealthCountersRef.current,
+        ),
+        renderScheduler: summarizeLiveRenderSchedulerRun(
+          active.renderSchedulerStarted,
+          liveRenderScheduler.snapshot(),
+        ),
+      },
     )
+    const reportSocket = poseSocketRef.current
+    if (
+      publishBenchmarkReport &&
+      active.runId &&
+      reportSocket?.readyState === WebSocket.OPEN
+    ) {
+      reportSocket.send(
+        JSON.stringify({
+          type: 'browser-benchmark-report',
+          runId: active.runId,
+          report,
+        }),
+      )
+    }
     setMeasurement({
       status: 'complete',
       elapsedMs: endedAtMs - active.startedAtMs,
@@ -311,16 +1060,127 @@ export function useLivePhoneSource() {
       poseRenderSamples: active.poseRenders.length,
       report,
     })
+  }, [liveRenderScheduler])
+
+  const cancelMeasurement = useCallback((reason: string, notifyBridge = true) => {
+    const active = activeMeasurementRef.current
+    if (!active) return
+    activeMeasurementRef.current = null
+    const reportSocket = poseSocketRef.current
+    if (
+      notifyBridge &&
+      active.runId &&
+      reportSocket?.readyState === WebSocket.OPEN
+    ) {
+      reportSocket.send(
+        JSON.stringify({
+          type: 'browser-benchmark-cancel',
+          runId: active.runId,
+          reason,
+        }),
+      )
+    }
+    setMeasurement(initialMeasurement)
   }, [])
 
-  const startMeasurement = useCallback(() => {
-    const startedAtMs = Date.now()
+  const finishMeasurement = useCallback(() => {
+    if (activeMeasurementRef.current?.runId) {
+      cancelMeasurement('manual-stop')
+      return
+    }
+    finalizeMeasurement(false)
+  }, [cancelMeasurement, finalizeMeasurement])
+
+  const completeBenchmarkMeasurement = useCallback(
+    (runId: string) => {
+      if (activeMeasurementRef.current?.runId !== runId) return
+      finalizeMeasurement(true)
+    },
+    [finalizeMeasurement],
+  )
+
+  const startMeasurement = useCallback((
+    runId?: string,
+    sourceTargetFps?: number,
+    encoderProfile?: 'legacy' | 'low-latency',
+    encoderTuningRequested?: EncoderTuning,
+    encoderTuningActive?: EncoderTuning,
+    producerSessionId?: string | null,
+    captureSource?: CaptureSource | null,
+    captureShortEdgeRequested?: number | null,
+    captureShortEdgeActive?: number | null,
+    captureWidthActive?: number | null,
+    captureHeightActive?: number | null,
+    captureStreamGeneration?: number | null,
+    thermalStateStart?: ThermalState | null,
+  ) => {
+    if (runId && activeMeasurementRef.current?.runId === runId) return
+    const startedAtMs = highResolutionEpochNowMs()
+    const latestEncoderConfiguration = encoderMeasurementConfigurationRef.current
+    const browserConfiguration = browserDecoderRuntimeRef.current
+    const renderScheduler = liveRenderScheduler.snapshot()
     activeMeasurementRef.current = {
       startedAtMs,
+      runId: runId ?? null,
+      configuration: buildH264MeasurementConfiguration({
+        decoderSelection: h264DecoderSelectionRef.current,
+        bitstreamFormat: h264BitstreamFormatRef.current,
+        renderConfiguration,
+        renderSchedulerModeApplied: renderScheduler.mode,
+        renderSchedulerGeneration: renderScheduler.generation,
+        browserConfigId: browserConfiguration.browserConfigId,
+        browserConfigGeneration: browserConfiguration.generation,
+        browserPrepareDurationMs: browserConfiguration.prepareDurationMs,
+        decoderModeRequested: browserConfiguration.requestedMode,
+        decoderModeApplied: browserConfiguration.appliedMode,
+        frameAckWindow: latestEncoderConfiguration.frameAckWindow,
+        sourceTargetFps:
+          sourceTargetFps ?? latestEncoderConfiguration.targetFps ?? 30,
+        encoderProfile:
+          encoderProfile ??
+          latestEncoderConfiguration.encoderProfile ??
+          'low-latency',
+        encoderTuning:
+          encoderTuningActive ??
+          latestEncoderConfiguration.encoderTuningActive ??
+          encoderTuningRequested ??
+          latestEncoderConfiguration.encoderTuningRequested,
+        encoderTuningRequested:
+          encoderTuningRequested ??
+          latestEncoderConfiguration.encoderTuningRequested,
+        producerSessionId:
+          producerSessionId ?? latestEncoderConfiguration.producerSessionId,
+        captureSource: captureSource ?? latestEncoderConfiguration.captureSource,
+        captureShortEdgeRequested:
+          captureShortEdgeRequested ??
+          latestEncoderConfiguration.captureShortEdgeRequested,
+        captureShortEdgeActive:
+          captureShortEdgeActive ??
+          latestEncoderConfiguration.captureShortEdgeActive,
+        captureWidthActive:
+          captureWidthActive ?? latestEncoderConfiguration.captureWidthActive,
+        captureHeightActive:
+          captureHeightActive ?? latestEncoderConfiguration.captureHeightActive,
+        captureStreamGeneration:
+          captureStreamGeneration ??
+          latestEncoderConfiguration.captureStreamGeneration,
+        thermalStateStart:
+          thermalStateStart ?? latestEncoderConfiguration.thermalState,
+        thermalStateWorstObserved:
+          thermalStateStart ?? latestEncoderConfiguration.thermalState,
+      }),
       frames: new Map(),
       poses: [],
       poseRenders: [],
       droppedBeforeDecode: 0,
+      // Automated runs start only after the browser prepare ACK. Snapshotting
+      // here excludes deliberate decoder teardown/warm-up from the run delta.
+      decoderHealthStarted: browserDecoderHealthCountersRef.current
+        ? snapshotBrowserDecoderHealthCounters(
+            browserDecoderHealthCountersRef.current,
+          )
+        : null,
+      renderSchedulerStarted: renderScheduler,
     }
     setMeasurement({
       status: 'running',
@@ -331,7 +1191,7 @@ export function useLivePhoneSource() {
       poseRenderSamples: 0,
       report: null,
     })
-  }, [])
+  }, [liveRenderScheduler, renderConfiguration])
 
   const downloadMeasurementReport = useCallback(() => {
     if (!measurement.report) return
@@ -347,26 +1207,83 @@ export function useLivePhoneSource() {
   }, [measurement.report])
 
   const markFrameRendered = useCallback(
-    (frameId: number, renderedAtMs = Date.now()) => {
+    (
+      frameId: number,
+      schedulerGeneration: number,
+      renderRequestedAtMs: number,
+      r3fFrameObservedAtMs: number,
+      renderedAtMs = highResolutionEpochNowMs(),
+    ) => {
+      if (schedulerGeneration !== liveRenderScheduler.generation) return
+      lastFrameRenderedRef.current = renderedAtMs
+      const renderedGeneration = decodedFrameGenerationRef.current.get(frameId)
+      decodedFrameGenerationRef.current.delete(frameId)
+      const pendingPrepare = pendingBrowserPrepareRef.current
+      const prepareAck = browserPrepareReadyAck(
+        pendingPrepare,
+        browserDecoderRuntimeRef.current,
+        frameId,
+        renderedGeneration,
+        renderedAtMs,
+      )
+      if (prepareAck) {
+        const reportSocket = poseSocketRef.current
+        if (reportSocket?.readyState === WebSocket.OPEN) {
+          browserDecoderRuntimeRef.current.prepareDurationMs =
+            prepareAck.prepareDurationMs
+          reportSocket.send(JSON.stringify(prepareAck))
+          pendingBrowserPrepareRef.current = null
+          receiverStatusSenderRef.current()
+        }
+      }
       const frame = activeMeasurementRef.current?.frames.get(frameId)
-      if (frame && frame.renderedAtMs === null) frame.renderedAtMs = renderedAtMs
+      if (!frame) return
+      if (frame.renderSchedulerGeneration == null) {
+        frame.renderSchedulerGeneration = schedulerGeneration
+      }
+      if (frame.renderRequestedAtMs == null) {
+        frame.renderRequestedAtMs = renderRequestedAtMs
+      }
+      if (frame.r3fFrameObservedAtMs == null) {
+        frame.r3fFrameObservedAtMs = r3fFrameObservedAtMs
+      }
+      if (frame.renderedAtMs === null) frame.renderedAtMs = renderedAtMs
+    },
+    [liveRenderScheduler],
+  )
+
+  const markTextureUploadCompleted = useCallback(
+    (frameId: number, uploadedAtMs = highResolutionEpochNowMs()) => {
+      const frame = activeMeasurementRef.current?.frames.get(frameId)
+      if (frame && frame.textureUploadCompletedAtMs == null) {
+        frame.textureUploadCompletedAtMs = uploadedAtMs
+      }
     },
     [],
   )
 
   const disconnect = useCallback(() => {
-    finishMeasurement()
+    shouldReconnectRef.current = false
+    reconnectAttemptRef.current = 0
+    cancelMeasurement('disconnect')
     releaseResources()
-    setMedia(null)
+    commitMedia(null)
     setPoseReady(false)
     setHasManualLevel(false)
-    setScreenStale(false)
+    commitScreenStale(false)
     setPoseStale(false)
     setPoseDiagnostics(null)
-    setStatus('idle')
-    setError(null)
+    commitStatus('idle')
+    commitError(null)
     setStats(initialStats)
-  }, [finishMeasurement, releaseResources])
+  }, [
+    cancelMeasurement,
+    commitError,
+    commitMedia,
+    commitScreenStale,
+    commitStatus,
+    releaseResources,
+  ])
 
   const calibratePose = useCallback(() => {
     const rawPose = rawPoseRef.current
@@ -374,7 +1291,7 @@ export function useLivePhoneSource() {
 
     zeroPoseRef.current = rawPose
     poseRef.current = {
-      timestampMs: Date.now(),
+      timestampMs: highResolutionEpochNowMs(),
       quaternion: STANDARD_TABLETOP_QUATERNION,
     }
     ultraPoseKinematicsRef.current = null
@@ -382,7 +1299,7 @@ export function useLivePhoneSource() {
     setPoseDiagnostics({
       latestSensorRelative: [0, 0, 0, 1],
       targetQuaternion: STANDARD_TABLETOP_QUATERNION,
-      sampledAtMs: Date.now(),
+      sampledAtMs: highResolutionEpochNowMs(),
     })
     setHasManualLevel(true)
   }, [])
@@ -423,6 +1340,17 @@ export function useLivePhoneSource() {
     [],
   )
 
+  const sendH264OutputFormat = useCallback(() => {
+    const socket = poseSocketRef.current
+    if (!socket || socket.readyState !== WebSocket.OPEN) return
+    socket.send(
+      JSON.stringify({
+        type: 'h264-output-format',
+        format: h264BitstreamFormatRef.current,
+      }),
+    )
+  }, [])
+
   const setPosePresentationMode = useCallback(
     (mode: PosePresentationMode) => {
       posePresentationModeRef.current = mode
@@ -443,7 +1371,7 @@ export function useLivePhoneSource() {
       const reference = zeroPoseRef.current
       if (!usesVideoAlignedPose(mode) && rawPose && reference) {
         poseRef.current = {
-          timestampMs: Date.now(),
+          timestampMs: highResolutionEpochNowMs(),
           quaternion: tabletopQuaternion(reference, rawPose),
         }
       }
@@ -452,17 +1380,40 @@ export function useLivePhoneSource() {
   )
 
   const connect = useCallback(() => {
-    finishMeasurement()
+    shouldReconnectRef.current = true
+    cancelMeasurement('reconnect')
     releaseResources()
-    setMedia(null)
+    commitMedia(null)
     setPoseReady(false)
     setHasManualLevel(false)
-    setScreenStale(false)
+    commitScreenStale(false)
     setPoseStale(false)
     setPoseDiagnostics(null)
-    setStatus('connecting')
-    setError(null)
+    commitStatus('connecting')
+    commitError(null)
     setStats(initialStats)
+
+    let h264DecoderSelection = h264DecoderSelectionFromSearch(
+      window.location.search,
+    )
+    h264DecoderSelectionRef.current = h264DecoderSelection
+    browserDecoderRuntimeRef.current = {
+      browserConfigId: null,
+      generation: browserDecoderRuntimeRef.current.generation,
+      requestedMode: h264DecoderSelection.mode,
+      appliedMode: h264DecoderSelection.mode,
+      configuredAcceleration: h264DecoderSelection.hardwareAcceleration,
+      prepareDurationMs: null,
+    }
+    const requestedH264BitstreamFormat = h264BitstreamFormatFromSearch(
+      window.location.search,
+    )
+    h264BitstreamFormatRef.current = requestedH264BitstreamFormat
+    let decoderBacklogPolicy = h264DecoderBacklogPolicy(
+      h264DecoderSelection,
+      requestedH264BitstreamFormat,
+      encoderMeasurementConfigurationRef.current.frameAckWindow,
+    )
 
     const canvas = document.createElement('canvas')
     canvas.width = 1
@@ -470,8 +1421,8 @@ export function useLivePhoneSource() {
     const context = canvas.getContext('2d', { alpha: false })
 
     if (!context) {
-      setStatus('error')
-      setError('This browser could not create the live screen canvas.')
+      commitStatus('error')
+      commitError('This browser could not create the live screen canvas.')
       return
     }
 
@@ -481,6 +1432,32 @@ export function useLivePhoneSource() {
     texture.magFilter = LinearFilter
     texture.generateMipmaps = false
     textureRef.current = texture
+    let pendingVideoFrameUpload: PendingTextureUpload<VideoFrame> | null = null
+    const videoFrameTexture = new VideoFrameTexture()
+    videoFrameTexture.colorSpace = SRGBColorSpace
+    videoFrameTexture.minFilter = LinearFilter
+    videoFrameTexture.magFilter = LinearFilter
+    videoFrameTexture.generateMipmaps = false
+    videoFrameTexture.onUpdate = () => {
+      const uploadedFrame = decodedVideoFrameRef.current
+      if (uploadedFrame && videoFrameTexture.image === uploadedFrame) {
+        const uploadedFrameId = currentTextureUploadFrameId(
+          pendingVideoFrameUpload,
+          uploadedFrame,
+          videoFrameTexture.image,
+        )
+        if (uploadedFrameId !== null) {
+          markTextureUploadCompleted(
+            uploadedFrameId,
+            highResolutionEpochNowMs(),
+          )
+        }
+        pendingVideoFrameUpload = null
+        uploadedFrame.close()
+        decodedVideoFrameRef.current = null
+      }
+    }
+    videoFrameTextureRef.current = videoFrameTexture
 
     const socket = new WebSocket(getDefaultBridgeUrl())
     socket.binaryType = 'arraybuffer'
@@ -513,6 +1490,7 @@ export function useLivePhoneSource() {
     let decodingFrame = false
     let frames = 0
     let lastFrameUiUpdate = 0
+    let latestValidFrameLatencyMs: number | null = null
     let lastPoseUiUpdate = 0
     let webRTCFrames = 0
     let previousWebRTCStats: WebRTCReceiverSample | null = null
@@ -520,8 +1498,30 @@ export function useLivePhoneSource() {
     let webRTCPhonePresent = false
     let offeredForCurrentWebRTCPhone = false
     let makingWebRTCOffer = false
+    let activeWebRTCSessionId: string | null = null
     const h264Frames = new Map<number, PendingFrame>()
-    let awaitingH264Keyframe = false
+    let h264DecoderDiagnostics = initialH264DecoderDiagnostics()
+    let activeH264DecoderCodec: string | null = null
+    let activeH264BitstreamFormat: H264BitstreamFormat | null = null
+    let activeH264DecoderConfigurationKey: string | null = null
+    let latestH264DecoderDescriptionBase64: string | null = null
+    let h264FormatMismatchDrops = 0
+    const publishBrowserDecoderHealthCounters = () => {
+      if (socketRef.current !== socket) return
+      browserDecoderHealthCountersRef.current =
+        snapshotBrowserDecoderHealthCounters({
+          resets: h264DecoderDiagnostics.resets,
+          errors: h264DecoderDiagnostics.errors,
+          resetReasons: h264DecoderDiagnostics.resetReasons,
+          formatMismatchDrops: h264FormatMismatchDrops,
+        })
+    }
+    publishBrowserDecoderHealthCounters()
+    let lastH264FormatCorrectionAtMs = 0
+    // A browser reconnect can join the persistent phone encoder between
+    // keyframes. Never feed an undecodable delta frame into a fresh decoder;
+    // wait for the keyframe requested when the frame socket opens.
+    let awaitingH264Keyframe = true
     let lastKeyframeRequestAtMs = 0
     let webRTCEstimatedPipelineMs: number | null = null
     let poseSyncMode: PoseSyncMode = 'live'
@@ -534,6 +1534,23 @@ export function useLivePhoneSource() {
     let poseRequestedHz: number | null = null
     let poseArrivalGapP95Ms: number | null = null
     let posePredictionCorrectionDegrees: number | null = null
+
+    const scheduleReconnect = () => {
+      if (
+        !shouldReconnectRef.current ||
+        reconnectTimerRef.current !== null
+      ) {
+        return
+      }
+      const delay = bridgeReconnectDelayMs(reconnectAttemptRef.current)
+      reconnectAttemptRef.current += 1
+      commitStatus('connecting')
+      commitError(null)
+      reconnectTimerRef.current = window.setTimeout(() => {
+        reconnectTimerRef.current = null
+        if (shouldReconnectRef.current) connectRef.current()
+      }, delay)
+    }
 
     const applyPoseAt = (
       targetTimestampMs: number,
@@ -587,16 +1604,8 @@ export function useLivePhoneSource() {
       )
     }
 
-    const h264DecoderConfig: VideoDecoderConfig = {
-      // The 960 x 2088 low-latency stream is explicitly encoded as Baseline
-      // profile, constraint byte 0, Level 4.1 so Chrome can use hardware decode.
-      codec: 'avc1.420029',
-      optimizeForLatency: true,
-      hardwareAcceleration: 'prefer-hardware',
-    }
-
     const requestKeyframe = () => {
-      const now = Date.now()
+      const now = highResolutionEpochNowMs()
       if (now - lastKeyframeRequestAtMs < 500) return
       lastKeyframeRequestAtMs = now
       if (socket.readyState === WebSocket.OPEN) {
@@ -604,54 +1613,333 @@ export function useLivePhoneSource() {
       }
     }
 
+    const h264DecoderDiagnosticSnapshot = () => ({
+      browserConfigId: browserDecoderRuntimeRef.current.browserConfigId,
+      browserConfigGeneration: browserDecoderRuntimeRef.current.generation,
+      decoderModeRequested:
+        browserDecoderRuntimeRef.current.requestedMode,
+      decoderModeApplied: browserDecoderRuntimeRef.current.appliedMode,
+      decoderAccelerationConfigured:
+        browserDecoderRuntimeRef.current.configuredAcceleration,
+      browserPrepareDurationMs:
+        browserDecoderRuntimeRef.current.prepareDurationMs,
+      decoderMode: h264DecoderSelection.mode,
+      decoderAcceleration: h264DecoderSelection.hardwareAcceleration,
+      decoderCodec: activeH264DecoderCodec,
+      decoderBitstreamFormatRequested: requestedH264BitstreamFormat,
+      decoderBitstreamFormatActive: activeH264BitstreamFormat,
+      decoderFormatMismatchDrops: h264FormatMismatchDrops,
+      decoderBacklogPolicy: decoderBacklogPolicy.name,
+      decoderMaxQueueSize: decoderBacklogPolicy.maxQueueSize,
+      decoderMaxPendingFrames: decoderBacklogPolicy.maxPendingFrames,
+      decoderMaxFrameAgeMs: decoderBacklogPolicy.maxFrameAgeMs,
+      decoderResets: h264DecoderDiagnostics.resets,
+      decoderErrors: h264DecoderDiagnostics.errors,
+      decoderResetReasons: { ...h264DecoderDiagnostics.resetReasons },
+      decoderLastResetReason: h264DecoderDiagnostics.lastResetReason,
+      decoderDecodeQueueSize:
+        videoDecoderRef.current?.state === 'configured'
+          ? videoDecoderRef.current.decodeQueueSize
+          : 0,
+      decoderPendingFrames: h264Frames.size,
+      decoderAwaitingKeyframe: awaitingH264Keyframe,
+    })
+
+    const sendH264ReceiverStatus = (encoderTimestampMs?: number) => {
+      if (
+        poseSocketRef.current !== poseSocket ||
+        poseSocket.readyState !== WebSocket.OPEN
+      ) {
+        return
+      }
+      const receiverStatusAtMs = highResolutionEpochNowMs()
+      poseSocket.send(
+        JSON.stringify({
+          type: 'browser-receiver-status',
+          receiverKind: 'h264-webcodecs',
+          timestampMs: receiverStatusAtMs,
+          encoderTimestampMs,
+          visibilityState: document.visibilityState,
+          hasFocus: document.hasFocus(),
+          lastFrameReceivedAtMs: lastFrameReceivedRef.current,
+          lastFrameAgeMs:
+            lastFrameReceivedRef.current === null
+              ? null
+              : receiverStatusAtMs - lastFrameReceivedRef.current,
+          lastFrameRenderedAtMs: lastFrameRenderedRef.current,
+          lastRenderAgeMs:
+            lastFrameRenderedRef.current === null
+              ? null
+              : receiverStatusAtMs - lastFrameRenderedRef.current,
+          screenStale: screenStreamIsStale(
+            receiverStatusAtMs,
+            lastFrameReceivedRef.current,
+            lastCaptureHeartbeatRef.current,
+            firstCaptureHeartbeatRef.current,
+          ),
+          ...h264DecoderDiagnosticSnapshot(),
+        }),
+      )
+      lastReceiverStatusSentAtRef.current = receiverStatusAtMs
+    }
+    receiverStatusSenderRef.current = () => sendH264ReceiverStatus()
+
+    const failPendingBrowserPrepare = (reason: string) => {
+      const pendingPrepare = pendingBrowserPrepareRef.current
+      if (!pendingPrepare) return
+      const reportSocket = poseSocketRef.current
+      if (reportSocket?.readyState === WebSocket.OPEN) {
+        reportSocket.send(
+          JSON.stringify({
+            type: 'browser-benchmark-prepare-ack',
+            status: 'failed',
+            runId: pendingPrepare.runId,
+            browserConfigId: pendingPrepare.browserConfigId,
+            browserConfigGeneration: pendingPrepare.generation,
+            decoderModeRequested: pendingPrepare.decoderMode,
+            decoderModeApplied: browserDecoderRuntimeRef.current.appliedMode,
+            decoderAccelerationConfigured:
+              browserDecoderRuntimeRef.current.configuredAcceleration,
+            renderedFrameId: null,
+            preparedAtMs: highResolutionEpochNowMs(),
+            reason,
+          }),
+        )
+      }
+      pendingBrowserPrepareRef.current = null
+    }
+
+    const applyBrowserBenchmarkPrepare = (
+      message: BrowserBenchmarkPrepareMessage,
+    ) => {
+      const pendingPrepare = pendingBrowserPrepareRef.current
+      if (
+        pendingPrepare?.runId === message.runId &&
+        pendingPrepare.browserConfigId === message.browserConfigId &&
+        pendingPrepare.generation === message.browserConfigGeneration
+      ) {
+        return
+      }
+      if (
+        !pendingPrepare &&
+        browserDecoderRuntimeRef.current.browserConfigId ===
+          message.browserConfigId &&
+        browserDecoderRuntimeRef.current.generation ===
+          message.browserConfigGeneration
+      ) {
+        return
+      }
+      if (pendingPrepare) failPendingBrowserPrepare('prepare-superseded')
+      if (
+        activeMeasurementRef.current?.runId
+      ) {
+        pendingBrowserPrepareRef.current = {
+          runId: message.runId,
+          browserConfigId: message.browserConfigId,
+          generation: message.browserConfigGeneration,
+          decoderMode: message.decoderMode,
+          decoderAcceleration: message.decoderAcceleration,
+          requestedAtMs: message.requestedAtMs,
+        }
+        failPendingBrowserPrepare('measurement-already-running')
+        return
+      }
+      const expectedAcceleration = h264DecoderSelectionFromSearch(
+        `?decoder=${message.decoderMode}`,
+      ).hardwareAcceleration
+      if (message.decoderAcceleration !== expectedAcceleration) {
+        pendingBrowserPrepareRef.current = {
+          runId: message.runId,
+          browserConfigId: message.browserConfigId,
+          generation: message.browserConfigGeneration,
+          decoderMode: message.decoderMode,
+          decoderAcceleration: message.decoderAcceleration,
+          requestedAtMs: message.requestedAtMs,
+        }
+        failPendingBrowserPrepare('decoder-acceleration-contract-mismatch')
+        return
+      }
+
+      if (
+        message.browserConfigGeneration !==
+        browserDecoderRuntimeRef.current.generation + 1
+      ) {
+        pendingBrowserPrepareRef.current = {
+          runId: message.runId,
+          browserConfigId: message.browserConfigId,
+          generation: message.browserConfigGeneration,
+          decoderMode: message.decoderMode,
+          decoderAcceleration: message.decoderAcceleration,
+          requestedAtMs: message.requestedAtMs,
+        }
+        failPendingBrowserPrepare('decoder-generation-mismatch')
+        return
+      }
+
+      const generation = message.browserConfigGeneration
+      pendingBrowserPrepareRef.current = {
+        runId: message.runId,
+        browserConfigId: message.browserConfigId,
+        generation,
+        decoderMode: message.decoderMode,
+        decoderAcceleration: message.decoderAcceleration,
+        requestedAtMs: message.requestedAtMs,
+      }
+      const nextSelection: H264DecoderSelection = {
+        mode: message.decoderMode,
+        hardwareAcceleration: message.decoderAcceleration,
+      }
+      h264DecoderSelection = nextSelection
+      h264DecoderSelectionRef.current = nextSelection
+      decoderBacklogPolicy = h264DecoderBacklogPolicy(
+        nextSelection,
+        requestedH264BitstreamFormat,
+        encoderMeasurementConfigurationRef.current.frameAckWindow,
+      )
+      browserDecoderRuntimeRef.current = {
+        browserConfigId: message.browserConfigId,
+        generation,
+        requestedMode: message.decoderMode,
+        appliedMode: message.decoderMode,
+        configuredAcceleration: message.decoderAcceleration,
+        prepareDurationMs: null,
+      }
+
+      const decoder = videoDecoderRef.current
+      if (decoder?.state !== 'closed') decoder?.close()
+      videoDecoderRef.current = null
+      h264Frames.clear()
+      pendingFrame = null
+      pendingVideoFrameUpload = null
+      decodedFrameGenerationRef.current.clear()
+      activeH264DecoderCodec = null
+      activeH264BitstreamFormat = null
+      activeH264DecoderConfigurationKey = null
+      latestH264DecoderDescriptionBase64 = null
+      awaitingH264Keyframe = true
+      lastKeyframeRequestAtMs = 0
+      requestKeyframe()
+      sendH264ReceiverStatus()
+    }
+
+    const recoverFromH264DecoderError = (
+      failedDecoder: VideoDecoder | null,
+    ) => {
+      if (
+        socketRef.current !== socket ||
+        (videoDecoderRef.current && videoDecoderRef.current !== failedDecoder)
+      ) {
+        return
+      }
+
+      h264DecoderDiagnostics = recordH264DecoderReset(
+        h264DecoderDiagnostics,
+        'error',
+      )
+      publishBrowserDecoderHealthCounters()
+      const active = activeMeasurementRef.current
+      if (active) active.droppedBeforeDecode += h264Frames.size
+      h264Frames.clear()
+      awaitingH264Keyframe = true
+      activeH264DecoderCodec = null
+      activeH264BitstreamFormat = null
+      activeH264DecoderConfigurationKey = null
+      latestH264DecoderDescriptionBase64 = null
+      if (failedDecoder?.state !== 'closed') {
+        try {
+          failedDecoder?.close()
+        } catch {
+          // The decoder can transition to closed immediately before recovery.
+        }
+      }
+      videoDecoderRef.current = null
+      failPendingBrowserPrepare('decoder-error')
+      requestKeyframe()
+      commitStatus('error')
+      commitError(H264_DECODER_REJECTED_ERROR)
+    }
+
     const commitDecodedFrame = (
       frame: PendingFrame,
       width: number,
       height: number,
       decodedAtMs: number,
+      screenTexture: Texture = texture,
     ) => {
-      texture.needsUpdate = true
+      // VideoFrameTexture.setFrame() already marks its source for upload. The
+      // canvas JPEG fallback still needs the explicit update signal here.
+      if (screenTexture !== videoFrameTexture) screenTexture.needsUpdate = true
       frames += 1
-      const captureAtMacMs = frame.metadata
+      const rawCaptureAtMacMs =
+        frame.metadata && frame.metadata.captureTimestampValid === true
         ? phoneTimeOnMac(
             frame.metadata.captureAtMs,
             frame.metadata.clockOffsetMs,
           )
         : null
+      const callbackAtMacMs = frame.metadata
+        ? phoneTimeOnMac(
+            frame.metadata.callbackAtMs,
+            frame.metadata.clockOffsetMs,
+          )
+        : null
+      const captureAtMacMs = frame.metadata
+        ? conservativeCaptureAtMacMs({
+            captureAtMacMs: rawCaptureAtMacMs,
+            callbackAtMacMs,
+            captureTimestampSource: frame.metadata.captureTimestampSource,
+            captureTimestampValid: frame.metadata.captureTimestampValid,
+            captureContentStatus: frame.metadata.captureContentStatus,
+            freshContent: frame.metadata.freshContent,
+          })
+        : null
       const synchronizedPose = applyPoseForPresentedFrame(
         captureAtMacMs,
         decodedAtMs,
       )
+      latestValidFrameLatencyMs = nextValidFrameLatencyMs(
+        latestValidFrameLatencyMs,
+        decodedAtMs,
+        captureAtMacMs,
+      )
 
       if (frame.metadata) {
+        const schedulerGeneration = liveRenderScheduler.generation
+        const renderRequestedAtMs = decodedAtMs
         const sample = activeMeasurementRef.current?.frames.get(
           frame.metadata.frameId,
         )
         if (sample) {
           sample.decodedAtMs = decodedAtMs
+          sample.renderRequestedAtMs = renderRequestedAtMs
+          sample.renderSchedulerGeneration = schedulerGeneration
           sample.poseScreenSkewMs = synchronizedPose?.nearestSampleDeltaMs ?? null
         }
-        liveFrameRenderRef.current = { frameId: frame.metadata.frameId }
+        liveFrameRenderRef.current = {
+          frameId: frame.metadata.frameId,
+          schedulerGeneration,
+          renderRequestedAtMs,
+          texture: screenTexture,
+        }
+        liveRenderScheduler.request({
+          cause: 'video',
+          generation: schedulerGeneration,
+          frameId: frame.metadata.frameId,
+        })
       }
 
-      setMedia((current) => {
-        if (
-          current?.kind === 'texture' &&
-          current.width === width &&
-          current.height === height
-        ) {
-          return current
-        }
-
-        return {
-          kind: 'texture',
-          name: 'Live iPhone screen',
-          texture,
-          width,
-          height,
-        }
+      commitMedia({
+        kind: 'texture',
+        name: 'Live iPhone screen',
+        texture: screenTexture,
+        width,
+        height,
       })
-      setStatus('ready')
+      commitStatus('ready')
+      // Decoder failures are recoverable: a newly decoded frame proves that
+      // reconfiguration/keyframe recovery succeeded. Preserve unrelated
+      // connectivity or negotiation errors until their own subsystem recovers.
+      commitError(liveFrameErrorAfterSuccessfulDecode(currentErrorRef.current))
 
       const now = performance.now()
       if (now - lastFrameUiUpdate > 200) {
@@ -660,10 +1948,7 @@ export function useLivePhoneSource() {
           ...current,
           frames,
           codec: frame.metadata?.codec ?? current.codec,
-          frameLatencyMs:
-            captureAtMacMs === null
-              ? null
-              : Math.max(0, decodedAtMs - captureAtMacMs),
+          frameLatencyMs: latestValidFrameLatencyMs,
           poseSyncDelayMs,
           poseSyncErrorMs,
           poseSyncMode,
@@ -671,13 +1956,47 @@ export function useLivePhoneSource() {
       }
     }
 
-    const ensureH264Decoder = () => {
+    const ensureH264Decoder = (
+      codec: string,
+      bitstreamFormat: H264BitstreamFormat,
+      descriptionBase64: string | null,
+    ) => {
+      const configuration = buildH264DecoderConfig(
+        codec,
+        h264DecoderSelection,
+        bitstreamFormat,
+        descriptionBase64,
+      )
+      if (!configuration) return null
+      const configurationKey = h264DecoderConfigurationKey(
+        codec,
+        bitstreamFormat,
+        descriptionBase64,
+        h264DecoderSelection,
+        browserDecoderRuntimeRef.current.generation,
+      )
       const currentDecoder = videoDecoderRef.current
-      if (currentDecoder && currentDecoder.state !== 'closed') {
+      if (
+        currentDecoder &&
+        currentDecoder.state !== 'closed' &&
+        activeH264DecoderConfigurationKey === configurationKey
+      ) {
         return currentDecoder
       }
       if (typeof VideoDecoder === 'undefined') return null
 
+      if (currentDecoder && currentDecoder.state !== 'closed') {
+        h264DecoderDiagnostics = recordH264DecoderReset(
+          h264DecoderDiagnostics,
+          'configuration',
+        )
+        publishBrowserDecoderHealthCounters()
+        currentDecoder.close()
+      }
+      videoDecoderRef.current = null
+      h264Frames.clear()
+
+      const decoderGeneration = browserDecoderRuntimeRef.current.generation
       const decoder = new VideoDecoder({
         output: (videoFrame) => {
           const frameId = Number(videoFrame.timestamp)
@@ -690,20 +2009,35 @@ export function useLivePhoneSource() {
 
           const width = videoFrame.displayWidth
           const height = videoFrame.displayHeight
-          if (canvas.width !== width || canvas.height !== height) {
-            canvas.width = width
-            canvas.height = height
+          decodedVideoFrameRef.current?.close()
+          decodedVideoFrameRef.current = videoFrame
+          decodedFrameGenerationRef.current.clear()
+          decodedFrameGenerationRef.current.set(frameId, decoderGeneration)
+          pendingVideoFrameUpload = {
+            frameId,
+            source: videoFrame,
           }
-          context.drawImage(videoFrame, 0, 0, width, height)
-          videoFrame.close()
-          commitDecodedFrame(frame, width, height, Date.now())
+          videoFrameTexture.setFrame(videoFrame)
+          commitDecodedFrame(
+            frame,
+            width,
+            height,
+            highResolutionEpochNowMs(),
+            videoFrameTexture,
+          )
         },
-        error: () => {
-          setStatus('error')
-          setError('The browser H.264 decoder rejected the live stream.')
-        },
+        error: () => recoverFromH264DecoderError(decoder),
       })
-      decoder.configure(h264DecoderConfig)
+      try {
+        decoder.configure(configuration)
+      } catch (error) {
+        decoder.close()
+        failPendingBrowserPrepare('decoder-configure-failed')
+        throw error
+      }
+      activeH264DecoderCodec = codec
+      activeH264BitstreamFormat = bitstreamFormat
+      activeH264DecoderConfigurationKey = configurationKey
       videoDecoderRef.current = decoder
       return decoder
     }
@@ -713,41 +2047,118 @@ export function useLivePhoneSource() {
       decodingFrame = true
       const frame = pendingFrame
       pendingFrame = null
+      const decoderErrorsBeforeFrame = h264DecoderDiagnostics.errors
 
       try {
         if (frame.metadata?.codec === 'h264') {
-          const decoder = ensureH264Decoder()
-          if (!decoder) {
-            throw new Error('WebCodecs VideoDecoder is unavailable')
-          }
-
           const isKeyframe = frame.metadata.isKeyframe === true
-          if (awaitingH264Keyframe && !isKeyframe) {
+          const decoderCodec = frame.metadata.decoderCodec ?? 'avc1.420029'
+          const bitstreamFormat =
+            frame.metadata.h264BitstreamFormat ?? DEFAULT_H264_BITSTREAM_FORMAT
+          if (bitstreamFormat !== requestedH264BitstreamFormat) {
+            const active = activeMeasurementRef.current
+            if (active) active.droppedBeforeDecode += 1
+            h264FormatMismatchDrops += 1
+            publishBrowserDecoderHealthCounters()
+            awaitingH264Keyframe = true
+            const now = highResolutionEpochNowMs()
+            if (now - lastH264FormatCorrectionAtMs >= 250) {
+              lastH264FormatCorrectionAtMs = now
+              sendH264OutputFormat()
+            }
+            return
+          }
+          if (isKeyframe) {
+            latestH264DecoderDescriptionBase64 =
+              bitstreamFormat === 'avcc'
+                ? frame.metadata.decoderDescriptionBase64
+                : null
+          }
+          const decoderDescriptionBase64 =
+            bitstreamFormat === 'avcc'
+              ? latestH264DecoderDescriptionBase64
+              : null
+          const desiredConfigurationKey = h264DecoderConfigurationKey(
+            decoderCodec,
+            bitstreamFormat,
+            decoderDescriptionBase64,
+            h264DecoderSelection,
+            browserDecoderRuntimeRef.current.generation,
+          )
+          if (
+            (awaitingH264Keyframe ||
+              (activeH264DecoderConfigurationKey !== null &&
+                activeH264DecoderConfigurationKey !== desiredConfigurationKey)) &&
+            !isKeyframe
+          ) {
             const active = activeMeasurementRef.current
             if (active) active.droppedBeforeDecode += 1
             requestKeyframe()
             return
           }
 
-          if (decoder.decodeQueueSize > 2 && !isKeyframe) {
+          if (bitstreamFormat === 'avcc' && !decoderDescriptionBase64) {
             const active = activeMeasurementRef.current
-            if (active) {
-              active.droppedBeforeDecode += h264Frames.size + 1
-            }
-            decoder.reset()
-            decoder.configure(h264DecoderConfig)
-            h264Frames.clear()
+            if (active) active.droppedBeforeDecode += 1
             awaitingH264Keyframe = true
             requestKeyframe()
             return
           }
 
-          if (isKeyframe) {
-            if (awaitingH264Keyframe) {
-              decoder.reset()
-              decoder.configure(h264DecoderConfig)
-              h264Frames.clear()
+          const decoder = ensureH264Decoder(
+            decoderCodec,
+            bitstreamFormat,
+            decoderDescriptionBase64,
+          )
+          if (!decoder) {
+            throw new Error('WebCodecs VideoDecoder is unavailable')
+          }
+
+          const oldestPendingFrame = h264Frames.values().next().value as
+            | PendingFrame
+            | undefined
+          const oldestPendingFrameAgeMs = oldestPendingFrame
+            ? highResolutionEpochNowMs() - oldestPendingFrame.browserReceivedAtMs
+            : 0
+          const resetReason = h264DecoderBacklogResetReason(
+            decoder.decodeQueueSize,
+            h264Frames.size,
+            oldestPendingFrameAgeMs,
+            decoderBacklogPolicy,
+          )
+          if (resetReason) {
+            const active = activeMeasurementRef.current
+            if (active) {
+              active.droppedBeforeDecode += h264Frames.size + 1
             }
+            h264DecoderDiagnostics = recordH264DecoderReset(
+              h264DecoderDiagnostics,
+              resetReason,
+            )
+            publishBrowserDecoderHealthCounters()
+            decoder.reset()
+            const resetConfiguration = buildH264DecoderConfig(
+              decoderCodec,
+              h264DecoderSelection,
+              bitstreamFormat,
+              decoderDescriptionBase64,
+            )
+            if (!resetConfiguration) {
+              awaitingH264Keyframe = true
+              requestKeyframe()
+              return
+            }
+            decoder.configure(resetConfiguration)
+            h264Frames.clear()
+            if (!isKeyframe) {
+              awaitingH264Keyframe = true
+              requestKeyframe()
+              return
+            }
+            awaitingH264Keyframe = false
+          }
+
+          if (isKeyframe) {
             awaitingH264Keyframe = false
           }
           h264Frames.set(frame.metadata.frameId, frame)
@@ -777,11 +2188,18 @@ export function useLivePhoneSource() {
 
         context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
         bitmap.close()
-        const decodedAtMs = Date.now()
+        const decodedAtMs = highResolutionEpochNowMs()
         commitDecodedFrame(frame, canvas.width, canvas.height, decodedAtMs)
       } catch {
-        setStatus('error')
-        setError('The live bridge sent a frame this browser could not decode.')
+        if (
+          frame.metadata?.codec === 'h264' &&
+          h264DecoderDiagnostics.errors === decoderErrorsBeforeFrame
+        ) {
+          recoverFromH264DecoderError(videoDecoderRef.current)
+        } else if (frame.metadata?.codec !== 'h264') {
+          commitStatus('error')
+          commitError(LIVE_FRAME_DECODE_ERROR)
+        }
       } finally {
         decodingFrame = false
         if (pendingFrame) void decodeNextFrame()
@@ -789,7 +2207,18 @@ export function useLivePhoneSource() {
     }
 
     const handlePoseMessage = (message: LivePoseMessage) => {
-      const browserReceivedAtMs = Date.now()
+      const browserReceivedAtMs = highResolutionEpochNowMs()
+      const measurementAtEntry = activeMeasurementRef.current
+      if (
+        measurementAtEntry?.runId &&
+        !measurementProducerMatches(
+          measurementAtEntry,
+          message.producerSessionId,
+          message.captureSource,
+        )
+      ) {
+        cancelMeasurement('producer-identity-mismatch')
+      }
       const sampledAtMacMs = phoneTimeOnMac(
         message.timestampMs,
         message.clockOffsetMs,
@@ -893,6 +2322,11 @@ export function useLivePhoneSource() {
         })
       }
       setPoseReady(true)
+      liveRenderScheduler.request({
+        cause: 'pose',
+        generation: liveRenderScheduler.generation,
+        poseSequence: message.timestampMs,
+      })
 
       const now = performance.now()
       if (now - lastPoseUiUpdate > 200) {
@@ -927,47 +2361,42 @@ export function useLivePhoneSource() {
       const width = video.videoWidth
       const height = video.videoHeight
       if (width <= 0 || height <= 0) return
-      lastFrameReceivedRef.current = Date.now()
-      setScreenStale(false)
-      setOrientation(height >= width ? 'portrait' : 'landscape')
-      setMedia((current) => {
-        if (
-          current?.kind === 'video' &&
-          current.element === video &&
-          current.width === width &&
-          current.height === height
-        ) {
-          return current
-        }
-        return {
-          kind: 'video',
-          name: 'Live iPhone screen · WebRTC',
-          element: video,
-          width,
-          height,
-        }
+      lastFrameReceivedRef.current = highResolutionEpochNowMs()
+      commitScreenStale(false)
+      commitOrientation(height >= width ? 'portrait' : 'landscape')
+      commitMedia({
+        kind: 'video',
+        name: 'Live iPhone screen · WebRTC',
+        element: video,
+        width,
+        height,
       })
-      setStatus('ready')
-      setError(null)
+      commitStatus('ready')
+      commitError(null)
     }
 
     const countWebRTCFrame: VideoFrameRequestCallback = (
-      _now,
+      now,
       metadata,
     ) => {
       const video = webRTCVideoRef.current
       if (!video || peerConnectionRef.current !== peerConnection) return
-      const presentedAtMacMs = Date.now()
+      const presentedAtMacMs = highResolutionEpochNowMs()
       const captureAtMacMs = captureTimeToEpochMs(
         metadata.captureTime,
         presentedAtMacMs,
-        performance.timeOrigin,
+        presentedAtMacMs - now,
       )
       if (usesVideoAlignedPose(posePresentationModeRef.current)) {
         applyPoseForPresentedFrame(captureAtMacMs, presentedAtMacMs)
       }
       webRTCFrames += 1
       updateWebRTCMedia(video)
+      liveRenderScheduler.request({
+        cause: 'video',
+        generation: liveRenderScheduler.generation,
+        frameId: webRTCFrames,
+      })
       setStats((current) => ({
         ...current,
         codec: 'webrtc',
@@ -986,6 +2415,7 @@ export function useLivePhoneSource() {
       webRTCSignal.send(
         JSON.stringify({
           type: 'webrtc-candidate',
+          sessionId: activeWebRTCSessionId,
           candidate: event.candidate.candidate,
           sdpMid: event.candidate.sdpMid,
           sdpMLineIndex: event.candidate.sdpMLineIndex,
@@ -1023,7 +2453,7 @@ export function useLivePhoneSource() {
     peerConnection.addEventListener('connectionstatechange', () => {
       if (peerConnectionRef.current !== peerConnection) return
       if (peerConnection.connectionState === 'failed') {
-        setError('WebRTC video negotiation failed; H.264 and JPEG remain available on the iPhone.')
+        commitError('WebRTC video negotiation failed; H.264 and JPEG remain available on the iPhone.')
       }
     })
 
@@ -1038,6 +2468,8 @@ export function useLivePhoneSource() {
       }
       makingWebRTCOffer = true
       offeredForCurrentWebRTCPhone = true
+      const sessionId = crypto.randomUUID()
+      activeWebRTCSessionId = sessionId
       try {
         const offer = await peerConnection.createOffer({
           iceRestart: peerConnection.remoteDescription !== null,
@@ -1046,12 +2478,19 @@ export function useLivePhoneSource() {
         await peerConnection.setLocalDescription(offer)
         if (webRTCSignal.readyState === WebSocket.OPEN) {
           webRTCSignal.send(
-            JSON.stringify({ type: 'webrtc-offer', sdp: offer.sdp }),
+            JSON.stringify({
+              type: 'webrtc-offer',
+              sessionId,
+              sdp: offer.sdp,
+            }),
           )
         }
       } catch {
+        if (activeWebRTCSessionId === sessionId) {
+          activeWebRTCSessionId = null
+        }
         offeredForCurrentWebRTCPhone = false
-        setError('The browser could not create a WebRTC video offer.')
+        commitError('The browser could not create a WebRTC video offer.')
       } finally {
         makingWebRTCOffer = false
       }
@@ -1064,15 +2503,19 @@ export function useLivePhoneSource() {
       const nextWebRTCPhonePresent = message.webrtcPhones > 0
       if (!nextWebRTCPhonePresent || !webRTCPhonePresent) {
         offeredForCurrentWebRTCPhone = false
+        if (!nextWebRTCPhonePresent) activeWebRTCSessionId = null
       }
       webRTCPhonePresent = nextWebRTCPhonePresent
       setStats((current) => ({
         ...current,
         browsers: message.browsers,
         phones: message.phones,
+        captureState:
+          message.phones > 0 ? current.captureState : null,
       }))
       if (message.phones > 0) {
         sendPosePresentationMode(posePresentationModeRef.current)
+        sendH264OutputFormat()
       }
       void requestWebRTCOffer()
     }
@@ -1126,7 +2569,10 @@ export function useLivePhoneSource() {
           poseSocket.send(
             JSON.stringify({
               type: 'browser-receiver-status',
-              timestampMs: Date.now(),
+              receiverKind: 'webrtc',
+              timestampMs: highResolutionEpochNowMs(),
+              visibilityState: document.visibilityState,
+              hasFocus: document.hasFocus(),
               codecMimeType: sample.codecMimeType,
               framesDecoded: sample.framesDecoded,
               framesDropped: metrics.framesDropped,
@@ -1176,6 +2622,12 @@ export function useLivePhoneSource() {
       }
 
       if (message.type === 'webrtc-answer' && typeof message.sdp === 'string') {
+        if (
+          message.sessionId !== activeWebRTCSessionId ||
+          peerConnection.signalingState !== 'have-local-offer'
+        ) {
+          return
+        }
         void peerConnection
           .setRemoteDescription({ type: 'answer', sdp: message.sdp })
           .then(async () => {
@@ -1189,7 +2641,8 @@ export function useLivePhoneSource() {
 
       if (
         message.type === 'webrtc-candidate' &&
-        typeof message.candidate === 'string'
+        typeof message.candidate === 'string' &&
+        message.sessionId === activeWebRTCSessionId
       ) {
         const candidate: RTCIceCandidateInit = {
           candidate: message.candidate,
@@ -1209,7 +2662,9 @@ export function useLivePhoneSource() {
 
     socket.addEventListener('open', () => {
       if (socketRef.current === socket) {
-        setStatus('connecting')
+        reconnectAttemptRef.current = 0
+        commitStatus('connecting')
+        commitError(null)
         requestKeyframe()
       }
     })
@@ -1218,20 +2673,79 @@ export function useLivePhoneSource() {
       if (socketRef.current !== socket) return
 
       if (event.data instanceof ArrayBuffer) {
-        const browserReceivedAtMs = Date.now()
+        const browserReceivedAtMs = highResolutionEpochNowMs()
         lastFrameReceivedRef.current = browserReceivedAtMs
-        setScreenStale(false)
-        const metadata = frameMetadataQueue.shift() ?? null
-        const active = activeMeasurementRef.current
+        commitScreenStale(false)
+        const envelope = parseLiveFrameEnvelope(event.data)
+        if (!envelope && hasLiveFrameEnvelopeMagic(event.data)) {
+          // Never feed a malformed atomic envelope (header + JSON + payload)
+          // into WebCodecs as if it were a legacy split-message payload.
+          const active = activeMeasurementRef.current
+          if (active) active.droppedBeforeDecode += 1
+          awaitingH264Keyframe = true
+          requestKeyframe()
+          return
+        }
+        const metadata = envelope?.metadata ?? frameMetadataQueue.shift() ?? null
+        const bytes = envelope?.payload ?? new Uint8Array(event.data)
+        if (!metadata) return
+        commitOrientation(metadata.orientation)
+        let active = activeMeasurementRef.current
 
-        if (active && metadata) {
+        if (
+          active?.runId &&
+          (!measurementProducerMatches(
+              active,
+              metadata.producerSessionId,
+              metadata.captureSource,
+            ) ||
+            !captureContentIsVerifiedFresh(metadata))
+        ) {
+          cancelMeasurement(
+            captureContentIsVerifiedFresh(metadata)
+              ? 'producer-identity-mismatch'
+              : `capture-content-unverified:${metadata.captureContentStatus ?? 'missing'}`,
+          )
+          active = null
+        }
+
+        if (active) {
+          if (metadata.decoderCodec) {
+            active.configuration.parameters.h264Codec = metadata.decoderCodec
+          }
+          if (metadata.h264BitstreamFormat) {
+            active.configuration.parameters.h264BitstreamFormat =
+              metadata.h264BitstreamFormat
+          }
           const offset = metadata.clockOffsetMs
-          const captureAtMacMs = phoneTimeOnMac(metadata.captureAtMs, offset)
+          const rawCaptureAtMacMs =
+            metadata.captureTimestampValid === true
+              ? phoneTimeOnMac(metadata.captureAtMs, offset)
+              : null
+          const callbackAtMacMs = phoneTimeOnMac(
+            metadata.callbackAtMs,
+            offset,
+          )
           active.frames.set(metadata.frameId, {
             frameId: metadata.frameId,
             codec: metadata.codec,
-            captureAtMacMs,
-            callbackAtMacMs: phoneTimeOnMac(metadata.callbackAtMs, offset),
+            producerSessionId: metadata.producerSessionId,
+            captureSource: metadata.captureSource,
+            captureAtMacMs: rawCaptureAtMacMs,
+            captureTimestampSource: metadata.captureTimestampSource,
+            captureTimestampValid: metadata.captureTimestampValid,
+            captureSampleAgeMs: metadata.captureSampleAgeMs,
+            captureContentStatus: metadata.captureContentStatus,
+            freshContent: metadata.freshContent,
+            callbackAtMacMs,
+            conversionStartedAtMacMs: phoneTimeOnMac(
+              metadata.conversionStartedAtMs ?? 0,
+              metadata.conversionStartedAtMs === null ? null : offset,
+            ),
+            conversionEndedAtMacMs: phoneTimeOnMac(
+              metadata.conversionEndedAtMs ?? 0,
+              metadata.conversionEndedAtMs === null ? null : offset,
+            ),
             encodeStartedAtMacMs: phoneTimeOnMac(
               metadata.encodeStartedAtMs,
               offset,
@@ -1241,6 +2755,10 @@ export function useLivePhoneSource() {
             bridgeRelayedAtMs: metadata.bridgeRelayedAtMs,
             browserReceivedAtMs,
             decodedAtMs: null,
+            renderRequestedAtMs: null,
+            renderSchedulerGeneration: null,
+            r3fFrameObservedAtMs: null,
+            textureUploadCompletedAtMs: null,
             renderedAtMs: null,
             payloadBytes: metadata.payloadBytes ?? metadata.jpegBytes,
             clockRttMs: metadata.clockRttMs,
@@ -1249,7 +2767,7 @@ export function useLivePhoneSource() {
         }
 
         if (pendingFrame && active) active.droppedBeforeDecode += 1
-        pendingFrame = { bytes: event.data, metadata, browserReceivedAtMs }
+        pendingFrame = { bytes, metadata, browserReceivedAtMs }
         void decodeNextFrame()
         return
       }
@@ -1265,11 +2783,11 @@ export function useLivePhoneSource() {
 
       if (message.type === 'frame-meta') {
         frameMetadataQueue.push(message)
-        setOrientation(message.orientation)
+        commitOrientation(message.orientation)
         return
       }
 
-      handlePoseMessage(message)
+      if (message.type === 'pose') handlePoseMessage(message)
     })
 
     poseSocket.addEventListener('message', (event) => {
@@ -1282,11 +2800,118 @@ export function useLivePhoneSource() {
         handleBridgeStatus(message)
       } else if (message.type === 'pose') {
         handlePoseMessage(message)
+      } else if (message.type === 'browser-benchmark-prepare') {
+        applyBrowserBenchmarkPrepare(message)
+      } else if (message.type === 'encoder-status') {
+        const receiverStatusAtMs = highResolutionEpochNowMs()
+        lastCaptureHeartbeatRef.current = receiverStatusAtMs
+        firstCaptureHeartbeatRef.current ??= receiverStatusAtMs
+        encoderMeasurementConfigurationRef.current = {
+          targetFps:
+            message.targetFps ??
+            encoderMeasurementConfigurationRef.current.targetFps,
+          encoderProfile:
+            message.encoderProfile ??
+            encoderMeasurementConfigurationRef.current.encoderProfile,
+          encoderTuningRequested: message.encoderTuningRequested,
+          encoderTuningActive: message.encoderTuningActive,
+          producerSessionId: message.producerSessionId,
+          captureSource: message.captureSource,
+          captureShortEdgeRequested: message.captureShortEdgeRequested,
+          captureShortEdgeActive: message.captureShortEdgeActive,
+          captureWidthActive: message.captureWidthActive,
+          captureHeightActive: message.captureHeightActive,
+          captureStreamGeneration: message.captureStreamGeneration,
+          thermalState: message.thermalState,
+          frameAckWindow: message.frameAckWindow,
+        }
+        decoderBacklogPolicy = h264DecoderBacklogPolicy(
+          h264DecoderSelection, requestedH264BitstreamFormat,
+          message.frameAckWindow,
+        )
+        const active = activeMeasurementRef.current
+        if (active?.runId &&
+            active.configuration.parameters.frameAckWindow !== message.frameAckWindow) {
+          cancelMeasurement('frame-window-changed-during-run')
+        }
+        if (
+          active?.runId &&
+          (!measurementProducerMatches(
+              active,
+              message.producerSessionId,
+              message.captureSource,
+            ) ||
+            !captureContentIsVerifiedFresh(message))
+        ) {
+          cancelMeasurement(
+            !captureContentIsVerifiedFresh(message)
+              ? `capture-content-unverified:${message.captureContentStatus ?? 'missing'}`
+              : 'producer-identity-mismatch',
+          )
+        }
+        updateMeasurementThermalState(active, message.thermalState)
+        setStats((current) => ({
+          ...current,
+          codec: message.codec ?? current.codec,
+          captureState: message.captureState,
+          capturedFrames: message.captured,
+        }))
+        if (
+          message.codec === 'h264' &&
+          poseSocket.readyState === WebSocket.OPEN
+        ) {
+          sendH264ReceiverStatus(message.timestampMs)
+        }
+      } else if (message.type === 'benchmark-status') {
+        if (message.phase === 'started') {
+          startMeasurement(
+            message.runId,
+            message.targetFps ?? undefined,
+            message.encoderProfileActive ??
+              message.encoderProfile ??
+              undefined,
+            message.encoderTuning,
+            message.encoderTuningActive ?? undefined,
+            message.producerSessionId,
+            message.captureSource,
+            message.captureShortEdgeRequested,
+            message.captureShortEdgeActive,
+            message.captureWidthActive,
+            message.captureHeightActive,
+            message.captureStreamGeneration,
+            message.thermalState,
+          )
+        } else if (message.phase === 'completed') {
+          const active = activeMeasurementRef.current
+          if (
+            active?.runId === message.runId &&
+            !measurementProducerMatches(
+              active,
+              message.producerSessionId,
+              message.captureSource,
+            )
+          ) {
+            cancelMeasurement('producer-identity-mismatch')
+          } else if (active?.runId === message.runId) {
+            updateMeasurementThermalState(
+              active,
+              message.thermalState,
+              'completed',
+            )
+            completeBenchmarkMeasurement(message.runId)
+          }
+        } else if (activeMeasurementRef.current?.runId === message.runId) {
+          cancelMeasurement('phone-cancelled', false)
+        }
       }
     })
 
     poseSocket.addEventListener('open', () => {
       if (poseSocketRef.current === poseSocket) {
+        sendH264FormatAfterReceiverStatus(
+          () => sendH264ReceiverStatus(),
+          sendH264OutputFormat,
+        )
         sendPosePresentationMode(posePresentationModeRef.current)
       }
     })
@@ -1295,30 +2920,102 @@ export function useLivePhoneSource() {
       if (poseSocketRef.current === poseSocket) setPoseStale(true)
     })
 
+    poseSocket.addEventListener('close', () => {
+      if (poseSocketRef.current !== poseSocket) return
+      poseSocketRef.current = null
+      setPoseStale(true)
+      scheduleReconnect()
+    })
+
+    webRTCSignal.addEventListener('close', () => {
+      if (webRTCSignalRef.current !== webRTCSignal) return
+      webRTCSignalRef.current = null
+      scheduleReconnect()
+    })
+
     socket.addEventListener('error', () => {
       if (socketRef.current !== socket) return
-      setStatus('error')
-      setError('Cannot reach the local phone bridge on port 4319.')
+      commitStatus('error')
+      commitError('Cannot reach the local phone bridge on port 4319.')
     })
 
     socket.addEventListener('close', () => {
       if (socketRef.current !== socket) return
       socketRef.current = null
-      finishMeasurement()
-      setStatus('idle')
+      browserDecoderHealthCountersRef.current = null
+      cancelMeasurement('frame-socket-closed')
+      scheduleReconnect()
     })
-  }, [finishMeasurement, releaseResources, sendPosePresentationMode])
+  }, [
+    cancelMeasurement,
+    commitError,
+    commitMedia,
+    commitOrientation,
+    commitScreenStale,
+    commitStatus,
+    completeBenchmarkMeasurement,
+    currentErrorRef,
+    markTextureUploadCompleted,
+    liveRenderScheduler,
+    releaseResources,
+    sendH264OutputFormat,
+    sendPosePresentationMode,
+    startMeasurement,
+  ])
 
-  useEffect(() => disconnect, [disconnect])
+  useEffect(() => {
+    connectRef.current = connect
+  }, [connect])
+
+  useEffect(() => {
+    const sendReceiverStatus = () => {
+      sendH264FormatAfterReceiverStatus(
+        () => receiverStatusSenderRef.current(),
+        sendH264OutputFormat,
+      )
+    }
+    window.addEventListener('focus', sendReceiverStatus)
+    window.addEventListener('blur', sendReceiverStatus)
+    document.addEventListener('visibilitychange', sendReceiverStatus)
+    return () => {
+      window.removeEventListener('focus', sendReceiverStatus)
+      window.removeEventListener('blur', sendReceiverStatus)
+      document.removeEventListener('visibilitychange', sendReceiverStatus)
+    }
+  }, [sendH264OutputFormat])
+
+  useEffect(() => {
+    const autoConnectTimer = window.setTimeout(() => connectRef.current(), 0)
+    return () => {
+      window.clearTimeout(autoConnectTimer)
+      disconnect()
+    }
+  }, [disconnect])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const now = Date.now()
+      const now = highResolutionEpochNowMs()
       const lastFrame = lastFrameReceivedRef.current
       const lastPose = lastPoseReceivedRef.current
       const active = activeMeasurementRef.current
 
-      setScreenStale(lastFrame !== null && now - lastFrame > 1_000)
+      const lastCaptureHeartbeat = lastCaptureHeartbeatRef.current
+      commitScreenStale(
+        screenStreamIsStale(
+          now,
+          lastFrame,
+          lastCaptureHeartbeat,
+          firstCaptureHeartbeatRef.current,
+        ),
+      )
+      if (
+        browserReceiverStatusHeartbeatDue(
+          now,
+          lastReceiverStatusSentAtRef.current,
+        )
+      ) {
+        receiverStatusSenderRef.current()
+      }
       setPoseStale(lastPose !== null && now - lastPose > 500)
 
       if (active) {
@@ -1336,7 +3033,7 @@ export function useLivePhoneSource() {
     }, 250)
 
     return () => window.clearInterval(timer)
-  }, [])
+  }, [commitScreenStale])
 
   return {
     calibratePose,

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "bridge": "node scripts/live-bridge.mjs",
+    "benchmark:sweep": "node scripts/benchmark-sweep.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings=0",

@@ -1,6 +1,7 @@
 :root {
-  color: #f5f7fb;
-  background: #090a0d;
+  color: #edf3f9;
+  background: #05070c;
+  color-scheme: dark;
   font-family:
     Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display",
     "Segoe UI", sans-serif;
@@ -23,6 +24,7 @@ body,
 body {
   min-height: 100vh;
   overflow: hidden;
+  background: #05070c;
 }
 
 button {
@@ -32,19 +34,21 @@ button {
 .app-shell {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 18% -12%, rgb(184 255 61 / 9%), transparent 26rem),
-    #090a0d;
+    radial-gradient(circle at 31% 6%, rgb(39 83 126 / 12%), transparent 34rem),
+    linear-gradient(140deg, #080b12 0%, #05070c 48%, #08101b 100%);
 }
 
 .topbar {
-  height: 84px;
+  position: relative;
+  z-index: 2;
+  height: 76px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
-  border-bottom: 1px solid rgb(255 255 255 / 8%);
-  background: rgb(10 11 14 / 88%);
-  backdrop-filter: blur(18px);
+  padding: 0 30px;
+  border-bottom: 1px solid rgb(145 180 214 / 7%);
+  background: linear-gradient(90deg, rgb(8 10 15 / 94%), rgb(9 14 22 / 90%));
+  backdrop-filter: blur(22px) saturate(125%);
 }
 
 .topbar h1,
@@ -56,7 +60,8 @@ button {
 
 .topbar h1 {
   margin-top: 4px;
-  font-size: 19px;
+  color: #f0f5fa;
+  font-size: 18px;
 }
 
 .brand-cluster {
@@ -66,18 +71,18 @@ button {
 }
 
 .brand-logo {
-  width: 44px;
-  height: 44px;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgb(163 195 226 / 9%);
+  border-radius: 11px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 36%);
   object-fit: cover;
 }
 
 .eyebrow,
 .section-kicker {
   margin: 0;
-  color: #8b909c;
+  color: #718093;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.11em;
@@ -88,22 +93,26 @@ button {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #b9bdc7;
-  font-size: 13px;
+  padding: 7px 11px 7px 9px;
+  border: 1px solid rgb(184 255 61 / 11%);
+  border-radius: 99px;
+  color: #c7d1da;
+  background: rgb(184 255 61 / 3.5%);
+  font-size: 12px;
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 99px;
   background: #b8ff3d;
   box-shadow: 0 0 18px rgb(184 255 61 / 78%);
 }
 
 .workspace {
-  height: calc(100vh - 84px);
+  height: calc(100vh - 76px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 342px;
+  grid-template-columns: minmax(0, 1fr) 352px;
 }
 
 .viewport {
@@ -114,48 +123,75 @@ button {
 
 .viewport::after {
   position: absolute;
-  inset: 18px;
-  border: 1px solid rgb(21 27 32 / 10%);
-  border-radius: 18px;
+  inset: 0;
+  box-shadow:
+    inset -1px 0 rgb(140 177 211 / 6%),
+    inset 0 1px rgb(255 255 255 / 2%);
   content: "";
   pointer-events: none;
 }
 
 .viewport-label {
   position: absolute;
-  right: 36px;
-  bottom: 34px;
-  left: 36px;
+  right: 28px;
+  bottom: 24px;
+  left: 28px;
   display: flex;
   justify-content: space-between;
-  color: rgb(31 37 43 / 52%);
+  color: rgb(149 169 189 / 42%);
   font-size: 11px;
   letter-spacing: 0.06em;
   pointer-events: none;
   text-transform: uppercase;
 }
 
+.app-shell.daylight .viewport-label {
+  color: rgb(37 55 73 / 54%);
+  text-shadow: 0 1px 0 rgb(255 255 255 / 42%);
+}
+
+.app-shell.daylight .viewport::after {
+  box-shadow:
+    inset -1px 0 rgb(55 78 98 / 12%),
+    inset 0 1px rgb(255 255 255 / 28%);
+}
+
 .inspector {
-  padding: 24px;
+  padding: 26px 25px 38px;
   overflow-y: auto;
-  border-left: 1px solid rgb(255 255 255 / 8%);
-  background: #0f1014;
+  border-left: 1px solid rgb(139 175 211 / 6%);
+  background:
+    linear-gradient(180deg, rgb(14 19 28 / 96%), rgb(8 11 17 / 98%));
+  scrollbar-color: rgb(118 143 166 / 30%) transparent;
+  scrollbar-width: thin;
+}
+
+.inspector::-webkit-scrollbar {
+  width: 8px;
+}
+
+.inspector::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 99px;
+  background: rgb(118 143 166 / 24%);
+  background-clip: padding-box;
 }
 
 .panel-section {
-  padding: 0 0 24px;
-  margin: 0 0 24px;
-  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  padding: 0 0 25px;
+  margin: 0 0 25px;
+  border-bottom: 1px solid rgb(150 181 211 / 6%);
 }
 
 .inspector h2 {
   margin-top: 7px;
+  color: #e9f0f6;
   font-size: 16px;
 }
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 16px;
 }
@@ -164,33 +200,37 @@ button {
   display: grid;
   gap: 8px;
   padding: 7px;
-  border: 1px solid rgb(255 255 255 / 8%);
+  border: 1px solid rgb(148 180 210 / 6%);
   border-radius: 10px;
-  color: #a9aeba;
-  background: #15171c;
+  color: #97a5b5;
+  background: rgb(160 191 222 / 3.5%);
   cursor: pointer;
   font-size: 10px;
   text-align: left;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
 .preset:hover,
 .preset:focus-visible {
-  border-color: rgb(255 255 255 / 24%);
+  border-color: rgb(159 195 229 / 26%);
+  color: #d9e3ed;
+  background: rgb(144 180 215 / 7%);
   outline: none;
 }
 
 .preset.active {
   border-color: #b8ff3d;
-  color: #f4f8ec;
-  box-shadow: 0 0 0 1px rgb(184 255 61 / 16%);
+  color: #f0f8e6;
+  background: rgb(184 255 61 / 4%);
+  box-shadow: 0 0 0 1px rgb(184 255 61 / 10%);
 }
 
 .swatch {
   width: 100%;
   height: 42px;
-  border: 1px solid currentColor;
+  border: 1px solid rgb(190 214 236 / 9%);
   border-radius: 6px;
-  box-shadow: inset 0 0 16px currentColor;
+  box-shadow: inset 0 0 20px rgb(142 194 241 / 8%);
 }
 
 .scene-toggle-grid {
@@ -205,23 +245,26 @@ button {
   justify-content: space-between;
   width: 100%;
   padding: 9px 10px;
-  border: 1px solid rgb(255 255 255 / 8%);
+  border: 1px solid rgb(148 180 210 / 5%);
   border-radius: 9px;
-  color: #989eaa;
-  background: #15171c;
+  color: #8795a5;
+  background: rgb(153 185 216 / 2.5%);
   cursor: pointer;
   font-size: 11px;
   font-weight: 620;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
 .scene-toggle:hover,
 .scene-toggle:focus-visible {
-  border-color: rgb(255 255 255 / 24%);
+  border-color: rgb(157 192 225 / 22%);
+  color: #cbd7e2;
+  background: rgb(142 176 209 / 6%);
   outline: none;
 }
 
 .scene-toggle.active {
-  color: #edf1e8;
+  color: #e5eee0;
 }
 
 .toggle-track {
@@ -230,7 +273,7 @@ button {
   height: 15px;
   flex: none;
   border-radius: 99px;
-  background: #343841;
+  background: #28313d;
   transition: background 160ms ease;
 }
 
@@ -241,7 +284,7 @@ button {
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: #9298a3;
+  background: #788696;
   transition: transform 160ms ease, background 160ms ease;
 }
 
@@ -266,17 +309,17 @@ button {
 
 .source-description {
   margin: 14px 0 0;
-  color: #8e939e;
+  color: #7e8c9b;
   font-size: 12px;
   line-height: 1.55;
 }
 
 .chip {
   padding: 5px 8px;
-  border: 1px solid rgb(255 255 255 / 10%);
+  border: 1px solid rgb(151 183 213 / 7%);
   border-radius: 99px;
-  color: #9aa0aa;
-  background: #17191e;
+  color: #8b99a8;
+  background: rgb(139 173 205 / 4%);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -284,6 +327,7 @@ button {
 }
 
 .chip.ready {
+  border-color: rgb(184 255 61 / 12%);
   color: #b8ff3d;
   background: rgb(184 255 61 / 8%);
 }
@@ -293,14 +337,15 @@ button {
   width: 100%;
   padding: 11px 14px;
   margin-top: 16px;
-  border: 1px solid rgb(255 255 255 / 10%);
+  border: 1px solid rgb(157 189 220 / 9%);
   border-radius: 10px;
-  color: #ecedf0;
-  background: #191b20;
+  color: #dce5ed;
+  background: rgb(142 176 209 / 6%);
   cursor: pointer;
   font-size: 12px;
   font-weight: 650;
   text-align: center;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
 .file-button {
@@ -323,7 +368,7 @@ button {
   justify-content: space-between;
   gap: 12px;
   margin: 10px 0 0;
-  color: #aeb3bd;
+  color: #9aa8b7;
   font-size: 10px;
 }
 
@@ -335,12 +380,12 @@ button {
 
 .source-meta span:last-child {
   flex: none;
-  color: #747b87;
+  color: #697786;
 }
 
 .source-error {
   margin: 10px 0 0;
-  color: #ff9a91;
+  color: #f1a29a;
   font-size: 11px;
   line-height: 1.45;
 }
@@ -372,6 +417,10 @@ button {
   font-size: 8px;
 }
 
+.view-switcher.model-views {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .live-stats {
   display: grid;
   gap: 7px;
@@ -381,13 +430,13 @@ button {
 .live-stats div {
   display: flex;
   justify-content: space-between;
-  color: #7f8590;
+  color: #748291;
   font-size: 10px;
 }
 
 .live-stats dd {
   margin: 0;
-  color: #d6d9df;
+  color: #cdd8e2;
 }
 
 .measurement-results {
@@ -395,50 +444,57 @@ button {
   gap: 1px;
   margin-top: 14px;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 7%);
+  border: 1px solid rgb(151 183 213 / 5%);
   border-radius: 10px;
-  background: rgb(255 255 255 / 7%);
+  background: rgb(151 183 213 / 4%);
 }
 
 .measurement-results div {
   display: grid;
   gap: 4px;
   padding: 10px 11px;
-  background: #14161a;
+  background: rgb(132 164 195 / 3%);
 }
 
 .measurement-results span {
-  color: #7f8590;
+  color: #718090;
   font-size: 9px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .measurement-results strong {
-  color: #e7eadf;
+  color: #dce7f0;
   font-size: 12px;
   font-weight: 650;
 }
 
 .view-button {
   padding: 9px 6px;
-  border: 1px solid rgb(255 255 255 / 9%);
+  border: 1px solid rgb(153 185 215 / 6%);
   border-radius: 8px;
-  color: #8f95a0;
-  background: #15171c;
+  color: #8492a2;
+  background: rgb(148 181 213 / 3%);
   cursor: pointer;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
 .view-button:hover,
-.view-button:focus-visible,
+.view-button:focus-visible {
+  border-color: rgb(155 193 229 / 24%);
+  color: #d7e2ec;
+  background: rgb(141 178 212 / 7%);
+  outline: none;
+}
+
 .view-button.active {
   border-color: #b8ff3d;
-  color: #edf5df;
-  outline: none;
+  color: #eff8e6;
+  background: rgb(184 255 61 / 4%);
 }
 
 .view-button:disabled {
@@ -449,7 +505,9 @@ button {
 
 .wide-button:hover,
 .wide-button:focus-visible {
-  border-color: #b8ff3d;
+  border-color: rgb(166 201 234 / 25%);
+  color: #f2f7fb;
+  background: rgb(151 186 219 / 10%);
   outline: none;
 }
 
@@ -462,26 +520,26 @@ button {
   gap: 1px;
   margin: 12px 0 0;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 7%);
+  border: 1px solid rgb(151 183 213 / 5%);
   border-radius: 12px;
-  background: rgb(255 255 255 / 7%);
+  background: rgb(151 183 213 / 4%);
 }
 
 .metrics dl div {
   display: flex;
   justify-content: space-between;
   padding: 11px 12px;
-  background: #14161a;
+  background: rgb(132 164 195 / 3%);
   font-size: 11px;
 }
 
 .metrics dt {
-  color: #7f8590;
+  color: #718090;
 }
 
 .metrics dd {
   margin: 0;
-  color: #d6d9df;
+  color: #cdd8e2;
 }
 
 @media (max-width: 840px) {
@@ -500,7 +558,7 @@ button {
   }
 
   .inspector {
-    border-top: 1px solid rgb(255 255 255 / 8%);
+    border-top: 1px solid rgb(147 181 214 / 7%);
     border-left: 0;
   }
 }

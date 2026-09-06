@@ -1,6 +1,7 @@
 export interface StudioPreset {
   id: string
   name: string
+  daylight: boolean
   backgroundTop: string
   backgroundBottom: string
   backgroundAccent: string
@@ -15,42 +16,31 @@ export interface StudioPreset {
 export const studioPresets: readonly StudioPreset[] = [
   {
     id: 'pearl',
-    name: 'Pearl',
-    backgroundTop: '#fbfaf7',
-    backgroundBottom: '#e7ebf0',
-    backgroundAccent: '#dce8f0',
-    shadow: '#6e747c',
-    keyColor: '#fffdf9',
-    fillColor: '#e7f0f8',
-    rimColor: '#f8e9dc',
-    keyLight: 3.1,
+    name: 'Daylight',
+    daylight: true,
+    backgroundTop: '#9fc8e2',
+    backgroundBottom: '#d9e8ec',
+    backgroundAccent: '#7fa9c3',
+    shadow: '#516779',
+    keyColor: '#fff3dc',
+    fillColor: '#a9d8f5',
+    rimColor: '#e8f6ff',
+    keyLight: 3.35,
     fillLight: 1.35,
   },
   {
     id: 'warm',
-    name: 'Warm',
-    backgroundTop: '#fffaf2',
-    backgroundBottom: '#eadfd4',
-    backgroundAccent: '#f3e1cc',
-    shadow: '#7f7369',
-    keyColor: '#fff8ee',
-    fillColor: '#f5e6d7',
-    rimColor: '#e5edf5',
-    keyLight: 3,
-    fillLight: 1.25,
-  },
-  {
-    id: 'cool',
-    name: 'Cool',
-    backgroundTop: '#f7fafc',
-    backgroundBottom: '#dce6ee',
-    backgroundAccent: '#d5e6f2',
-    shadow: '#677581',
-    keyColor: '#f8fbff',
-    fillColor: '#dcecf8',
-    rimColor: '#f5e8df',
-    keyLight: 3.15,
-    fillLight: 1.4,
+    name: 'Night',
+    daylight: false,
+    backgroundTop: '#344a62',
+    backgroundBottom: '#101a27',
+    backgroundAccent: '#5e6372',
+    shadow: '#07101a',
+    keyColor: '#fff7ed',
+    fillColor: '#b7d7f1',
+    rimColor: '#9bcaf0',
+    keyLight: 3.45,
+    fillLight: 1.55,
   },
 ] as const
 

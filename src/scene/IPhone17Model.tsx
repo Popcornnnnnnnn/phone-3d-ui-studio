@@ -6,6 +6,7 @@ import { Color, DoubleSide, Quaternion, type Group } from 'three'
 import {
   IPHONE_17_SCENE,
   TABLETOP_PHONE_CENTER_Y,
+  groundedTabletopPhoneCenterY,
   millimetersToScene,
   type ReviewView,
   type ScreenOrientation,
@@ -50,6 +51,7 @@ interface IPhone17ModelProps {
 const viewRotations: Record<ReviewView, [number, number, number]> = {
   calibration: [0, 0, 0],
   hero: [0.055, 0.08, -0.025],
+  side: [0, 0, 0],
   front: [0, 0, 0],
   back: [0, 0, 0],
 }
@@ -192,14 +194,14 @@ const bottomFaceFragmentShader = /* glsl */ `
 `
 
 const bottomSpeakerCenters = [
-  -0.342,
-  -0.292,
-  -0.244,
-  0.244,
-  0.292,
-  0.338,
-  0.385,
-  0.432,
+  -0.321136,
+  -0.275929,
+  -0.230702,
+  0.230702,
+  0.275923,
+  0.321143,
+  0.366364,
+  0.41157,
 ] as const
 
 function ImportedBottomFace() {
@@ -256,10 +258,10 @@ function ImportedBottomFace() {
       {bottomSpeakerCenters.map((x) => (
         <mesh
           key={x}
-          position={[x, faceY - 0.001, 0]}
-          rotation={[Math.PI / 2, 0, 0]}
+          name="speaker-cavity"
+          position={[x, faceY - 0.007, 0]}
         >
-          <circleGeometry args={[0.0185, 32]} />
+          <cylinderGeometry args={[0.014, 0.014, 0.018, 32]} />
           <meshBasicMaterial color="#010204" toneMapped={false} />
         </mesh>
       ))}
@@ -387,7 +389,8 @@ export function IPhone17Model({
         group.current.quaternion.copy(targetQuaternion.current)
       }
       group.current.position.y +=
-        (TABLETOP_PHONE_CENTER_Y - group.current.position.y) *
+        (groundedTabletopPhoneCenterY(group.current.quaternion) -
+          group.current.position.y) *
         (1 - Math.exp(-delta * 12))
       publishRenderedPose()
       onPoseRenderSample?.({
@@ -411,7 +414,8 @@ export function IPhone17Model({
         1 - Math.exp(-delta * 20),
       )
       group.current.position.y +=
-        (TABLETOP_PHONE_CENTER_Y - group.current.position.y) *
+        (groundedTabletopPhoneCenterY(group.current.quaternion) -
+          group.current.position.y) *
         (1 - Math.exp(-delta * 12))
       publishRenderedPose()
       publishRenderDiagnostics()

@@ -1,48 +1,102 @@
 import SwiftUI
+import UIKit
+
+@MainActor
+private final class BenchmarkDisplayClock: NSObject, ObservableObject {
+    @Published private(set) var now = Date()
+
+    private let targetFramesPerSecond: Int
+    private var displayLink: CADisplayLink?
+
+    init(targetFramesPerSecond: Int) {
+        self.targetFramesPerSecond = min(
+            UIScreen.main.maximumFramesPerSecond,
+            max(15, targetFramesPerSecond)
+        )
+        super.init()
+    }
+
+    func start() {
+        guard displayLink == nil else { return }
+        let link = CADisplayLink(target: self, selector: #selector(step(_:)))
+        let requested = Float(targetFramesPerSecond)
+        link.preferredFrameRateRange = CAFrameRateRange(
+            minimum: requested,
+            maximum: requested,
+            preferred: requested
+        )
+        link.add(to: .main, forMode: .common)
+        displayLink = link
+    }
+
+    func stop() {
+        displayLink?.invalidate()
+        displayLink = nil
+    }
+
+    @objc private func step(_ displayLink: CADisplayLink) {
+        now = Date()
+    }
+}
 
 struct StreamBenchmarkView: View {
     let run: ScreenCaptureController.BenchmarkRun
     let cancel: () -> Void
 
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
-            let elapsed = max(0, timeline.date.timeIntervalSince(run.startedAt))
-            let remaining = max(0, run.endsAt.timeIntervalSince(timeline.date))
+    @StateObject private var clock: BenchmarkDisplayClock
 
-            GeometryReader { proxy in
-                Canvas(rendersAsynchronously: true) { context, size in
-                    drawPattern(
-                        context: &context,
-                        size: size,
-                        elapsed: elapsed
-                    )
+    init(
+        run: ScreenCaptureController.BenchmarkRun,
+        cancel: @escaping () -> Void
+    ) {
+        self.run = run
+        self.cancel = cancel
+        _clock = StateObject(
+            wrappedValue: BenchmarkDisplayClock(
+                targetFramesPerSecond: run.targetFps
+            )
+        )
+    }
+
+    var body: some View {
+        let elapsed = max(0, clock.now.timeIntervalSince(run.startedAt))
+        let remaining = max(0, run.endsAt.timeIntervalSince(clock.now))
+
+        GeometryReader { proxy in
+            Canvas(rendersAsynchronously: true) { context, size in
+                drawPattern(
+                    context: &context,
+                    size: size,
+                    elapsed: elapsed
+                )
+            }
+            .overlay(alignment: .top) {
+                VStack(spacing: 8) {
+                    Text("15-second stream benchmark")
+                        .font(.title2.bold())
+                    Text("Automatic motion · \(remaining, format: .number.precision(.fractionLength(1)))s")
+                        .font(.system(.body, design: .monospaced).weight(.semibold))
+                    Text("Keep the Mac receiver connected. No screen recording is saved.")
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white.opacity(0.8))
                 }
-                .overlay(alignment: .top) {
-                    VStack(spacing: 8) {
-                        Text("15-second stream benchmark")
-                            .font(.title2.bold())
-                        Text("Automatic motion · \(remaining, format: .number.precision(.fractionLength(1)))s")
-                            .font(.system(.body, design: .monospaced).weight(.semibold))
-                        Text("Keep the Mac receiver connected. No screen recording is saved.")
-                            .font(.footnote)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.white.opacity(0.8))
-                    }
+                .foregroundStyle(.white)
+                .padding(.top, max(24, proxy.safeAreaInsets.top + 8))
+                .padding(.horizontal, 24)
+            }
+            .overlay(alignment: .bottom) {
+                Button("Cancel benchmark", action: cancel)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.white.opacity(0.2))
                     .foregroundStyle(.white)
-                    .padding(.top, max(24, proxy.safeAreaInsets.top + 8))
-                    .padding(.horizontal, 24)
-                }
-                .overlay(alignment: .bottom) {
-                    Button("Cancel benchmark", action: cancel)
-                        .buttonStyle(.borderedProminent)
-                        .tint(.white.opacity(0.2))
-                        .foregroundStyle(.white)
-                        .padding(.bottom, max(24, proxy.safeAreaInsets.bottom + 8))
-                }
+                    .padding(.bottom, max(24, proxy.safeAreaInsets.bottom + 8))
             }
         }
         .background(.black)
         .ignoresSafeArea()
+        .onAppear(perform: clock.start)
+        .onDisappear(perform: clock.stop)
     }
 
     private func drawPattern(

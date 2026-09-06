@@ -6,6 +6,7 @@ coverage/
 *.tsbuildinfo
 ios/build/
 ios/build-device/
+ios/.build/
 ios/*.xcodeproj/xcuserdata/
 ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 

@@ -21,7 +21,7 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LiveBridgeURL</key>
-	<string>ws://192.168.20.61:4319/?role=phone</string>
+	<string>ws://forge.local:4319/?role=phone</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

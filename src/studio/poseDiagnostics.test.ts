@@ -31,10 +31,31 @@ describe('pose diagnostics', () => {
     expect(snapshot.sensorAngleDegrees).toBeCloseTo(90)
     expect(snapshot.targetAngleDegrees).toBeCloseTo(90)
     expect(snapshot.renderedAngleDegrees).toBeCloseTo(90)
+    expect(snapshot.sensorPlaneInclinationDegrees).toBeCloseTo(0)
+    expect(snapshot.targetPlaneInclinationDegrees).toBeCloseTo(0)
+    expect(snapshot.renderedPlaneInclinationDegrees).toBeCloseTo(0)
     expect(snapshot.targetWorldAxis[1]).toBeCloseTo(1)
     expect(snapshot.tableAxisAlignmentPercent).toBeCloseTo(100)
     expect(snapshot.trackingErrorDegrees).toBeCloseTo(0)
     expect(snapshot.verdict).toBe('Pass')
+  })
+
+  it('reports the true screen-plane inclination for a 45 degree lift', () => {
+    const sensorLift: QuaternionTuple = [
+      Math.sin(Math.PI / 8),
+      0,
+      0,
+      Math.cos(Math.PI / 8),
+    ]
+    const target = multiplyQuaternions(
+      STANDARD_TABLETOP_QUATERNION,
+      sensorLift,
+    )
+    const snapshot = buildPoseAccuracySnapshot(sensorLift, target, target)
+
+    expect(snapshot.sensorPlaneInclinationDegrees).toBeCloseTo(45)
+    expect(snapshot.targetPlaneInclinationDegrees).toBeCloseTo(45)
+    expect(snapshot.renderedPlaneInclinationDegrees).toBeCloseTo(45)
   })
 
   it('separates rendering lag from the sensor and target angle', () => {

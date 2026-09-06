@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  groundedTabletopPhoneCenterY,
   IPHONE_17_DISPLAY,
   IPHONE_17_MM,
   IPHONE_17_SCENE,
   MODEL_HEIGHT,
   STUDIO_FLOOR_Y,
   TABLETOP_PHONE_CENTER_Y,
+  TABLETOP_PHONE_MOTION_CENTER_Y,
   millimetersToScene,
 } from './iphone17'
 
@@ -44,5 +46,41 @@ describe('iPhone 17 geometry contract', () => {
     expect(
       TABLETOP_PHONE_CENTER_Y - IPHONE_17_SCENE.depth / 2,
     ).toBeCloseTo(STUDIO_FLOOR_Y + 0.01)
+  })
+
+  it('centers review cameras on the full flat-to-upright motion envelope', () => {
+    expect(TABLETOP_PHONE_MOTION_CENTER_Y).toBeCloseTo(
+      STUDIO_FLOOR_Y + IPHONE_17_SCENE.height / 2 + 0.01,
+    )
+  })
+})
+
+describe('tabletop phone grounding', () => {
+  it('keeps a screen-up phone at the existing tabletop height', () => {
+    expect(
+      groundedTabletopPhoneCenterY({
+        x: -Math.SQRT1_2,
+        y: 0,
+        z: 0,
+        w: Math.SQRT1_2,
+      }),
+    ).toBeCloseTo(TABLETOP_PHONE_CENTER_Y)
+  })
+
+  it('raises the center when the phone is lifted 45 degrees', () => {
+    const centerY = groundedTabletopPhoneCenterY({
+      x: -Math.sin(Math.PI / 8),
+      y: 0,
+      z: 0,
+      w: Math.cos(Math.PI / 8),
+    })
+    const expectedSupportRadius =
+      (IPHONE_17_SCENE.height + IPHONE_17_SCENE.depth) /
+      (2 * Math.sqrt(2))
+
+    expect(centerY).toBeCloseTo(
+      STUDIO_FLOOR_Y + 0.01 + expectedSupportRadius,
+    )
+    expect(centerY).toBeGreaterThan(TABLETOP_PHONE_CENTER_Y + 0.9)
   })
 })

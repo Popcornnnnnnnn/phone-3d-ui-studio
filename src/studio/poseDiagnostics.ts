@@ -22,6 +22,9 @@ export interface PoseAccuracySnapshot {
   sensorAngleDegrees: number
   targetAngleDegrees: number
   renderedAngleDegrees: number
+  sensorPlaneInclinationDegrees: number
+  targetPlaneInclinationDegrees: number
+  renderedPlaneInclinationDegrees: number
   trackingErrorDegrees: number
   tableAxisAlignmentPercent: number
   targetWorldAxis: readonly [x: number, y: number, z: number]
@@ -80,6 +83,31 @@ export function quaternionAngularDistance(
   return quaternionAxisAngle(quaternionDelta(left, right)).angleDegrees
 }
 
+function rotateLocalScreenNormal(value: QuaternionTuple) {
+  const quaternion = normalizeQuaternion(value)
+  const normalQuaternion: QuaternionTuple = [0, 0, 1, 0]
+  return multiplyQuaternions(
+    multiplyQuaternions(quaternion, normalQuaternion),
+    inverseQuaternion(quaternion),
+  ).slice(0, 3) as [number, number, number]
+}
+
+export function sensorPlaneInclinationDegrees(value: QuaternionTuple) {
+  const screenNormal = rotateLocalScreenNormal(value)
+  return (
+    (Math.acos(Math.min(1, Math.max(0, Math.abs(screenNormal[2])))) * 180) /
+    Math.PI
+  )
+}
+
+export function worldPlaneInclinationDegrees(value: QuaternionTuple) {
+  const screenNormal = rotateLocalScreenNormal(value)
+  return (
+    (Math.acos(Math.min(1, Math.max(0, Math.abs(screenNormal[1])))) * 180) /
+    Math.PI
+  )
+}
+
 export function buildPoseAccuracySnapshot(
   latestSensorRelative: QuaternionTuple,
   targetQuaternion: QuaternionTuple,
@@ -113,6 +141,13 @@ export function buildPoseAccuracySnapshot(
     sensorAngleDegrees: sensor.angleDegrees,
     targetAngleDegrees: target.angleDegrees,
     renderedAngleDegrees: rendered.angleDegrees,
+    sensorPlaneInclinationDegrees: sensorPlaneInclinationDegrees(
+      latestSensorRelative,
+    ),
+    targetPlaneInclinationDegrees:
+      worldPlaneInclinationDegrees(targetQuaternion),
+    renderedPlaneInclinationDegrees:
+      worldPlaneInclinationDegrees(renderedQuaternion),
     trackingErrorDegrees,
     tableAxisAlignmentPercent,
     targetWorldAxis: target.axis,

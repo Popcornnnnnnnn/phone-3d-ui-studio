@@ -13,12 +13,20 @@ final class MotionStreamer {
         return queue
     }()
     private let socket: LiveSocket
+    private let producerSessionId: String
+    private let captureSource: String
     private let configurationLock = NSLock()
     private var requestedHz = MotionStreamer.standardHz
     private var lastMotionTimestamp: TimeInterval?
 
-    init(socket: LiveSocket) {
+    init(
+        socket: LiveSocket,
+        producerSessionId: String,
+        captureSource: String
+    ) {
         self.socket = socket
+        self.producerSessionId = producerSessionId
+        self.captureSource = captureSource
     }
 
     func start() {
@@ -48,6 +56,8 @@ final class MotionStreamer {
             let sampledAtMs = callbackAtMs - Int64(sampleAgeMs.rounded())
             let clock = self.socket.clockEstimate()
             let message = PoseMessage(
+                producerSessionId: self.producerSessionId,
+                captureSource: self.captureSource,
                 timestampMs: sampledAtMs,
                 quaternion: [quaternion.x, quaternion.y, quaternion.z, quaternion.w],
                 rotationRate: [rotationRate.x, rotationRate.y, rotationRate.z],

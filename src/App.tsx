@@ -5,14 +5,16 @@ import {
   type ScreenOrientation,
 } from './model/iphone17'
 import { StudioScene } from './scene/StudioScene'
+import { createBrowserLiveRenderScheduler } from './scene/liveRenderScheduler'
 import { findStudioPreset, studioPresets } from './studio/presets'
-import type { QuaternionTuple } from './studio/liveProtocol'
+import type { CaptureState, QuaternionTuple } from './studio/liveProtocol'
 import type { DetailedMetricSummary } from './studio/liveMeasurement'
 import {
   buildPoseAccuracySnapshot,
   type PoseAccuracySnapshot,
 } from './studio/poseDiagnostics'
 import { POSE_SMOOTHING_RATE } from './studio/posePresentation'
+import { studioRenderConfigurationFromSearch } from './studio/renderConfiguration'
 import { useLivePhoneSource } from './studio/useLivePhoneSource'
 import { useLocalVideoSource } from './studio/useLocalVideoSource'
 
@@ -43,6 +45,15 @@ function formatPoseSyncMode(value: 'live' | 'frame-clock' | 'estimated') {
 
 function formatDegrees(value: number) {
   return `${value.toFixed(1)}°`
+}
+
+function formatCaptureState(value: CaptureState | null) {
+  if (value === 'choosing') return 'Select Full Display'
+  if (value === 'starting') return 'Starting'
+  if (value === 'streaming') return 'Streaming'
+  if (value === 'failed') return 'Needs attention'
+  if (value === 'idle') return 'Idle'
+  return 'Waiting'
 }
 
 function formatMetricTail(
@@ -79,9 +90,21 @@ export function App() {
   const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
   const [sourceMode, setSourceMode] = useState<ScreenSourceMode>('live')
   const [renderedPose, setRenderedPose] = useState<QuaternionTuple | null>(null)
+  const [renderConfiguration] = useState(() =>
+    studioRenderConfigurationFromSearch(
+      window.location.search,
+      window.devicePixelRatio,
+    ),
+  )
+  const [liveRenderScheduler] = useState(() =>
+    createBrowserLiveRenderScheduler(
+      renderConfiguration.renderScheduleMode,
+      renderConfiguration.renderScheduleCapHz ?? undefined,
+    ),
+  )
   const preset = useMemo(() => findStudioPreset(presetId), [presetId])
   const localVideo = useLocalVideoSource()
-  const livePhone = useLivePhoneSource()
+  const livePhone = useLivePhoneSource(renderConfiguration, liveRenderScheduler)
   const screenMedia = sourceMode === 'live' ? livePhone.media : localVideo.media
   const sourceReady = screenMedia !== null
   const sourceStatus =
@@ -104,7 +127,7 @@ export function App() {
       : null
 
   return (
-    <main className="app-shell">
+    <main className={preset.daylight ? 'app-shell daylight' : 'app-shell'}>
       <header className="topbar">
         <div className="brand-cluster">
           <img className="brand-logo" src="/icon-192.png" alt="" />
@@ -163,13 +186,15 @@ export function App() {
               sourceMode === 'live' ? livePhone.markFrameRendered : undefined
             }
             cameraResetRevision={cameraResetRevision}
+            liveRenderScheduler={liveRenderScheduler}
+            renderConfiguration={renderConfiguration}
             useTabletopStandard={sourceMode === 'live'}
           />
           <div className="viewport-label">
             <span>Preview 01</span>
             <span>
               {view === 'calibration' || view === 'hero'
-                ? 'Drag to orbit · Scroll to zoom'
+                ? 'Drag to orbit · Right-drag to move · Scroll to zoom'
                 : `${view} review`}
             </span>
           </div>
@@ -178,7 +203,7 @@ export function App() {
         <aside className="inspector" aria-label="Studio controls">
           <section className="panel-section">
             <p className="section-kicker">Scene</p>
-            <h2>Studio preset</h2>
+            <h2>Scene mode</h2>
             <div className="preset-grid">
               {studioPresets.map((item) => (
                 <button
@@ -233,10 +258,11 @@ export function App() {
           <section className="panel-section">
             <p className="section-kicker">Review camera</p>
             <h2>Model views</h2>
-            <div className="view-switcher four-column" role="group" aria-label="Model review view">
+            <div className="view-switcher model-views" role="group" aria-label="Model review view">
               {([
                 ['calibration', 'Calibration'],
                 ['hero', 'Hero'],
+                ['side', 'Side'],
                 ['front', 'Front'],
                 ['back', 'Back'],
               ] as const).map(([item, label]) => (
@@ -247,6 +273,7 @@ export function App() {
                   aria-pressed={item === view}
                   onClick={() => {
                     setView(item)
+                    if (item === 'side') setShowGrid(true)
                     setCameraResetRevision((value) => value + 1)
                   }}
                 >
@@ -255,7 +282,7 @@ export function App() {
               ))}
             </div>
             <p className="source-description">
-              Calibration returns to the charging-port-level reference view.
+              Side uses an orthographic camera and horizontal grid so a physical 45° lift appears as a true 45° profile.
             </p>
           </section>
 
@@ -364,6 +391,7 @@ export function App() {
             ) : (
               <dl className="live-stats">
                 <div><dt>Phone</dt><dd>{livePhone.stats.phones ? 'Connected' : 'Waiting'}</dd></div>
+                <div><dt>Capture</dt><dd>{formatCaptureState(livePhone.stats.captureState)}</dd></div>
                 <div><dt>Codec</dt><dd>{livePhone.stats.codec?.toUpperCase() ?? '—'}</dd></div>
                 <div><dt>Frames</dt><dd>{livePhone.stats.frames}</dd></div>
                 {livePhone.stats.codec === 'webrtc' ? (
@@ -389,6 +417,16 @@ export function App() {
                   <div><dt>Frame latency</dt><dd>{formatLatency(livePhone.stats.frameLatencyMs)}</dd></div>
                 )}
               </dl>
+            )}
+            {sourceMode === 'live' && livePhone.stats.captureState === 'choosing' && (
+              <p className="source-description">
+                The iPhone is connected, but capture has not started. Select Full Display in the iOS system sheet.
+              </p>
+            )}
+            {sourceMode === 'live' && livePhone.stats.captureState === 'starting' && (
+              <p className="source-description">
+                The display was selected and the first video frame is starting.
+              </p>
             )}
             {sourceMode === 'live' && livePhone.stats.codec === 'webrtc' && (
               <p className="source-description">
@@ -532,7 +570,7 @@ export function App() {
                     </p>
                     <div
                       className="measurement-results pose-diagnostics"
-                      aria-label="90 degree pose check"
+                      aria-label="Pose accuracy check"
                     >
                       <div>
                         <span>Check</span>
@@ -549,6 +587,18 @@ export function App() {
                       <div>
                         <span>Rendered model</span>
                         <strong>{formatDegrees(poseAccuracy.renderedAngleDegrees)}</strong>
+                      </div>
+                      <div>
+                        <span>Sensor plane tilt</span>
+                        <strong>{formatDegrees(poseAccuracy.sensorPlaneInclinationDegrees)}</strong>
+                      </div>
+                      <div>
+                        <span>Target plane tilt</span>
+                        <strong>{formatDegrees(poseAccuracy.targetPlaneInclinationDegrees)}</strong>
+                      </div>
+                      <div>
+                        <span>Rendered plane tilt</span>
+                        <strong>{formatDegrees(poseAccuracy.renderedPlaneInclinationDegrees)}</strong>
                       </div>
                       <div>
                         <span>Target tracking error</span>
@@ -657,7 +707,7 @@ export function App() {
                   className="wide-button"
                   disabled={livePhone.status !== 'ready' || !livePhone.poseReady}
                   type="button"
-                  onClick={livePhone.startMeasurement}
+                  onClick={() => livePhone.startMeasurement()}
                 >
                   {livePhone.measurement.status === 'complete'
                     ? 'Start new recording'
@@ -697,6 +747,20 @@ export function App() {
                         {formatLatency(
                           livePhone.measurement.report.screen.captureToRender.p95Ms,
                         )}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Capture timestamp coverage</span>
+                      <strong>
+                        {formatPercent(
+                          livePhone.measurement.report.screen.captureTimestamp
+                            .coveragePercent,
+                        )}{' '}
+                        ({formatPercent(
+                          livePhone.measurement.report.screen.captureTimestamp
+                            .futureToleratedPercent,
+                        )}{' '}
+                        future-tolerated)
                       </strong>
                     </div>
                     <div>

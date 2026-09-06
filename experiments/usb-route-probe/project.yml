@@ -1,0 +1,37 @@
+name: USBRouteProbe
+options:
+  bundleIdPrefix: com.phone3dui
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    DEVELOPMENT_TEAM: R26X7B8XDT
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  USBRouteProbe:
+    type: application
+    platform: iOS
+    sources:
+      - path: iOS
+    info:
+      path: iOS/Info.plist
+      properties:
+        CFBundleDisplayName: USB Route Probe
+        UILaunchScreen: {}
+        NSLocalNetworkUsageDescription: Measures which local interface is selected when connecting to the Phone 3D bridge.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.phone3dui.usb-route-probe
+        GENERATE_INFOPLIST_FILE: NO

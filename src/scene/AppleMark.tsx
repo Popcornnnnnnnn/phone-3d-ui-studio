@@ -44,19 +44,21 @@ export function AppleMark() {
     <group name="rear-apple-mark" position={[0, -0.04, z]} scale={0.4}>
       <mesh geometry={bodyGeometry}>
         <meshPhysicalMaterial
-          color="#252625"
-          clearcoat={0.28}
-          metalness={0.2}
-          roughness={0.34}
+          color="#a5a9ae"
+          clearcoat={0.82}
+          clearcoatRoughness={0.12}
+          metalness={0.48}
+          roughness={0.26}
           side={DoubleSide}
         />
       </mesh>
       <mesh geometry={leafGeometry} position={[0.09, 0.42, 0]} rotation={[0, 0, -0.55]}>
         <meshPhysicalMaterial
-          color="#252625"
-          clearcoat={0.28}
-          metalness={0.2}
-          roughness={0.34}
+          color="#a5a9ae"
+          clearcoat={0.82}
+          clearcoatRoughness={0.12}
+          metalness={0.48}
+          roughness={0.26}
           side={DoubleSide}
         />
       </mesh>

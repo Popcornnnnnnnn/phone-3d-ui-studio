@@ -42,7 +42,7 @@ PROJECT_PLAN.md        Schedule, milestones, effort, risks, acceptance gates
 ROADMAP.md             Date-based delivery checkpoints
 ```
 
-The current application contains a locally licensed iPhone 17 model with an independently addressable screen mesh, deterministic review views, local MP4 playback, and a live-input mode. A local bridge carries WebRTC screen video and timestamped Core Motion quaternions from the iOS 27 ScreenCaptureKit companion into the Three.js renderer. The browser retains a bounded pose history and aligns interpolated motion to each displayed video frame's capture clock. Tabletop calibration maps a screen-up iPhone with its Dynamic Island aimed toward the Mac to the studio floor, and **Reset standard view** returns the camera to a charging-port-level view. Formal reconnection and stability acceptance are still required. Confirmed model boundaries are recorded in [docs/references/iphone-17-black.md](docs/references/iphone-17-black.md).
+The current application contains a locally licensed iPhone 17 model with an independently addressable screen mesh, deterministic review views, local MP4 playback, and a live-input mode. A local bridge carries H.264 screen frames over a dedicated low-delay TCP socket and timestamped Core Motion quaternions over WebSocket from the iOS 27 ScreenCaptureKit companion into the Three.js renderer. The browser retains a bounded pose history and aligns interpolated motion to each displayed video frame's capture clock. Tabletop calibration maps a screen-up iPhone with its Dynamic Island aimed toward the Mac to the studio floor, and **Reset standard view** returns the camera to a charging-port-level view. Formal reconnection and stability acceptance are still required. Confirmed model boundaries are recorded in [docs/references/iphone-17-black.md](docs/references/iphone-17-black.md).
 
 For pose-response experiments, the web UI can switch live between Synchronized, Low latency, Instant, and Ultra. Instant applies the latest received attitude without Three.js smoothing. Ultra also asks the iPhone for a 200 Hz Core Motion stream, reports the actual device-limited rate, and performs bounded angular-velocity prediction before every Three.js render instead of only when a network sample arrives. Its live diagnostics expose 3D render rate, pose-arrival p95, and prediction-correction error; it intentionally prioritizes shell response over screen/pose synchronization.
 
@@ -58,7 +58,7 @@ npm run dev
 npm run bridge
 ```
 
-The local studio runs at <http://127.0.0.1:4317> and the bridge listens on port `4319`. Run the complete web verification suite with `npm run check`. See [ios/README.md](ios/README.md) for the locally signed iPhone build.
+The local studio runs at <http://127.0.0.1:4317>. The bridge listens on port `4319` for control/pose and port `4320` for the raw H.264 frame path. Run the complete web verification suite with `npm run check`. See [ios/README.md](ios/README.md) for the locally signed iPhone build and benchmark procedure, and [experiments/live-screen-latency/FINDINGS.md](experiments/live-screen-latency/FINDINGS.md) for the measured production configuration and remaining native-app boundary.
 
 ## Working rules
 
