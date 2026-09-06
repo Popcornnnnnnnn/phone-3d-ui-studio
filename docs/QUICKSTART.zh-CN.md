@@ -7,7 +7,7 @@
 - Mac，Node.js 24 或更新版本，npm。
 - **iOS 27 真机 iPhone**、**Xcode 27**（iOS 27 设备 SDK）、XcodeGen。当前完整 App 的 ScreenCaptureKit 支线使整个工程仍要求该版本；不能根据 ARKit 本身的最低版本推断 App 兼容性。当前目标不能使用模拟器构建。
 - Mac/iPhone 同一可互访的局域网；首次安装可以使用 USB。
-- 仓库访问权限。当前 GitHub 仓库仍为私有，上传不自动向所有人开放。
+- GitHub 仓库现已公开，可直接下载源码或克隆，无需额外仓库访问权限。
 
 ## 启动 Mac
 

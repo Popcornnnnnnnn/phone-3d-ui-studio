@@ -16,7 +16,7 @@ This candidate is a **source-based developer preview**, not a generally installa
 2. **Connection setup.** The app embeds `LiveBridgeURL` and signing defaults. Developers can change them before building. Non-developers need runtime pairing/address configuration.
 3. **Desktop installation.** The launcher needs Node and npm dependencies; it is not a signed Mac installer.
 4. **Acceptance.** Real Wi-Fi sessions have shown tracking-limited pauses and snapshot-receipt timeouts. Five-minute wireless acceptance, broader-device checks and S1 precision/extrinsics remain open.
-5. **Distribution scope.** The GitHub repository is private. No public source license has been selected. A private preview does not change visibility or grant a public source license; licensed GLBs and signing material stay out of artifacts.
+5. **Distribution scope.** The GitHub repository and source preview are now public. No public source license has been selected; repository visibility alone does not grant an open-source license. Licensed GLBs and signing material stay out of artifacts.
 
 For invited non-developer testers, the next release work is a distributed iPhone build, in-app pairing, a packaged desktop launcher and completion of wireless acceptance.
 
