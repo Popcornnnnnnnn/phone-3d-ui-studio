@@ -135,6 +135,7 @@ export function SpatialWorkspace() {
           <button onClick={() => tracker.recording ? downloadRecording() : tracker.startRecording()}>
             {tracker.recording ? 'Stop & download telemetry' : 'Record numeric telemetry'}
           </button>
+          {tracker.droppedRecords > 0 && <p role="status">Recording full. Stop and download; {tracker.droppedRecords.toLocaleString()} later records were not saved.</p>}
           <p>No camera images or phone screens are recorded.</p>
         </details>
       </aside>

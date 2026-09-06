@@ -51,7 +51,8 @@ export class SpatialTracker {
   revision = 0
   recording = false
   records: object[] = []
-  recordLimit = 40_000
+  // Five minutes at 60 Hz input + up to 240 Hz display, with room for status.
+  recordLimit = 100_000
   droppedRecords = 0
   private record(value: object) {
     if (!this.recording) return

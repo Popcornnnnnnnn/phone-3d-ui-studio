@@ -75,7 +75,7 @@ DEVELOPER_DIR=/Applications/Xcode-27-beta.app/Contents/Developer \
 | Exact-checkout browser translation | Input offset [0.2, 0.2, -0.2] m; relative display matched; rendered position [0.2, 0.4, -0.2] m | `browser-20cm.png` |
 | Browser rotation | Flat device rotated upright while position remained fixed | `browser-rotation.png` |
 | Browser interruption / recovery | Disabled calibration during interruption; position frozen; recovery required Set origin | `browser-stale.png` and interactive AX inspection |
-| Reset view / mode selector / diagnostic recording controls | Exercised in the exact checkout; Chrome downloaded valid JSON containing camera and render records | `browser-telemetry-fixture.json`; the in-app browser did not produce a downloaded file |
+| Reset view / mode selector / diagnostic recording controls | Exercised in the exact checkout; Chrome downloaded valid JSON containing camera and render records | `browser-telemetry-fixture.json`; in-app browser export receipt is not yet verified |
 
 The deterministic browser input was explicitly labelled `fixture`. It is
 software evidence, not an ARKit measurement. The bundle warning for a large
@@ -182,6 +182,37 @@ No gap exceeded 250 ms. Evidence: `physical-usb-control.ndjson`,
 This supports prioritizing the wireless path when investigating the long tail;
 it is not a five-minute test, a precision measurement, or visible latency proof.
 The connection later exited and the Web view visibly froze as designed.
+
+## Direction check and recording capacity
+
+During a live USB trial, the user reported moving left by approximately 5 cm.
+The displayed relative position was approximately [+0.058, -0.021, +0.008] m.
+The user then confirmed that the phone top faced their body when the origin was
+set. That reverses the horizontal reference relative to the prescribed top-toward-
+Mac setup; no coordinate sign change was made. This was an unmeasured direction
+check, not an accuracy trial. A new origin is required after correcting heading.
+
+With the top subsequently facing the Mac, a fresh in-app calibration followed
+normal tracking over a textured book. The user's next leftward move of about
+5 cm produced [-0.058, +0.002, +0.012] m. After the user reported returning to
+the original position, the display read [-0.011, +0.003, +0.011] m, approximately
+1.6 cm from the digital origin. The direction agrees with the prescribed setup;
+both physical endpoints were hand-estimated, so neither reading establishes
+metric accuracy. Screenshot: `browser-left-5cm-top-mac.png`.
+
+Chrome's telemetry export opened a native Save dialog. After saving, the actual
+ARKit JSON was preserved as `browser-telemetry-physical-first.json`: 40,000 records
+with 34,965 later records dropped at the original cap. It is a partial trace and
+cannot establish five-minute continuity. An earlier fixture file copied during
+export diagnosis is explicitly named `browser-export-receipt-mismatch-fixture.json`
+and excluded from physical evidence.
+
+The recording cap is now 100,000 records, enough for five minutes of 60 Hz input
+and up to 240 Hz render submissions with headroom. Diagnostics explicitly warn
+if later records are dropped. The Web-only correction passed all 18 spatial tests,
+TypeScript, ESLint and the production build; no further native installation was
+needed. Physical checks now use the visible in-app workspace at port 14317 with
+the real bridge on port 4319; calibration belongs to each browser separately.
 
 ## Limits and rollback
 
