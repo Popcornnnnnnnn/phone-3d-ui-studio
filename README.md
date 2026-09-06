@@ -8,6 +8,11 @@ A spatial interaction workspace where a real iPhone drives its counterpart in a 
 
 The iPhone app now offers **Spatial tracking** and **Screen mirroring**. Spatial tracking sends ARKit camera position, orientation and tracking quality over a separate metadata channel. The Web workspace maps these to a gravity-aligned relative workspace, with explicit origin calibration and visible loss-of-tracking handling.
 
+**S1 software is delivered and installed; physical acceptance remains pending.**
+For the current local delivery, open **http://127.0.0.1:14317/** and follow the
+[中文体验与验收说明](docs/S1_QUICKSTART.zh-CN.md). This entry runs the isolated
+S1 checkout; the generic development commands below use the default port.
+
 S1 software verification and physical acceptance are separate. See [S1 delivery and acceptance](docs/SPATIAL_S1.md) for current evidence and limitations. S2 (one marble crossing the boundary) starts only after S1 physical acceptance; S3 adds five marbles and a complete pour/catch loop.
 
 ## Run locally

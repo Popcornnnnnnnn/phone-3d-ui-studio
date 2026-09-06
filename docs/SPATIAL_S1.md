@@ -3,6 +3,10 @@
 Status (2026-09-06): **software implemented and installed; physical acceptance pending**.
 S2 and S3 remain gated on the physical checks below.
 
+For user-facing startup, expected behavior and the acceptance procedure, see
+[S1 体验与验收](S1_QUICKSTART.zh-CN.md). The current local entry is
+http://127.0.0.1:14317/ and uses the physical bridge on port 4319.
+
 ## Scope
 
 Spatial interaction is the main track. S1 adds ARKit 6DoF to the existing iPhone
