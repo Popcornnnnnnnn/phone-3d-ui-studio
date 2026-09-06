@@ -31,4 +31,3 @@ export const IPHONE_17_SCENE = {
   displayHeight: millimetersToScene(IPHONE_17_MM.displayHeight),
   rearLensDiameter: millimetersToScene(IPHONE_17_MM.rearLensDiameter),
 }
-
