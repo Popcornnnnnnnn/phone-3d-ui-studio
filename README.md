@@ -4,16 +4,14 @@ A spatial interaction workspace where a real iPhone drives its counterpart in a 
 
 **Main track: spatial interaction.** Screen mirroring, latency, picture quality and transport optimization remain a supporting track. Their existing implementation and evidence are preserved.
 
-## Current milestone: S1 — 6DoF tracking
+## Current milestone: S2 — one marble, two screens
 
-The iPhone app now offers **Spatial tracking** and **Screen mirroring**. Spatial tracking sends ARKit camera position, orientation and tracking quality over a separate metadata channel. The Web workspace maps these to a gravity-aligned relative workspace, with explicit origin calibration and visible loss-of-tracking handling.
+The bridge now owns one Rapier physics world. A marble rolls inside the tracked phone, pours through its right opening, lands in the Web world, and returns toward a fixed catch zone when you click **Return**. Move the phone to catch it; both screens render the same snapshots.
 
-**S1 software is delivered and installed; physical acceptance remains pending.**
-For the current local delivery, open **http://127.0.0.1:14317/** and follow the
-[中文体验与验收说明](docs/S1_QUICKSTART.zh-CN.md). This entry runs the isolated
-S1 checkout; the generic development commands below use the default port.
+**Prototype available; formal physical acceptance pending.** S2 prototype development is explicitly allowed while the remaining S1 precision, recovery and mirroring checks stay open. S3 remains gated on the accepted S2 loop.
 
-S1 software verification and physical acceptance are separate. See [S1 delivery and acceptance](docs/SPATIAL_S1.md) for current evidence and limitations. S2 (one marble crossing the boundary) starts only after S1 physical acceptance; S3 adds five marbles and a complete pour/catch loop.
+Current isolated S2 entry: **http://127.0.0.1:15317/?experience=marble** (bridge 4319).
+See [中文体验说明与验证记录](docs/SPATIAL_S2.md). The S1 checkout and rollback app are retained; its historical entry is http://127.0.0.1:14317/.
 
 ## Run locally
 
@@ -25,7 +23,7 @@ npm run bridge
 npm run dev
 ```
 
-Open http://127.0.0.1:4317/. Spatial mode is the default. The iPhone uses its configured `LiveBridgeURL` host on port 4319. Choose Spatial tracking, tap Start tracking and allow Camera. Hold the phone above a textured desk, screen up and top toward the Mac, then click Set origin in the browser.
+Open http://127.0.0.1:4317/. Spatial mode is the default. The iPhone uses its configured `LiveBridgeURL` host on port 4319. Choose Spatial tracking, tap Start tracking and allow Camera. Hold the phone above a textured desk, screen up and top toward the Mac, then choose Tracking → Set origin for S1, or Marble → Start round for S2.
 
 The backend keeps the existing 4319 WebSocket and 4320 video ports. A separate verification instance can use `PHONE_BRIDGE_PORT=14319 PHONE_BRIDGE_FRAME_PORT=14320`; its Web page takes `?bridge=ws%3A%2F%2F127.0.0.1%3A14319`. The ordinary phone configuration remains on 4319.
 

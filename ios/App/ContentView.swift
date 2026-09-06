@@ -97,6 +97,9 @@ struct ContentView: View {
             capture.updateAppForeground(phase == .active && inputMode == .mirroring)
             spatial.updateForeground(phase == .active && inputMode == .spatial)
         }
+        .fullScreenCover(isPresented: Binding(get: { spatial.marblePresented }, set: { if !$0 { spatial.exitMarble() } })) {
+            MarblePortraitHost(controller: spatial).ignoresSafeArea().interactiveDismissDisabled()
+        }
     }
 
     private func switchMode(to next: StudioInputMode) {

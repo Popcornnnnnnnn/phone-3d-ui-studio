@@ -1,0 +1,407 @@
+[
+  {
+    "name": "center",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 1,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 1,
+      "serverTimeMs": 1000,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "canReturn": false,
+      "active": true,
+      "catchCount": 0,
+      "region": "phone",
+      "catchTarget": [
+        0,
+        0.204014896,
+        0
+      ],
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "ball": {
+        "id": "marble-1",
+        "position": [
+          0,
+          0.204014896,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ],
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocity": [
+          0,
+          0,
+          0
+        ],
+        "radius": 0.006
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.006
+    }
+  },
+  {
+    "name": "right_edge",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 1,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 2,
+      "serverTimeMs": 1100,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "canReturn": false,
+      "active": true,
+      "catchCount": 0,
+      "region": "phone",
+      "catchTarget": [
+        0,
+        0.204014896,
+        0
+      ],
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "ball": {
+        "id": "marble-1",
+        "position": [
+          0.033285,
+          0.204014896,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ],
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocity": [
+          0,
+          0,
+          0
+        ],
+        "radius": 0.006
+      }
+    },
+    "expected": {
+      "u": 1.0,
+      "v": 0.5,
+      "radius": 0.006
+    }
+  },
+  {
+    "name": "partial_entry",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 1,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 3,
+      "serverTimeMs": 1200,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "canReturn": false,
+      "active": true,
+      "catchCount": 0,
+      "region": "phone",
+      "catchTarget": [
+        0,
+        0.204014896,
+        0
+      ],
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "ball": {
+        "id": "marble-1",
+        "position": [
+          0,
+          0.207014896,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ],
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocity": [
+          0,
+          0,
+          0
+        ],
+        "radius": 0.006
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0.005196152422706632
+    }
+  },
+  {
+    "name": "outside_front",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 1,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 4,
+      "serverTimeMs": 1300,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "canReturn": false,
+      "active": true,
+      "catchCount": 0,
+      "region": "phone",
+      "catchTarget": [
+        0,
+        0.204014896,
+        0
+      ],
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "ball": {
+        "id": "marble-1",
+        "position": [
+          0,
+          0.211014896,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ],
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocity": [
+          0,
+          0,
+          0
+        ],
+        "radius": 0.006
+      }
+    },
+    "expected": {
+      "u": 0.5,
+      "v": 0.5,
+      "radius": 0
+    }
+  },
+  {
+    "name": "translated",
+    "snapshot": {
+      "type": "world-snapshot",
+      "protocolVersion": 1,
+      "worldId": "fixture-world",
+      "epoch": 1,
+      "sequence": 5,
+      "serverTimeMs": 1400,
+      "phase": "running",
+      "reason": "Synthetic test input",
+      "ownerId": "fixture-browser",
+      "phoneSessionId": "fixture-phone",
+      "phoneConnectionId": "fixture-connection",
+      "source": "fixture",
+      "canStart": true,
+      "canReturn": false,
+      "active": true,
+      "catchCount": 0,
+      "region": "phone",
+      "catchTarget": [
+        0,
+        0.204014896,
+        0
+      ],
+      "geometry": {
+        "width": 0.06657,
+        "height": 0.14479,
+        "screenZ": 0.0040148960000000004,
+        "cornerRadius": 0.00673245,
+        "radius": 0.006,
+        "exitHalfWidth": 0.02,
+        "wallHeight": 0.012,
+        "interpolationMs": 50,
+        "gravity": 1.5
+      },
+      "phone": {
+        "position": [
+          0,
+          0.2,
+          0
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ]
+      },
+      "ball": {
+        "id": "marble-1",
+        "position": [
+          0.02,
+          0.204014896,
+          -0.01
+        ],
+        "quaternion": [
+          -0.7071067811865476,
+          0,
+          0,
+          0.7071067811865476
+        ],
+        "velocity": [
+          0,
+          0,
+          0
+        ],
+        "angularVelocity": [
+          0,
+          0,
+          0
+        ],
+        "radius": 0.006
+      }
+    },
+    "expected": {
+      "u": 0.8004356316659156,
+      "v": 0.4309344567995027,
+      "radius": 0.006
+    }
+  }
+]

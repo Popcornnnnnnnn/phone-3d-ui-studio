@@ -13,7 +13,7 @@ The desktop remains Web-based. The existing native iPhone app contains mutually 
 - S2: one shared marble can cross the phone screen boundary in both directions.
 - S3: five marbles, a receiving trough, slow return launches and a repeatable pour/catch loop.
 
-S2 is gated by physical S1 acceptance. Neither milestone is implemented in S1.
+S2 prototype development is explicitly allowed before the remaining S1 physical checks are complete. Its software now implements one continuous pour / Return / catch loop. Formal cross-screen collision acceptance still requires the S1 precision, recovery and mirroring checks. S3 follows accepted S2 physical behavior. See [S2 scope and evidence](SPATIAL_S2.md).
 
 ## Supporting track
 

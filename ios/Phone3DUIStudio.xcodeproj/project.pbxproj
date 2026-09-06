@@ -22,11 +22,13 @@
 		6ACD23B376E57092ECDAB503 /* MotionStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08641C4AF756711A269B413 /* MotionStreamer.swift */; };
 		7B89F661E4038E4A4161FEE4 /* BroadcastPickerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20051477E83DCF6DA44FEC6 /* BroadcastPickerButton.swift */; };
 		7CF830D2570F50FCFAFB2431 /* H264Encoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB38A02B877FE00FC42587F /* H264Encoder.swift */; };
+		86BDCBF789E7AB1F3EB9755C /* MarbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BA0657BF7D2D659C3D93BD2 /* MarbleView.swift */; };
 		87130B3DDC9E9728EDF70068 /* H264Encoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB38A02B877FE00FC42587F /* H264Encoder.swift */; };
 		AB64FE6B90280375A859B29B /* LiveSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6443A274B8CE36A8D7CBFE /* LiveSocket.swift */; };
 		AC7A7ACEFBD76A5C087BF1F8 /* StreamBenchmarkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A13F6CF37B105AF283A91A58 /* StreamBenchmarkView.swift */; };
 		C2CF74764C130132F2514C7B /* SampleHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56917204AED9F11C34EEE432 /* SampleHandler.swift */; };
 		D3C101B005DD46275835205F /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B49E2BF20B6A1BC6D5696E6 /* ARKit.framework */; };
+		D53A85A46869A56411F02CC8 /* WorldProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C69DC36A1EFE8D313A13DEB /* WorldProtocol.swift */; };
 		D5F57D810B429E97ADEE45DF /* FrameRateGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C0A925189ED56187BD81F6 /* FrameRateGate.swift */; };
 		E517BB8DB4DEAB8AC8FA523A /* LiveSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6443A274B8CE36A8D7CBFE /* LiveSocket.swift */; };
 		E7A6551E2342C4A9324902B8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E60EE5D582A053BCB799D50 /* ContentView.swift */; };
@@ -65,6 +67,7 @@
 		09179762B9DD2DE7EC26C3AD /* Phone3DUIStudio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Phone3DUIStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0B20DF39F650742C14DA705D /* SpatialProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialProtocol.swift; sourceTree = "<group>"; };
 		1AB38A02B877FE00FC42587F /* H264Encoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = H264Encoder.swift; sourceTree = "<group>"; };
+		1C69DC36A1EFE8D313A13DEB /* WorldProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldProtocol.swift; sourceTree = "<group>"; };
 		24EF3DA1767E4AF7FFBE02A4 /* ScreenCaptureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureController.swift; sourceTree = "<group>"; };
 		2E6443A274B8CE36A8D7CBFE /* LiveSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSocket.swift; sourceTree = "<group>"; };
 		3A42EDF7DB4FFB79B1395B3C /* H264QualitySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = H264QualitySnapshot.swift; sourceTree = "<group>"; };
@@ -75,6 +78,7 @@
 		7325B4F5E5ABA073D6B09F7D /* LiveProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveProtocol.swift; sourceTree = "<group>"; };
 		74F4E30147F3C6100BC1880C /* Phone3DUIStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phone3DUIStudioApp.swift; sourceTree = "<group>"; };
 		75CDDC324C9CC6A4D391CB81 /* ScreenCaptureKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScreenCaptureKit.framework; path = System/Library/Frameworks/ScreenCaptureKit.framework; sourceTree = SDKROOT; };
+		7BA0657BF7D2D659C3D93BD2 /* MarbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarbleView.swift; sourceTree = "<group>"; };
 		7E60EE5D582A053BCB799D50 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		82AC19CE78B2528133738A69 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A13F6CF37B105AF283A91A58 /* StreamBenchmarkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamBenchmarkView.swift; sourceTree = "<group>"; };
@@ -120,6 +124,7 @@
 				2E6443A274B8CE36A8D7CBFE /* LiveSocket.swift */,
 				B08641C4AF756711A269B413 /* MotionStreamer.swift */,
 				0B20DF39F650742C14DA705D /* SpatialProtocol.swift */,
+				1C69DC36A1EFE8D313A13DEB /* WorldProtocol.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -171,6 +176,7 @@
 				7E60EE5D582A053BCB799D50 /* ContentView.swift */,
 				3A42EDF7DB4FFB79B1395B3C /* H264QualitySnapshot.swift */,
 				5A02E176909322B3A6FBFF27 /* Info.plist */,
+				7BA0657BF7D2D659C3D93BD2 /* MarbleView.swift */,
 				74F4E30147F3C6100BC1880C /* Phone3DUIStudioApp.swift */,
 				24EF3DA1767E4AF7FFBE02A4 /* ScreenCaptureController.swift */,
 				F750D81BCE9D653A8A5FC351 /* SpatialTrackingController.swift */,
@@ -289,6 +295,7 @@
 				2DCCCFB8E8DFCF3DD41352C1 /* H264QualitySnapshot.swift in Sources */,
 				1B3BB49CA6221EFA63163298 /* LiveProtocol.swift in Sources */,
 				AB64FE6B90280375A859B29B /* LiveSocket.swift in Sources */,
+				86BDCBF789E7AB1F3EB9755C /* MarbleView.swift in Sources */,
 				165E2726E9681EEE33CEDBD5 /* MotionStreamer.swift in Sources */,
 				664F46AF645B91EA407DF0BE /* Phone3DUIStudioApp.swift in Sources */,
 				4C37F5FC1CA12F5A86F0307C /* ScreenCaptureController.swift in Sources */,
@@ -297,6 +304,7 @@
 				0E6552521BC0673EB690ADDB /* SpatialTrackingView.swift in Sources */,
 				AC7A7ACEFBD76A5C087BF1F8 /* StreamBenchmarkView.swift in Sources */,
 				EC9FAFF6866864B0019956CE /* WebRTCStreamer.swift in Sources */,
+				D53A85A46869A56411F02CC8 /* WorldProtocol.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -17,7 +17,7 @@ let package = Package(
                 "LiveSocket.swift",
                 "MotionStreamer.swift",
             ],
-            sources: ["FrameRateGate.swift", "LiveProtocol.swift", "SpatialProtocol.swift"]
+            sources: ["FrameRateGate.swift", "LiveProtocol.swift", "SpatialProtocol.swift", "WorldProtocol.swift"]
         ),
         .testTarget(
             name: "Phone3DClockSyncTests",

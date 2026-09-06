@@ -12,6 +12,12 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
     @Published private(set) var guidance = "Hold the phone above a textured surface. The camera stays on this device."
     @Published private(set) var cameraPosition: [Float] = [0, 0, 0]
     @Published private(set) var sentFrames: Int64 = 0
+    @Published private(set) var marblePresented = false
+    @Published private(set) var marbleStatus = "Waiting"
+    @Published private(set) var marbleGuidance = "Start a round from the Mac."
+    let marbleBuffer = WorldSnapshotBuffer()
+    private var lastMarbleUIAt = -Double.infinity
+    private var dismissedMarbleEpoch: Int?
     private let socket = LiveSocket()
     private var session: ARSession?
     private var sessionId = UUID().uuidString
@@ -36,18 +42,21 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
                 self.reconnectAttempt = 0
                 self.sendWindow = SpatialSendWindow()
                 self.sendStatus()
+                self.socket.sendControl(text: "{\"type\":\"world-hello\",\"protocolVersion\":1}")
             } else if state == .failed, self.gate.requested && self.gate.foreground {
                 self.scheduleReconnect()
             }
         }
         socket.onTextMessage = { [weak self] text in
             guard let self, let data = text.data(using: .utf8),
-                  let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  value["type"] as? String == "spatial-ack",
-                  value["sessionId"] as? String == self.sessionId,
-                  let sequence = value["sequence"] as? NSNumber else { return }
-            if let next = self.sendWindow.acknowledge(sequence.int64Value, now: ProcessInfo.processInfo.systemUptime) {
-                self.socket.send(text: next.text)
+                  let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+            if value["type"] as? String == "spatial-ack", value["sessionId"] as? String == self.sessionId,
+               let sequence = value["sequence"] as? NSNumber {
+                if let next = self.sendWindow.acknowledge(sequence.int64Value, now: ProcessInfo.processInfo.systemUptime) { self.socket.send(text: next.text) }
+            } else if value["type"] as? String == "world-welcome", value["protocolVersion"] as? Int == 1,
+                      let id = value["worldId"] as? String { self.marbleBuffer.welcome(id) }
+            else if let snapshot = try? JSONDecoder().decode(WorldSnapshot.self, from: data), snapshot.phoneSessionId == self.sessionId {
+                self.receiveWorld(snapshot)
             }
         }
     }
@@ -136,6 +145,8 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
     }
 
     private func releaseResources() {
+        marbleBuffer.disconnect()
+        marbleStatus = "Paused"; marbleGuidance = "Restore tracking, then start a new round on the Mac."
         running = false
         session?.pause(); session?.delegate = nil; session = nil
         reconnect?.cancel(); reconnect = nil
@@ -154,6 +165,8 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
     }
 
     func stop() {
+        sendWorldCommand("stop")
+        marblePresented = false
         gate.stop()
         releaseResources()
         trackingState = "paused"; guidance = "Tracking stopped. Tap Start tracking when ready."
@@ -171,6 +184,43 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
     }
 
     var requested: Bool { gate.requested }
+
+    private func sendWorld<T: Encodable>(_ value: T) {
+        guard socket.state == .connected, let data = try? JSONEncoder().encode(value), let text = String(data: data, encoding: .utf8) else { return }
+        socket.sendControl(text: text)
+    }
+    func sendWorldCommand(_ action: String) {
+        guard let snapshot = marbleBuffer.latest else { return }
+        sendWorld(WorldCommand(commandId: UUID().uuidString, worldId: snapshot.worldId, epoch: snapshot.epoch, action: action))
+    }
+    func exitMarble() {
+        dismissedMarbleEpoch = marbleBuffer.latest?.epoch
+        sendWorldCommand("stop"); marblePresented = false
+    }
+    private func receiveWorld(_ snapshot: WorldSnapshot) {
+        let now = Date().timeIntervalSince1970 * 1000, wasStale = marbleBuffer.needsRestart
+        let clock = socket.clockEstimate().flatMap { $0.rttMs <= 50 ? $0 : nil }
+        guard marbleBuffer.receive(snapshot, atMs: now, clockOffsetMs: clock?.offsetMs) else { return }
+        sendWorld(WorldReceipt(worldId: snapshot.worldId, sequence: snapshot.sequence))
+        if !wasStale && marbleBuffer.needsRestart && snapshot.active { sendWorldCommand("pause") }
+        if !snapshot.active { dismissedMarbleEpoch = nil; if marblePresented { marblePresented = false } }
+        else if snapshot.phase == "running", dismissedMarbleEpoch == nil || snapshot.epoch > dismissedMarbleEpoch! {
+            if !marblePresented { marblePresented = true }
+        }
+        if marbleBuffer.shouldHaptic && gate.foreground && marblePresented { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+        if now - lastMarbleUIAt > 100 || snapshot.phase != "running" {
+            lastMarbleUIAt = now
+            marbleStatus = marbleBuffer.needsRestart ? "Paused" : snapshot.phase == "running" ? (snapshot.region == "returning" ? "Catch the marble" : "Marble live") : snapshot.phase.capitalized
+            marbleGuidance = marbleBuffer.needsRestart ? "Start a new round on the Mac after tracking recovers." : snapshot.reason
+        }
+    }
+    func marbleFrame(at time: Date) -> WorldSnapshot? {
+        let wasStale = marbleBuffer.needsRestart
+        let clock = socket.clockEstimate().flatMap { $0.rttMs <= 50 ? $0 : nil }
+        let frame = marbleBuffer.render(atMs: time.timeIntervalSince1970 * 1000, clockOffsetMs: clock?.offsetMs)
+        if !wasStale && marbleBuffer.needsRestart { sendWorldCommand("pause") }
+        return frame
+    }
 
     private func fail(_ state: String, _ reason: String) {
         session?.pause(); session = nil; running = false

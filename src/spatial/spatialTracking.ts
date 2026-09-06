@@ -1,39 +1,8 @@
-import { Quaternion, Vector3 } from 'three'
-import { IPHONE_17_MM, IPHONE_17_SCENE, MODEL_HEIGHT } from '../model/iphone17'
-import { parseSpatialMessage, SPATIAL_STALE_MS, type SpatialPose, type Vec3, type Quat } from '../../shared/spatialProtocol.mjs'
-
-export const SPATIAL_MODEL_SCALE = IPHONE_17_MM.height / 1000 / MODEL_HEIGHT
-export const SPATIAL_START: Vec3 = [0, 0.2, 0]
-// Geometric approximation from RearCameraSystem, not a measured optical center.
-export const CAMERA_IN_BODY: Vec3 = [
-  0.43 * SPATIAL_MODEL_SCALE, 1.08 * SPATIAL_MODEL_SCALE,
-  (-IPHONE_17_SCENE.depth / 2 - 0.046) * SPATIAL_MODEL_SCALE,
-]
-// ARCamera +X points toward the phone bottom, +Y toward its right, +Z out of its screen.
-export const CAMERA_FROM_BODY = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI / 2)
-export interface Transform { position: Vec3; quaternion: Quat }
-export interface Calibration { origin: Vector3; yaw: Quaternion }
+import { parseSpatialMessage, SPATIAL_STALE_MS, type SpatialPose } from '../../shared/spatialProtocol.mjs'
+import { SPATIAL_START, cameraToBody, makeCalibration, applyCalibration, type Calibration, type Transform } from '../../shared/spatialMath.mjs'
+export { SPATIAL_MODEL_SCALE, SPATIAL_START, CAMERA_IN_BODY, CAMERA_FROM_BODY, cameraToBody, makeCalibration, applyCalibration, type Calibration, type Transform } from '../../shared/spatialMath.mjs'
+import { CAMERA_IN_BODY } from '../../shared/spatialMath.mjs'
 export type TrackingPhase = 'connecting' | 'disconnected' | 'initializing' | 'calibrate' | 'tracking' | 'limited' | 'stale' | 'error'
-
-export function cameraToBody(sample: Pick<SpatialPose, 'positionMeters' | 'quaternion'>): Transform {
-  const rotation = new Quaternion(...sample.quaternion).multiply(CAMERA_FROM_BODY).normalize()
-  const position = new Vector3(...sample.positionMeters).sub(new Vector3(...CAMERA_IN_BODY).applyQuaternion(rotation))
-  return { position: position.toArray(), quaternion: rotation.toArray() }
-}
-export function makeCalibration(body: Transform): Calibration | null {
-  const top = new Vector3(0, 1, 0).applyQuaternion(new Quaternion(...body.quaternion))
-  if (Math.hypot(top.x, top.z) < 0.2) return null
-  return {
-    origin: new Vector3(...body.position),
-    yaw: new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.atan2(top.x, -top.z)),
-  }
-}
-export function applyCalibration(body: Transform, calibration: Calibration): Transform {
-  return {
-    position: new Vector3(...body.position).sub(calibration.origin).applyQuaternion(calibration.yaw).add(new Vector3(...SPATIAL_START)).toArray(),
-    quaternion: calibration.yaw.clone().multiply(new Quaternion(...body.quaternion)).normalize().toArray(),
-  }
-}
 
 export class SpatialTracker {
   phase: TrackingPhase = 'connecting'

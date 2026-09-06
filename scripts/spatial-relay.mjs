@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { parseSpatialMessage } from '../shared/spatialProtocol.mjs'
+import { MarbleService } from './marble-service.mjs'
 
 export function createSpatialRelay(now = Date.now) {
   let phone = null
   const browsers = new Set()
+  const marble = new MarbleService(now)
   function send(socket, message) {
     if (socket.readyState === 1 && socket.bufferedAmount >= 16 * 1024 && message.type === 'spatial-link') {
       socket.close(4008, 'spatial lifecycle requires a fresh connection')
@@ -25,9 +27,15 @@ export function createSpatialRelay(now = Date.now) {
     if (role !== 'phone-spatial' && role !== 'browser-spatial') return false
     if (role === 'browser-spatial') {
       browsers.add(socket)
+      marble.addPeer(socket, 'browser')
       send(socket, link())
-      socket.on('close', () => browsers.delete(socket))
-      socket.on('error', () => browsers.delete(socket))
+      socket.on('message', (bytes, binary) => {
+        if (binary || bytes.length > 4096) return
+        try { marble.handle(socket, JSON.parse(bytes.toString())) } catch { /* Invalid control metadata. */ }
+      })
+      const leave = () => { browsers.delete(socket); marble.removePeer(socket) }
+      socket.on('close', leave)
+      socket.on('error', leave)
       return true
     }
     const sessionId = url.searchParams.get('sessionId')
@@ -38,12 +46,15 @@ export function createSpatialRelay(now = Date.now) {
     const previous = phone
     const source = { socket, sessionId, connectionId: randomUUID(), sequence: -1 }
     phone = source
+    marble.addPeer(socket, 'phone')
+    marble.setPhone(source)
     previous?.socket.close(4002, 'spatial producer replaced')
     broadcast(link())
     socket.on('message', (bytes, binary) => {
       if (phone !== source || binary || bytes.length > 4096) return
       let value
       try { value = JSON.parse(bytes.toString()) } catch { return }
+      if (marble.handle(socket, value)) return
       if (value?.type === 'clock-sync') {
         const received = now()
         const sent = value.phoneSendAtPreciseMs ?? value.phoneSendAtMs
@@ -59,12 +70,15 @@ export function createSpatialRelay(now = Date.now) {
       const message = parseSpatialMessage(value)
       if (!message || message.sessionId !== source.sessionId || message.sequence <= source.sequence) return
       source.sequence = message.sequence
+      marble.receivePose(message, now())
       broadcast({ ...message, connectionId: source.connectionId, bridgeReceivedAtMs: now() })
       send(socket, { type: 'spatial-ack', sessionId, sequence: message.sequence })
     })
     const disconnect = () => {
+      marble.removePeer(socket)
       if (phone !== source) return
       phone = null
+      marble.setPhone(null)
       broadcast(link())
     }
     socket.on('close', disconnect)
@@ -72,6 +86,7 @@ export function createSpatialRelay(now = Date.now) {
     return true
   }
   function shutdown() {
+    marble.shutdown()
     const source = phone
     phone = null
     source?.socket.close(1001, 'bridge shutting down')

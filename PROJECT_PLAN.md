@@ -22,3 +22,11 @@ state recovery and a single concentrated acceptance procedure.
 Use the scenarios and explicit pending-state table in [S1 delivery](docs/SPATIAL_S1.md). The target for the controlled 20 cm trials is endpoint/return deviation at most 3 cm across three repetitions; this is a local experiment gate, not a device accuracy specification.
 
 S2 and S3 are not bundled into S1. The previous estimate and full live-screen work breakdown remain in the [historical project plan](docs/legacy/live-twin-project-plan.md).
+
+## S2 delivery
+
+Explicitly authorized prototype development from committed S1 baseline `6efefab`, in the isolated `codex/spatial-s2` worktree. The original supporting-track checkout and the S1 checkout are preserved.
+
+The bridge owns 120 Hz physics; Web and native Canvas render shared snapshots with a 50 ms buffer. One ball, one right exit, slow gravity, fixed-target Return and real collision catch are implemented. No five-ball expansion or wireless tuning is included.
+
+Software tests and exact-worktree synthetic browser checks precede signed device installation. Physical acceptance is a separate concentrated session: five complete cycles, one miss, interruption recovery, numerical traces and external same-frame video. S1 outstanding checks remain pending rather than being inferred from synthetic evidence. See [S2 delivery](docs/SPATIAL_S2.md).

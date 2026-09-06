@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { SpatialWorkspace } from './spatial/SpatialWorkspace'
+import { SpatialExperience } from './spatial/SpatialExperience'
 import {
   IPHONE_17_MM,
   type ReviewView,
@@ -92,7 +92,7 @@ export function App() {
           history.replaceState(null, '', url)
         }}>{value === 'spatial' ? 'Spatial tracking' : 'Screen mirroring'}</button>)}
     </nav>
-    {mode === 'spatial' ? <SpatialWorkspace /> : <MirroringApp />}
+    {mode === 'spatial' ? <SpatialExperience /> : <MirroringApp />}
   </>
 }
 
