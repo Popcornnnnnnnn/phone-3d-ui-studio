@@ -8,6 +8,8 @@ import { MARBLE_GEOMETRY as G } from '../../shared/marbleMath.mjs'
 import { useMarbleWorld } from './useMarbleWorld'
 import { drawMarbleScreen } from './drawMarbleScreen'
 import type { WorldClient } from './WorldClient'
+import { SpatialViewport } from '../spatial/SpatialViewport'
+import { WorkspaceGrid } from '../spatial/WorkspaceGrid'
 import '../spatial/spatial.css'
 import './marble.css'
 
@@ -53,7 +55,7 @@ function MarbleScene({ client }: { client: WorldClient }) {
   return <>
     <ambientLight intensity={1.3} /><hemisphereLight args={['#fff', '#a6b49d', 1.4]} />
     <directionalLight position={[1, 2, 1]} intensity={3} />
-    <gridHelper args={[1.2, 12, '#9ba99e', '#d0d8cc']} />
+    <WorkspaceGrid />
     <mesh position={[0, -0.026, 0]}><boxGeometry args={[1.2, 0.05, 1.2]} /><meshStandardMaterial color="#e3e8db" roughness={0.9} /></mesh>
     <group ref={phone}>
       <group scale={SPATIAL_MODEL_SCALE}><IPhone17Model externallyDriven animate={false} view="front" orientation="portrait" screenMedia={surface.media} /></group>
@@ -65,7 +67,7 @@ function MarbleScene({ client }: { client: WorldClient }) {
     <mesh ref={ring} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.025, 0.028, 48]} /><meshBasicMaterial color="#3a9971" transparent opacity={0.5} side={2} depthWrite={false} />
     </mesh>
-    <OrbitControls target={SPATIAL_START} minDistance={0.18} maxDistance={3} />
+    <OrbitControls makeDefault target={SPATIAL_START} minDistance={0.08} />
   </>
 }
 export function MarbleWorkspace() {
@@ -81,12 +83,18 @@ export function MarbleWorkspace() {
   return <main className="spatial-workspace marble-workspace">
     <header className="spatial-header"><div><p className="spatial-eyebrow">Spatial interaction / S2</p><h1>One marble. Two worlds.</h1><p>Tilt to pour. Return to catch. The same marble, all the way.</p></div><span className={'spatial-status ' + (running ? 'is-live' : '')} role="status">{title}</span></header>
     <div className="spatial-layout">
-      <section className="spatial-viewport" aria-label="Shared marble workspace">
-        <Canvas key={view} dpr={[1, 2]} camera={{ position: [0.4, 0.49, 0.54], fov: 42, near: 0.01, far: 20 }} gl={{ antialias: true }} onCreated={({ gl }) => gl.setClearColor('#f0f2eb')}><MarbleScene client={client} /></Canvas>
-        <div className="spatial-canvas-label">Slow demo · gravity 1.5 m/s² · 10 cm grid</div>
+      <SpatialViewport label="Shared marble workspace" onReset={() => resetView((n) => n + 1)} controls={<>
+        <span className="spatial-fullscreen-status" role="status">{title}</span>
+        <button disabled={!s?.canStart || !client.connected || (running && !client.isOwner)} onClick={() => client.command('start')}>{s?.active ? 'Restart round' : 'Start round'}</button>
+        <button disabled={!running || !client.isOwner || !s?.canReturn} onClick={() => client.command('return')}>Return</button>
+        <button disabled={!client.isOwner || !s?.canStart || !client.connected || !['running', 'lost'].includes(s.phase)} onClick={() => client.command('reset')}>Reset ball</button>
+        <button disabled={!running || !client.isOwner} onClick={() => client.command('pause')}>Pause</button>
+        <span>{s?.catchCount ?? 0} catches</span>
+      </>}>
+        <Canvas key={view} dpr={[1, 2]} camera={{ position: [0.4, 0.49, 0.54], fov: 42, near: 0.01, far: 2000 }} gl={{ antialias: true }} onCreated={({ gl }) => gl.setClearColor('#f0f2eb')}><MarbleScene client={client} /></Canvas>
+        <div className="spatial-canvas-label">Slow demo · gravity 1.5 m/s² · 10 cm grid nearby</div>
         {!running && <div className="spatial-paused-label">{s?.active ? 'World frozen · start a new round to continue' : 'Start round to place the marble in your phone'}</div>}
-        <button className="spatial-reset" onClick={() => resetView((n) => n + 1)}>Reset view</button>
-      </section>
+      </SpatialViewport>
       <aside className="spatial-panel">
         <p className="spatial-eyebrow">Pour / Return / Catch</p><h2>{title}</h2>
         {s?.source === 'fixture' && <p className="spatial-hint">Synthetic test input — no physical device.</p>}

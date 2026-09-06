@@ -6,6 +6,8 @@ import { IPhone17Model } from '../scene/IPhone17Model'
 import type { TextureScreenMedia } from '../studio/screenMedia'
 import { SPATIAL_MODEL_SCALE, SPATIAL_START, type SpatialTracker } from './spatialTracking'
 import { useSpatialTracking } from './useSpatialTracking'
+import { SpatialViewport } from './SpatialViewport'
+import { WorkspaceGrid } from './WorkspaceGrid'
 import './spatial.css'
 
 function SpatialPhone({ tracker }: { tracker: SpatialTracker }) {
@@ -93,23 +95,25 @@ export function SpatialWorkspace() {
       <span className={'spatial-status ' + (live ? 'is-live' : '')} role="status">{labels[tracker.phase]}</span>
     </header>
     <div className="spatial-layout">
-      <section className="spatial-viewport" aria-label="Spatial phone workspace">
-        <Canvas key={cameraRevision} dpr={[1, 2]} camera={{ position: [0.48, 0.52, 0.62], fov: 42, near: 0.01, far: 20 }}
+      <SpatialViewport label="Spatial phone workspace" onReset={() => resetCamera((v) => v + 1)} controls={<>
+        <span className="spatial-fullscreen-status" role="status">{labels[tracker.phase]}</span>
+        <button disabled={!tracker.isFresh()} onClick={() => tracker.setOrigin()}>Set origin</button>
+      </>}>
+        <Canvas key={cameraRevision} dpr={[1, 2]} camera={{ position: [0.48, 0.52, 0.62], fov: 42, near: 0.01, far: 2000 }}
           gl={{ antialias: true }} onCreated={({ gl }) => gl.setClearColor('#f0f2eb')}>
           <ambientLight intensity={1.4} />
           <hemisphereLight args={['#ffffff', '#c2c7b4', 1.4]} />
           <directionalLight position={[1, 2, 1]} intensity={3} />
           <directionalLight position={[-1, 0.8, -1]} intensity={2} />
-          <gridHelper args={[2, 20, '#9ba99e', '#d0d8cc']} />
+          <WorkspaceGrid />
           <axesHelper args={[0.1]} position={SPATIAL_START} />
           <SpatialPhone tracker={tracker} />
           <PositionTrail tracker={tracker} />
-          <OrbitControls target={SPATIAL_START} minDistance={0.18} maxDistance={3} />
+          <OrbitControls makeDefault target={SPATIAL_START} minDistance={0.08} />
         </Canvas>
-        <div className="spatial-canvas-label">10 cm grid · relative workspace</div>
+        <div className="spatial-canvas-label">10 cm grid nearby · relative workspace</div>
         {!live && <div className="spatial-paused-label">{tracker.renderedAtMs === null ? 'Reference view · set origin to move' : 'Position frozen · restore tracking and set origin'}</div>}
-        <button className="spatial-reset" onClick={() => resetCamera((v) => v + 1)}>Reset view</button>
-      </section>
+      </SpatialViewport>
       <aside className="spatial-panel">
         <p className="spatial-eyebrow">01 / Connect & calibrate</p>
         <h2>{labels[tracker.phase]}</h2>
