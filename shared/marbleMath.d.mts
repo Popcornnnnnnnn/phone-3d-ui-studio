@@ -1,8 +1,11 @@
 import type { Transform } from './spatialMath.mjs'
 import type { Vec3 } from './spatialProtocol.mjs'
 import type { WorldSnapshot } from './worldProtocol.mjs'
+import type { MarbleSettings } from './marbleSettings.mjs'
 export interface MarbleGeometry { width: number; height: number; screenZ: number; cornerRadius: number; radius: number; exitHalfWidth: number; wallHeight: number; interpolationMs: number; gravity: number }
 export const MARBLE_GEOMETRY: Readonly<MarbleGeometry>
+export function marbleGeometry(settings: MarbleSettings): MarbleGeometry
+export function scaleMarbleTranslation(phone: Transform, scale: number): Transform
 export function insideScreen(x: number, y: number, g?: MarbleGeometry): boolean
 export function localToWorld(point: Vec3, phone: Transform): Vec3
 export function worldToLocal(point: Vec3, phone: Transform): Vec3

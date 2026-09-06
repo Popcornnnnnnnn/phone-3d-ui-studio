@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { TrayMotion } from './tray-motion.mjs'
 import { initMarblePhysics, isTrayUp, MarbleWorld, PHYSICS_DT } from './marble-world.mjs'
 import { cameraToBody, makeCalibration, applyCalibration } from '../shared/spatialMath.mjs'
-import { MARBLE_GEOMETRY } from '../shared/marbleMath.mjs'
+import { marbleGeometry, scaleMarbleTranslation } from '../shared/marbleMath.mjs'
+import { DEFAULT_MARBLE_SETTINGS } from '../shared/marbleSettings.mjs'
 import { parseWorldCommand, WORLD_VERSION } from '../shared/worldProtocol.mjs'
 
 // A v1 client can still show an actionable upgrade notice and send receipts without breaking S1.
@@ -16,6 +17,7 @@ export class MarbleService {
     this.epoch = 0; this.sequence = 0; this.ownerId = null; this.core = null; this.calibration = null; this.motion = null
     this.phoneSource = null; this.latest = null; this.poseReceivedAt = -Infinity; this.phoneCapable = false
     this.phase = 'waiting'; this.reason = 'Start Spatial tracking on the iPhone.'
+    this.settings = { ...DEFAULT_MARBLE_SETTINGS }
     this.engineReady = false; this.active = false; this.lastTick = now(); this.lastSnapshot = -Infinity; this.accumulator = 0
   }
   addPeer(socket, role) {
@@ -100,7 +102,9 @@ export class MarbleService {
         const body = cameraToBody(this.latest), calibration = makeCalibration(body)
         if (!calibration || !isTrayUp(body)) reason = 'Hold the screen facing up and nearly level, with the top toward the Mac.'
         else {
-          this.core?.free(); this.calibration = calibration; this.core = new MarbleWorld(applyCalibration(body, calibration))
+          const settings = command.settings ?? this.settings
+          const next = new MarbleWorld(applyCalibration(body, calibration), settings)
+          this.core?.free(); this.calibration = calibration; this.settings = { ...settings }; this.core = next
           this.motion = new TrayMotion(this.core.phone, this.latest.sampledAtMs, this.now())
           this.ownerId = peer.id; this.epoch++; this.phase = 'running'; this.active = true
           this.reason = 'Gently lift the tray to toss the ball, then catch it.'
@@ -143,7 +147,9 @@ export class MarbleService {
         const stepAt = at - this.accumulator * 1000 + PHYSICS_DT * 1000
         const phone = this.motion.step(stepAt, PHYSICS_DT)
         if (!phone) { this.pause('Phone motion samples stopped. Restore tracking and recalibrate.'); break }
-        this.core.setPhoneTarget(phone)
+        // Keep jump detection in true meters; scale only the reconstructed tray
+        // translation, before physics and both renderers receive the same pose.
+        this.core.setPhoneTarget(scaleMarbleTranslation(phone, this.settings.movementScale))
         this.core.step(stepAt); this.accumulator -= PHYSICS_DT
       }
     }
@@ -164,7 +170,8 @@ export class MarbleService {
       sequence: this.sequence++, serverTimeMs: this.now(), phase, reason, ownerId: this.ownerId,
       phoneSessionId: this.phoneSource?.sessionId ?? null, phoneConnectionId: this.phoneSource?.connectionId ?? null,
       source: this.source ?? null, active: this.active, canStart: this.engineReady && fresh,
-      geometry: MARBLE_GEOMETRY, phone: null, balls: [], activeBallId: null, hitCount: 0, lastImpact: null, region: 'needs-ball',
+      geometry: this.core?.geometry ?? marbleGeometry(this.settings), settings: { ...this.settings },
+      phone: null, balls: [], activeBallId: null, hitCount: 0, lastImpact: null, region: 'needs-ball',
       motion: this.motion?.diagnostics() ?? null,
       ...state, canAddBall: !!state?.canAddBall && phase === 'running' && fresh && isTrayUp(cameraToBody(this.latest)),
     }

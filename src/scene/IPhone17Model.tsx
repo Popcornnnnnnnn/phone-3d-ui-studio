@@ -12,6 +12,7 @@ import {
   type ScreenOrientation,
 } from '../model/iphone17'
 import { createRoundedRectangleGeometry } from '../model/roundedRectangle'
+import { isLocalModelResponse } from '../model/localAssetAvailability'
 import type { PoseSample } from '../studio/contracts'
 import type { QuaternionTuple } from '../studio/liveProtocol'
 import type { PoseRenderMeasurementSample } from '../studio/liveMeasurement'
@@ -102,7 +103,7 @@ function useLocalAssetAvailability() {
       method: 'HEAD',
       signal: controller.signal,
     })
-      .then((response) => setAvailable(response.ok))
+      .then((response) => setAvailable(isLocalModelResponse(response)))
       .catch(() => setAvailable(false))
 
     return () => controller.abort()

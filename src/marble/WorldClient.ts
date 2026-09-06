@@ -1,5 +1,6 @@
 import { parseWorldSnapshot, WORLD_VERSION, type WorldSnapshot, type WorldAction } from '../../shared/worldProtocol.mjs'
 import { interpolateSnapshot } from '../../shared/marbleMath.mjs'
+import type { MarbleSettings } from '../../shared/marbleSettings.mjs'
 
 export class WorldClient {
   clientId: string | null = null
@@ -43,10 +44,10 @@ export class WorldClient {
     if (!s.active) { this.visual = s; this.needsRestart = false }
     this.message = this.needsRestart ? 'Display paused. Start a new round after tracking recovers.' : s.reason
   }
-  command(action: WorldAction) {
+  command(action: WorldAction, settings?: MarbleSettings) {
     if (!this.latest || !this.worldId || !this.connected) return
     this.send({ type: 'world-command', protocolVersion: WORLD_VERSION, worldId: this.worldId, epoch: this.latest.epoch,
-      commandId: crypto.randomUUID(), action })
+      commandId: crypto.randomUUID(), action, ...(action === 'start' && settings ? { settings } : {}) })
   }
   stale() {
     if (this.needsRestart) return

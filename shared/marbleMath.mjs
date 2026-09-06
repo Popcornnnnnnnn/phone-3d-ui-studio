@@ -1,14 +1,22 @@
 import { Quaternion, Vector3 } from 'three'
 import { IPHONE_17_MM } from './phoneGeometry.mjs'
-import { SPATIAL_MODEL_SCALE } from './spatialMath.mjs'
+import { SPATIAL_MODEL_SCALE, SPATIAL_START } from './spatialMath.mjs'
+import { DEFAULT_MARBLE_SETTINGS } from './marbleSettings.mjs'
 
 export const MARBLE_GEOMETRY = Object.freeze({
   width: IPHONE_17_MM.displayWidth / 1000, height: IPHONE_17_MM.displayHeight / 1000,
   screenZ: IPHONE_17_MM.depth / 2000 + 0.0008 * SPATIAL_MODEL_SCALE,
   cornerRadius: 0.135 * SPATIAL_MODEL_SCALE,
-  radius: 0.0075, exitHalfWidth: 0.020, wallHeight: 0.012,
+  radius: DEFAULT_MARBLE_SETTINGS.ballDiameterMm / 2000, exitHalfWidth: 0.020, wallHeight: 0.012,
   interpolationMs: 50, gravity: 1.5,
 })
+export function marbleGeometry(settings) {
+  return { ...MARBLE_GEOMETRY, radius: settings.ballDiameterMm / 2000 }
+}
+export function scaleMarbleTranslation(phone, scale) {
+  return { position: phone.position.map((value, axis) => SPATIAL_START[axis] + (value - SPATIAL_START[axis]) * scale),
+    quaternion: [...phone.quaternion] }
+}
 export function insideScreen(x, y, g = MARBLE_GEOMETRY) {
   const dx = Math.abs(x) - (g.width / 2 - g.cornerRadius)
   const dy = Math.abs(y) - (g.height / 2 - g.cornerRadius)

@@ -1,3 +1,4 @@
+import { parseMarbleSettings } from './marbleSettings.mjs'
 export const WORLD_VERSION = 2
 export const WORLD_PHASES = new Set(['waiting', 'ready', 'running', 'paused', 'unsupported'])
 const tuple = (v, n) => Array.isArray(v) && v.length === n && v.every(Number.isFinite)
@@ -6,7 +7,10 @@ const id = (s) => typeof s === 'string' && s.length > 0 && s.length <= 128
 export function parseWorldCommand(v) {
   if (!v || v.type !== 'world-command' || v.protocolVersion !== WORLD_VERSION || !id(v.commandId) || !id(v.worldId) ||
     !Number.isSafeInteger(v.epoch) || v.epoch < 0 || !['start', 'add-ball', 'pause', 'stop'].includes(v.action)) return null
-  return { type: v.type, protocolVersion: WORLD_VERSION, commandId: v.commandId, worldId: v.worldId, epoch: v.epoch, action: v.action }
+  const settings = v.settings === undefined ? undefined : parseMarbleSettings(v.settings)
+  if (v.settings !== undefined && (!settings || v.action !== 'start')) return null
+  return { type: v.type, protocolVersion: WORLD_VERSION, commandId: v.commandId, worldId: v.worldId, epoch: v.epoch, action: v.action,
+    ...(settings ? { settings } : {}) }
 }
 export function parseWorldSnapshot(v) {
   if (!v || v.type !== 'world-snapshot' || v.protocolVersion !== WORLD_VERSION || !id(v.worldId) ||
@@ -17,6 +21,7 @@ export function parseWorldSnapshot(v) {
     typeof v.canStart !== 'boolean' || typeof v.canAddBall !== 'boolean' || typeof v.active !== 'boolean' ||
     !Number.isSafeInteger(v.hitCount) || v.hitCount < 0 || !['tray', 'air', 'needs-ball'].includes(v.region)) return null
   const g = v.geometry
+  if (v.settings !== undefined && (!parseMarbleSettings(v.settings) || g?.radius !== v.settings.ballDiameterMm / 2000)) return null
   if (!g || !['width', 'height', 'screenZ', 'cornerRadius', 'radius', 'exitHalfWidth', 'wallHeight', 'interpolationMs', 'gravity'].every((key) => Number.isFinite(g[key])) ||
     g.width <= 0 || g.height <= 0 || g.radius <= 0 || g.radius >= 0.1 || g.width >= 1 || g.height >= 1 || g.interpolationMs !== 50 ||
     g.cornerRadius <= 0 || g.cornerRadius > Math.min(g.width, g.height) / 2 || g.exitHalfWidth <= 0 || g.exitHalfWidth >= g.height / 2 || g.wallHeight <= 0 || g.gravity <= 0) return null

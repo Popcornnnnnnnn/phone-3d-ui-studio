@@ -17,8 +17,8 @@ function setup(capable = true) {
   hello(browser); hello(other)
   function pose(state = 'normal') { s.receivePose({ type: 'spatial-pose', source: 'fixture', trackingState: state, reason: state,
     sampledAtMs: now, clockOffsetMs: 0, clockRttMs: 1, positionMeters: [0, 0, 0], quaternion: [-0.5, -0.5, -0.5, 0.5] }) }
-  function command(socket, action, id = crypto.randomUUID(), epoch = s.epoch) {
-    s.handle(socket, { type: 'world-command', protocolVersion: 2, commandId: id, worldId: s.worldId, epoch, action })
+  function command(socket, action, id = crypto.randomUUID(), epoch = s.epoch, settings) {
+    s.handle(socket, { type: 'world-command', protocolVersion: 2, commandId: id, worldId: s.worldId, epoch, action, ...(settings ? { settings } : {}) })
     return socket.messages.filter((m) => m.type === 'world-result').at(-1)
   }
   function ack(socket) {
@@ -29,6 +29,39 @@ function setup(capable = true) {
   return { s, phone, browser, other, pose, command, ack, advance: (ms) => { now += ms; s.tick() } }
 }
 describe('world control, freshness and bounded snapshots', () => {
+  it('applies all settings atomically on restart and prevents observer/phone changes', () => {
+    const { s, browser, phone, other, command } = setup(); command(browser, 'start')
+    const original = s.core, id = s.core.activeBallId, epoch = s.epoch
+    const settings = { movementScale: 0.25, ballDiameterMm: 20, restitution: 0.2 }
+    expect(command(other, 'start', 'observer', epoch, settings).ok).toBe(false)
+    expect(command(phone, 'start', 'phone', epoch, settings).ok).toBe(false)
+    expect(command(browser, 'start', 'invalid', epoch, { ...settings, restitution: 2 }).ok).toBe(false)
+    expect(s.core).toBe(original)
+    expect(command(browser, 'start', 'apply', epoch, settings).ok).toBe(true)
+    expect(s.core).not.toBe(original); expect(s.core.activeBallId).not.toBe(id)
+    expect(s.core.phone.position).toEqual([0, 0.2, 0]); expect(s.snapshot().settings).toEqual(settings)
+    expect(s.snapshot().geometry.radius).toBe(0.01)
+    expect(s.core.activeBall.collider.radius()).toBeCloseTo(0.01)
+    expect(s.core.activeBall.collider.restitution()).toBeCloseTo(0.2)
+    expect(s.core.surface.restitution()).toBeCloseTo(0.2)
+    const applied = s.core
+    command(browser, 'start', 'apply', epoch, settings); expect(s.core).toBe(applied)
+    command(browser, 'pause'); command(browser, 'start'); expect(s.snapshot().settings).toEqual(settings)
+  })
+  it('feeds scaled translation into the authoritative tray and outgoing snapshot, with raw jump detection', () => {
+    const { s, browser, phone, other, command, ack, advance } = setup()
+    command(browser, 'start', 'scaled', s.epoch, { movementScale: 0.5, ballDiameterMm: 15, restitution: 0.35 })
+    const sample = { ...s.latest }, initial = structuredClone(s.core.phone)
+    // 20 cm in one second, then hold to drain the known-sample filter.
+    for (let i = 1; i <= 90; i++) {
+      ack(browser); ack(phone); ack(other); advance(1000 / 60)
+      s.receivePose({ ...sample, sampledAtMs: 1000 + i * 1000 / 60, positionMeters: [Math.min(i / 60, 1) * 0.2, 0, 0] })
+    }
+    expect(s.phase).toBe('running')
+    expect(s.core.phone.position[0] - initial.position[0]).toBeCloseTo(0.1, 4)
+    expect(s.snapshot().phone).toEqual(s.core.phone)
+    expect(s.core.phone.quaternion).toEqual(initial.quaternion)
+  })
   it('requires native capability and verified clock without breaking S1', () => {
     const a = setup(false); expect(a.s.snapshot().phase).toBe('unsupported'); expect(a.command(a.browser, 'start').ok).toBe(false)
     const b = setup(); b.s.latest.clockOffsetMs = null

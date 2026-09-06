@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import RAPIER from '@dimforge/rapier3d-compat'
 import { Quaternion, Vector3 } from 'three'
-import { MARBLE_GEOMETRY as G, insideScreen, localToWorld, worldToLocal } from '../shared/marbleMath.mjs'
+import { marbleGeometry, insideScreen, localToWorld, worldToLocal } from '../shared/marbleMath.mjs'
+import { DEFAULT_MARBLE_SETTINGS } from '../shared/marbleSettings.mjs'
 
 let initialized
 export const initMarblePhysics = () => initialized ??= RAPIER.init()
@@ -16,7 +17,9 @@ const material = (collider, restitution, collisionGroups) => collider.setRestitu
   .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Min).setCollisionGroups(collisionGroups)
 
 export class MarbleWorld {
-  constructor(phone) {
+  constructor(phone, settings = DEFAULT_MARBLE_SETTINGS) {
+    this.settings = { ...settings }
+    const G = this.geometry = marbleGeometry(settings)
     this.world = new RAPIER.World({ x: 0, y: -G.gravity, z: 0 })
     // Rapier scales contact tolerances from a typical dynamic object's size.
     // The default 1 m scale produces centimeter-wide predictive contacts here.
@@ -42,7 +45,7 @@ export class MarbleWorld {
     }
     for (const p of outline) for (const z of [floor - 0.001, floor]) vertices.push(p[0], p[1], z)
     const floorShape = RAPIER.ColliderDesc.convexHull(new Float32Array(vertices))
-    this.surface = this.world.createCollider(material(floorShape.setFriction(0.45), 0.35, groups.tray), this.tray)
+    this.surface = this.world.createCollider(material(floorShape.setFriction(0.45), settings.restitution, groups.tray), this.tray)
     // Straight rails and rounded corner rails; only the central right opening is omitted.
     for (let i = 0; i < outline.length; i++) {
       const a = outline[i], b = outline[(i + 1) % outline.length]
@@ -66,12 +69,13 @@ export class MarbleWorld {
   get activeBall() { return this.balls.find((b) => b.id === this.activeBallId) }
   get canAddBall() { return this.activeBallId === null && isTrayUp(this.phone) }
   addBall() {
+    const G = this.geometry
     if (!this.canAddBall) return false
     if (this.balls.length >= 5) this.removeBall(this.balls[0])
     const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setCcdEnabled(true)
       .setTranslation(...localToWorld([0, 0, G.screenZ + 0.0003], this.phone)).setRotation(quat(this.phone.quaternion))
       .setLinearDamping(0.08).setAngularDamping(0.6).setCanSleep(false))
-    const collider = this.world.createCollider(material(RAPIER.ColliderDesc.ball(G.radius).setMass(0.005).setFriction(0.45), 0.35, groups.active), body)
+    const collider = this.world.createCollider(material(RAPIER.ColliderDesc.ball(G.radius).setMass(0.005).setFriction(0.45), this.settings.restitution, groups.active), body)
     const ball = { id: 'ball-' + randomUUID(), body, collider, state: 'active', restTime: 0, airTime: 0, armed: false }
     this.balls.push(ball); this.activeBallId = ball.id; this.region = 'tray'; this.lastOutcome = ''
     return true
@@ -84,6 +88,7 @@ export class MarbleWorld {
   // Called once per fixed step with an already reconstructed sampling-time pose.
   setPhoneTarget(phone) { this.target = structuredClone(phone) }
   contact(a, b) {
+    const G = this.geometry
     let contact = false
     this.world.contactPair(a, b, (manifold) => {
       for (let i = 0; i < manifold.numSolverContacts(); i++) {
@@ -93,10 +98,12 @@ export class MarbleWorld {
     return contact
   }
   ballState(ball) {
+    const G = this.geometry
     return ball.body ? { id: ball.id, state: ball.state, position: xyz(ball.body.translation()), quaternion: xyzw(ball.body.rotation()),
       velocity: xyz(ball.body.linvel()), angularVelocity: xyz(ball.body.angvel()), radius: G.radius } : ball.final
   }
   step(atMs = this.steps * PHYSICS_DT * 1000) {
+    const G = this.geometry
     this.phone = this.target
     this.tray.setNextKinematicTranslation(vec(this.phone.position))
     this.tray.setNextKinematicRotation(quat(this.phone.quaternion))

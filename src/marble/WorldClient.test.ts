@@ -11,6 +11,14 @@ function setup() {
   return { c, sent }
 }
 describe('shared world presentation', () => {
+  it('sends selected settings with restart without mutating the current world locally', () => {
+    const { c, sent } = setup(), a = initial(); c.receive(a, 1000)
+    const settings = { movementScale: 0.25, ballDiameterMm: 20, restitution: 0.2 }
+    c.command('start', settings)
+    expect(sent.at(-1)).toMatchObject({ action: 'start', settings, epoch: a.epoch })
+    expect(c.latest).toEqual(a)
+    c.command('pause', settings); expect(sent.at(-1)).not.toHaveProperty('settings')
+  })
   it('matches the native projection fixtures including partial entry and the right edge', () => {
     for (const fixture of fixtures) {
       const s = parseWorldSnapshot(fixture.snapshot)!

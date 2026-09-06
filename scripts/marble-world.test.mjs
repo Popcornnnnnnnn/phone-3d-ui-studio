@@ -12,6 +12,18 @@ const pour = (w) => { w.setPhoneTarget(tilt(-0.5)); until(w, () => !w.activeBall
 beforeAll(initMarblePhysics)
 afterEach(() => { worlds.forEach((w) => w.free()); worlds = [] })
 describe('elastic tray authoritative physics and lifecycle', () => {
+  it('uses selected ball sizes for the real collider, shallow floor and replacement balls', () => {
+    for (const diameter of [10, 20]) {
+      const w = new MarbleWorld(flat, { movementScale: 0.5, ballDiameterMm: diameter, restitution: 0.2 }); worlds.push(w)
+      step(w, 600)
+      expect(w.activeBall.collider.radius()).toBeCloseTo(diameter / 2000)
+      expect(w.snapshot().balls[0].position[1]).toBeCloseTo(0.2 + G.screenZ, 3)
+      expect(w.hitCount).toBe(0)
+      w.removeBall(w.activeBall); expect(w.addBall()).toBe(true)
+      expect(w.snapshot().balls[0].radius).toBe(diameter / 2000)
+      expect(w.activeBall.collider.restitution()).toBeCloseTo(0.2)
+    }
+  })
   it('rests without self excitation and stays contained behind the left rail', () => {
     const w = create(); step(w, 600)
     expect(w.snapshot().balls[0].position[1]).toBeCloseTo(0.2 + G.screenZ, 3)
