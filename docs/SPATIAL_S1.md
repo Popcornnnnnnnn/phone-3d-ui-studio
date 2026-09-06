@@ -168,6 +168,21 @@ isolate every remaining delay. Data: `physical-camera-ack.ndjson`,
 `phone-link-ping-60s.txt`. The user also described a later leftward move of about
 5 cm; the frozen model made it unsuitable as a precision trial.
 
+## USB route control
+
+The user connected a data-capable USB cable. CoreDevice then reported wired
+transport, and the actual spatial TCP socket changed from Wi-Fi interface en0
+to the USB link-local interface en8 after a bridge reconnect. This verifies the
+application route, not only the presence of a charging cable.
+
+A 60-second capture received 3,598 normal poses: maximum inter-arrival gap 34 ms,
+median synchronized sample age 33.24 ms, P95 42.73 ms and maximum 51.55 ms.
+No gap exceeded 250 ms. Evidence: `physical-usb-control.ndjson`,
+`physical-usb-control-analysis.json`, and `device-connection-wired.json`.
+This supports prioritizing the wireless path when investigating the long tail;
+it is not a five-minute test, a precision measurement, or visible latency proof.
+The connection later exited and the Web view visibly froze as designed.
+
 ## Limits and rollback
 
 Camera-to-body translation uses approximate model geometry. Precise optical
