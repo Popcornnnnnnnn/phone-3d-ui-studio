@@ -4,6 +4,44 @@ A real iPhone becomes a tray in a shared Web 3D world. Gently toss a ball, move 
 
 **Developer preview — not a one-click consumer install.** The desktop workspace runs from this repository. Playing requires Xcode 27, your own iPhone signing and a physical iPhone on iOS 27. No generally installable iPhone binary or TestFlight invitation is included. Wireless interruptions and formal physical acceptance remain open.
 
+## Spatial interaction — in motion
+
+A preview of the new **S2.1 Elastic Tray** experience: move a phone through space, gently toss a ball, catch it, and add a new one after a miss.
+
+These are **scripted renders**, using the project's original phone model and Rapier physics. The phone inset is a projected view of the same world state. They illustrate the interaction; they are not camera footage, a live network recording, or wireless reliability evidence.
+
+**Try the developer preview:** [S2.1 release](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1) · [Setup guide](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/blob/v0.2.1-alpha.1/docs/QUICKSTART.zh-CN.md) · [Spatial implementation](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/pull/21)
+
+### A little lift. A real catch.
+
+The tray's movement supplies the energy. The same ball leaves the screen, rises through the Web world, and makes contact with the tray again.
+
+![Scripted S2.1 demo: a gentle lift tosses one ball, which returns to the tray through a physical collision.](docs/media/toss-and-catch.gif)
+
+<table>
+<tr>
+<td width="50%"><strong>Your phone, in space</strong><br />Translation and rotation in a shared 3D workspace.</td>
+<td width="50%"><strong>Miss it. Add one. Go again.</strong><br />A new active ball; the old ball remains on the ground.</td>
+</tr>
+<tr>
+<td><a href="docs/media/spatial-movement.gif"><img src="docs/media/spatial-movement.gif" alt="Scripted demo of moving and rotating the phone through the Web workspace." width="100%" /></a></td>
+<td><a href="docs/media/land-and-add.gif"><img src="docs/media/land-and-add.gif" alt="Scripted demo of a ball falling through the side opening, landing, and a new ball being added on the phone." width="100%" /></a></td>
+</tr>
+</table>
+
+### Make it feel right
+
+Adjust movement scale, ball diameter, and bounce. Each preset below starts a new round, just as **Apply & restart** does in the app.
+
+![Scripted comparison of movement scale, ball diameter, and bounce across three round presets.](docs/media/play-settings.gif)
+
+[Media details and limitations](docs/media/README.md)
+
+---
+
+- GitHub repository: <https://github.com/Popcornnnnnnnn/phone-3d-ui-studio>
+- Delivery board: <https://github.com/users/Popcornnnnnnnn/projects/3>
+
 ## Start the desktop workspace
 
 Use Node.js **24+** on a Mac:
