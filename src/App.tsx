@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { SpatialWorkspace } from './spatial/SpatialWorkspace'
 import {
   IPHONE_17_MM,
   type ReviewView,
@@ -80,6 +81,22 @@ function formatPoseVerdict(value: PoseAccuracySnapshot['verdict']) {
 }
 
 export function App() {
+  const [mode, setMode] = useState(() => new URLSearchParams(location.search).get('mode') === 'mirroring' ? 'mirroring' : 'spatial')
+  return <>
+    <nav className="studio-mode-nav" aria-label="Studio mode">
+      {(['spatial', 'mirroring'] as const).map((value) =>
+        <button key={value} aria-pressed={mode === value} onClick={() => {
+          setMode(value)
+          const url = new URL(location.href)
+          url.searchParams.set('mode', value)
+          history.replaceState(null, '', url)
+        }}>{value === 'spatial' ? 'Spatial tracking' : 'Screen mirroring'}</button>)}
+    </nav>
+    {mode === 'spatial' ? <SpatialWorkspace /> : <MirroringApp />}
+  </>
+}
+
+function MirroringApp() {
   const [presetId, setPresetId] = useState('pearl')
   const [animate, setAnimate] = useState(true)
   const [ambientMotion, setAmbientMotion] = useState(true)

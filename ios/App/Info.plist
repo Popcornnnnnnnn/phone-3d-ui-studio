@@ -27,6 +27,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Tracks your phone position in space. Camera images stay on this device and are not streamed or saved.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Connects directly to your Mac to stream the live screen and device pose.</string>
 	<key>NSMotionUsageDescription</key>

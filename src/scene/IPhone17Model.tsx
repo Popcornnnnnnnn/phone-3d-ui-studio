@@ -35,6 +35,7 @@ import { RearCameraSystem } from './RearCameraSystem'
 import { ScreenSurface } from './ScreenSurface'
 
 interface IPhone17ModelProps {
+  externallyDriven?: boolean
   animate: boolean
   view: ReviewView
   orientation: ScreenOrientation
@@ -298,6 +299,7 @@ function ImportedBottomFace() {
 }
 
 export function IPhone17Model({
+  externallyDriven = false,
   animate,
   view,
   orientation,
@@ -317,7 +319,7 @@ export function IPhone17Model({
   const hasLocalAsset = useLocalAssetAvailability()
 
   useFrame((state, delta) => {
-    if (!group.current) return
+    if (!group.current || externallyDriven) return
 
     let predictionMs: number | null = null
     let sampleAgeMs: number | null = null
@@ -443,7 +445,7 @@ export function IPhone17Model({
     <group
       name="iphone-17-root"
       ref={group}
-      rotation={[
+      rotation={externallyDriven ? [0, 0, 0] : [
         useTabletopStandard ? -Math.PI / 2 : viewRotations[view][0],
         useTabletopStandard ? 0 : viewRotations[view][1],
         useTabletopStandard
@@ -451,7 +453,7 @@ export function IPhone17Model({
           : viewRotations[view][2] +
             (orientation === 'landscape' ? Math.PI / 2 : 0),
       ]}
-      position={[0, useTabletopStandard ? TABLETOP_PHONE_CENTER_Y : 0.1, 0]}
+      position={externallyDriven ? [0, 0, 0] : [0, useTabletopStandard ? TABLETOP_PHONE_CENTER_Y : 0.1, 0]}
     >
       {hasLocalAsset ? (
         <Suspense fallback={<ProceduralIPhone17Shell />}>

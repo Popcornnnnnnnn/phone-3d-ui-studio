@@ -1,3 +1,11 @@
+# iPhone input modes
+
+The app opens in **Spatial tracking** without starting the camera. Tap **Start tracking**, allow Camera, hold the phone over a textured surface and use **Set origin** in the Web workspace. Camera images remain on the device.
+
+**Screen mirroring** keeps the previous live-screen workflow below. Switching modes stops the previous controller first; switching into screen mirroring does not automatically start sharing. Spatial tracking pauses in the background and requires recalibration after returning.
+
+See [S1 setup and acceptance](../docs/SPATIAL_S1.md) for metric workspace calibration and limits.
+
 # iPhone live input
 
 ### Color-metadata candidate (2026-09-06)

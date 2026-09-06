@@ -29,6 +29,7 @@ targets:
         UILaunchScreen: {}
         NSLocalNetworkUsageDescription: Connects directly to your Mac to stream the live screen and device pose.
         NSMotionUsageDescription: Uses device motion to drive the matching 3D phone pose on your Mac.
+        NSCameraUsageDescription: Tracks your phone position in space. Camera images stay on this device and are not streamed or saved.
         NSScreenCaptureUsageDescription: Streams your selected iPhone display directly to your Mac for the live 3D preview.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -46,6 +47,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
+      - sdk: ARKit.framework
       - sdk: ScreenCaptureKit.framework
       - package: WebRTC
       - target: Phone3DBroadcastExtension

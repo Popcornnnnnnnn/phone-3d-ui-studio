@@ -4,6 +4,7 @@ import os from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { pathToFileURL } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
+import { createSpatialRelay } from './spatial-relay.mjs'
 import { qualitySnapshotResultError } from './quality-snapshot-contract.mjs'
 import { parseFrameTransportConfiguration, rawFrameLivenessExpired } from './frame-transport-contract.mjs'
 import { rawACKTiming, TransportTraceStore } from './transport-trace.mjs'
@@ -3158,9 +3159,11 @@ const server = http.createServer((request, response) => {
 })
 
 const sockets = new WebSocketServer({ server, maxPayload: 12 * 1024 * 1024 })
+const spatialRelay = createSpatialRelay(preciseWallClockMs)
 
 sockets.on('connection', (socket, request) => {
   const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
+  if (spatialRelay.accept(socket, url)) return
   const role = url.searchParams.get('role')
   const requestedClientId = url.searchParams.get('clientId')
   const clientId =
@@ -3702,6 +3705,7 @@ const phoneLivenessTimer = setInterval(() => {
 phoneLivenessTimer.unref()
 
 function shutdown() {
+  spatialRelay.shutdown()
   clearInterval(browserLeaseHealthTimer)
   clearInterval(phoneLivenessTimer)
   releaseActiveBenchmark(activeBenchmark)

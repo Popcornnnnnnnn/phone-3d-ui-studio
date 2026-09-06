@@ -2,6 +2,10 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var capture = ScreenCaptureController()
+    @StateObject private var spatial = SpatialTrackingController()
+    @State private var inputMode: StudioInputMode = .spatial
+    @State private var switchingMode = false
+    @State private var modeError: String?
     @Environment(\.scenePhase) private var scenePhase
 
     private let bridgeURL = Bundle.main.object(
@@ -13,6 +17,18 @@ struct ContentView: View {
             NavigationStack {
                 ScrollView {
                     VStack(spacing: 18) {
+                        Picker("Input mode", selection: Binding(
+                            get: { inputMode },
+                            set: { switchMode(to: $0) }
+                        )) {
+                            ForEach(StudioInputMode.allCases) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
+                        }.pickerStyle(.segmented).disabled(switchingMode)
+                        if let modeError { Text(modeError).foregroundStyle(.red) }
+                        if inputMode == .spatial {
+                            SpatialTrackingView(controller: spatial).disabled(switchingMode)
+                        } else {
                         heroCard
                         captureCard
                         connectionCard
@@ -22,6 +38,7 @@ struct ContentView: View {
                         }
 
                         privacyNote
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
@@ -71,8 +88,33 @@ struct ContentView: View {
             .easeInOut(duration: 0.2),
             value: capture.benchmarkStimulusRun?.id
         )
-        .onAppear { capture.updateAppForeground(scenePhase == .active) }
-        .onChange(of: scenePhase) { _, phase in capture.updateAppForeground(phase == .active) }
+        .onAppear {
+            capture.setInputEnabled(inputMode == .mirroring)
+            capture.updateAppForeground(scenePhase == .active && inputMode == .mirroring)
+            spatial.updateForeground(scenePhase == .active && inputMode == .spatial)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            capture.updateAppForeground(phase == .active && inputMode == .mirroring)
+            spatial.updateForeground(phase == .active && inputMode == .spatial)
+        }
+    }
+
+    private func switchMode(to next: StudioInputMode) {
+        guard next != inputMode, !switchingMode else { return }
+        switchingMode = true; modeError = nil
+        spatial.stop()
+        capture.setInputEnabled(false)
+        capture.stop { success in
+            switchingMode = false
+            guard success else {
+                modeError = "Could not stop screen capture. Stop it before switching modes."
+                return
+            }
+            inputMode = next
+            capture.setInputEnabled(next == .mirroring)
+            capture.updateAppForeground(scenePhase == .active && next == .mirroring)
+            spatial.updateForeground(scenePhase == .active && next == .spatial)
+        }
     }
 
     private var heroCard: some View {

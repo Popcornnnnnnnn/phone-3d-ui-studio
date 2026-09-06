@@ -704,7 +704,12 @@ final class ScreenCaptureController: NSObject, ObservableObject {
         }
     }
 
+    private var inputEnabled = true
+
+    func setInputEnabled(_ enabled: Bool) { inputEnabled = enabled }
+
     func chooseFullDisplay() {
+        guard inputEnabled else { return }
         guard picker.isAvailable else {
             captureState = .failed("Screen capture is unavailable on this device")
             return
@@ -724,7 +729,7 @@ final class ScreenCaptureController: NSObject, ObservableObject {
         picker.present()
     }
 
-    func stop() {
+    func stop(completion: ((Bool) -> Void)? = nil) {
         transportPreparationID = nil
         finishBenchmark(result: "cancelled")
         frameReconnectWorkItem?.cancel()
@@ -755,6 +760,7 @@ final class ScreenCaptureController: NSObject, ObservableObject {
 
         guard let stream = activeStream else {
             captureState = .idle
+            completion?(true)
             return
         }
         activeStream = nil
@@ -763,10 +769,14 @@ final class ScreenCaptureController: NSObject, ObservableObject {
         stream.stopCapture { [weak self] error in
             DispatchQueue.main.async {
                 if let error {
+                    // Retain the handle so a failed mode transition can retry
+                    // stopping capture. Output identities are already invalid.
+                    self?.activeStream = stream
                     self?.captureState = .failed("Stop failed: \(error.localizedDescription)")
                 } else {
                     self?.captureState = .idle
                 }
+                completion?(error == nil)
             }
         }
     }
@@ -1921,6 +1931,7 @@ final class ScreenCaptureController: NSObject, ObservableObject {
     }
 
     private func startStream(with filter: SCContentFilter) {
+        guard inputEnabled else { return }
         finishBenchmark(result: "cancelled")
         guard
             let dimensions = captureOutputDimensions(

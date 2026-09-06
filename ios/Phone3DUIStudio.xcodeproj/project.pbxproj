@@ -7,15 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AB341AC61155000000000002 /* H264QualitySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB341AC61155000000000001 /* H264QualitySnapshot.swift */; };
+		0E6552521BC0673EB690ADDB /* SpatialTrackingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7EF4BE28A8862CD28B7209F /* SpatialTrackingView.swift */; };
 		165E2726E9681EEE33CEDBD5 /* MotionStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08641C4AF756711A269B413 /* MotionStreamer.swift */; };
 		1B3BB49CA6221EFA63163298 /* LiveProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7325B4F5E5ABA073D6B09F7D /* LiveProtocol.swift */; };
 		1C281027CAE8324BB1706B8C /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D61894EF99EA6E49F0CACE2 /* VideoToolbox.framework */; };
 		1DF1CB62454E2C1EF1108C09 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 82AC19CE78B2528133738A69 /* Assets.xcassets */; };
 		2032CAD0BC99394E9B213A15 /* LiveProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7325B4F5E5ABA073D6B09F7D /* LiveProtocol.swift */; };
+		2DCCCFB8E8DFCF3DD41352C1 /* H264QualitySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A42EDF7DB4FFB79B1395B3C /* H264QualitySnapshot.swift */; };
 		3DB8BC37EFDE9FA204379F5A /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 19DA43083873A3FF1C5BBA56 /* WebRTC */; };
 		4C37F5FC1CA12F5A86F0307C /* ScreenCaptureController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24EF3DA1767E4AF7FFBE02A4 /* ScreenCaptureController.swift */; };
 		5EF5661CEA20210272AF6607 /* FrameRateGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C0A925189ED56187BD81F6 /* FrameRateGate.swift */; };
+		61F1F2CE0CAA419BB0C38A28 /* SpatialTrackingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F750D81BCE9D653A8A5FC351 /* SpatialTrackingController.swift */; };
 		664F46AF645B91EA407DF0BE /* Phone3DUIStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F4E30147F3C6100BC1880C /* Phone3DUIStudioApp.swift */; };
 		6ACD23B376E57092ECDAB503 /* MotionStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08641C4AF756711A269B413 /* MotionStreamer.swift */; };
 		7B89F661E4038E4A4161FEE4 /* BroadcastPickerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = D20051477E83DCF6DA44FEC6 /* BroadcastPickerButton.swift */; };
@@ -24,12 +26,14 @@
 		AB64FE6B90280375A859B29B /* LiveSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6443A274B8CE36A8D7CBFE /* LiveSocket.swift */; };
 		AC7A7ACEFBD76A5C087BF1F8 /* StreamBenchmarkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A13F6CF37B105AF283A91A58 /* StreamBenchmarkView.swift */; };
 		C2CF74764C130132F2514C7B /* SampleHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56917204AED9F11C34EEE432 /* SampleHandler.swift */; };
+		D3C101B005DD46275835205F /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B49E2BF20B6A1BC6D5696E6 /* ARKit.framework */; };
 		D5F57D810B429E97ADEE45DF /* FrameRateGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C0A925189ED56187BD81F6 /* FrameRateGate.swift */; };
 		E517BB8DB4DEAB8AC8FA523A /* LiveSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6443A274B8CE36A8D7CBFE /* LiveSocket.swift */; };
 		E7A6551E2342C4A9324902B8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E60EE5D582A053BCB799D50 /* ContentView.swift */; };
 		EBA42A870D0C51E85D13DCEA /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C1FC3032DB515274791290CA /* ReplayKit.framework */; };
 		EC9FAFF6866864B0019956CE /* WebRTCStreamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF2EC134093141873FA2ECF /* WebRTCStreamer.swift */; };
 		F589F71548214367B3DDB6B5 /* Phone3DBroadcastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B369D3944827FF99A464A055 /* Phone3DBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F58F94B51DAC9FA974CE3A90 /* SpatialProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B20DF39F650742C14DA705D /* SpatialProtocol.swift */; };
 		F6B7EBA5C066C8E45708077E /* ScreenCaptureKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75CDDC324C9CC6A4D391CB81 /* ScreenCaptureKit.framework */; };
 /* End PBXBuildFile section */
 
@@ -58,14 +62,16 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		AB341AC61155000000000001 /* H264QualitySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = H264QualitySnapshot.swift; sourceTree = "<group>"; };
 		09179762B9DD2DE7EC26C3AD /* Phone3DUIStudio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Phone3DUIStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0B20DF39F650742C14DA705D /* SpatialProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialProtocol.swift; sourceTree = "<group>"; };
 		1AB38A02B877FE00FC42587F /* H264Encoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = H264Encoder.swift; sourceTree = "<group>"; };
 		24EF3DA1767E4AF7FFBE02A4 /* ScreenCaptureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureController.swift; sourceTree = "<group>"; };
 		2E6443A274B8CE36A8D7CBFE /* LiveSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSocket.swift; sourceTree = "<group>"; };
+		3A42EDF7DB4FFB79B1395B3C /* H264QualitySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = H264QualitySnapshot.swift; sourceTree = "<group>"; };
 		3D61894EF99EA6E49F0CACE2 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
 		56917204AED9F11C34EEE432 /* SampleHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleHandler.swift; sourceTree = "<group>"; };
 		5A02E176909322B3A6FBFF27 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		6B49E2BF20B6A1BC6D5696E6 /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		7325B4F5E5ABA073D6B09F7D /* LiveProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveProtocol.swift; sourceTree = "<group>"; };
 		74F4E30147F3C6100BC1880C /* Phone3DUIStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phone3DUIStudioApp.swift; sourceTree = "<group>"; };
 		75CDDC324C9CC6A4D391CB81 /* ScreenCaptureKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScreenCaptureKit.framework; path = System/Library/Frameworks/ScreenCaptureKit.framework; sourceTree = SDKROOT; };
@@ -78,6 +84,8 @@
 		C1FC3032DB515274791290CA /* ReplayKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ReplayKit.framework; path = System/Library/Frameworks/ReplayKit.framework; sourceTree = SDKROOT; };
 		D20051477E83DCF6DA44FEC6 /* BroadcastPickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BroadcastPickerButton.swift; sourceTree = "<group>"; };
 		D4C0A925189ED56187BD81F6 /* FrameRateGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameRateGate.swift; sourceTree = "<group>"; };
+		F750D81BCE9D653A8A5FC351 /* SpatialTrackingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialTrackingController.swift; sourceTree = "<group>"; };
+		F7EF4BE28A8862CD28B7209F /* SpatialTrackingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialTrackingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +93,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D3C101B005DD46275835205F /* ARKit.framework in Frameworks */,
 				F6B7EBA5C066C8E45708077E /* ScreenCaptureKit.framework in Frameworks */,
 				3DB8BC37EFDE9FA204379F5A /* WebRTC in Frameworks */,
 			);
@@ -110,6 +119,7 @@
 				7325B4F5E5ABA073D6B09F7D /* LiveProtocol.swift */,
 				2E6443A274B8CE36A8D7CBFE /* LiveSocket.swift */,
 				B08641C4AF756711A269B413 /* MotionStreamer.swift */,
+				0B20DF39F650742C14DA705D /* SpatialProtocol.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -117,6 +127,7 @@
 		17712E1876D32B9F1386BE25 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				6B49E2BF20B6A1BC6D5696E6 /* ARKit.framework */,
 				C1FC3032DB515274791290CA /* ReplayKit.framework */,
 				75CDDC324C9CC6A4D391CB81 /* ScreenCaptureKit.framework */,
 				3D61894EF99EA6E49F0CACE2 /* VideoToolbox.framework */,
@@ -158,10 +169,12 @@
 				82AC19CE78B2528133738A69 /* Assets.xcassets */,
 				D20051477E83DCF6DA44FEC6 /* BroadcastPickerButton.swift */,
 				7E60EE5D582A053BCB799D50 /* ContentView.swift */,
-				AB341AC61155000000000001 /* H264QualitySnapshot.swift */,
+				3A42EDF7DB4FFB79B1395B3C /* H264QualitySnapshot.swift */,
 				5A02E176909322B3A6FBFF27 /* Info.plist */,
 				74F4E30147F3C6100BC1880C /* Phone3DUIStudioApp.swift */,
 				24EF3DA1767E4AF7FFBE02A4 /* ScreenCaptureController.swift */,
+				F750D81BCE9D653A8A5FC351 /* SpatialTrackingController.swift */,
+				F7EF4BE28A8862CD28B7209F /* SpatialTrackingView.swift */,
 				A13F6CF37B105AF283A91A58 /* StreamBenchmarkView.swift */,
 				BCF2EC134093141873FA2ECF /* WebRTCStreamer.swift */,
 			);
@@ -273,12 +286,15 @@
 				E7A6551E2342C4A9324902B8 /* ContentView.swift in Sources */,
 				5EF5661CEA20210272AF6607 /* FrameRateGate.swift in Sources */,
 				7CF830D2570F50FCFAFB2431 /* H264Encoder.swift in Sources */,
+				2DCCCFB8E8DFCF3DD41352C1 /* H264QualitySnapshot.swift in Sources */,
 				1B3BB49CA6221EFA63163298 /* LiveProtocol.swift in Sources */,
 				AB64FE6B90280375A859B29B /* LiveSocket.swift in Sources */,
 				165E2726E9681EEE33CEDBD5 /* MotionStreamer.swift in Sources */,
 				664F46AF645B91EA407DF0BE /* Phone3DUIStudioApp.swift in Sources */,
 				4C37F5FC1CA12F5A86F0307C /* ScreenCaptureController.swift in Sources */,
-				AB341AC61155000000000002 /* H264QualitySnapshot.swift in Sources */,
+				F58F94B51DAC9FA974CE3A90 /* SpatialProtocol.swift in Sources */,
+				61F1F2CE0CAA419BB0C38A28 /* SpatialTrackingController.swift in Sources */,
+				0E6552521BC0673EB690ADDB /* SpatialTrackingView.swift in Sources */,
 				AC7A7ACEFBD76A5C087BF1F8 /* StreamBenchmarkView.swift in Sources */,
 				EC9FAFF6866864B0019956CE /* WebRTCStreamer.swift in Sources */,
 			);
