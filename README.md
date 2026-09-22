@@ -1,5 +1,7 @@
 # Phone 3D UI Studio
 
+**English** · [简体中文](README.zh-CN.md)
+
 A reusable desktop studio for presenting a phone UI on a controllable 3D device, with camera presets, lighting, backgrounds, recording, and—after the content-production MVP is stable—live screen and device-pose synchronization.
 
 ## Spatial interaction — in motion
