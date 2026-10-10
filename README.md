@@ -1,5 +1,7 @@
 # Phone 3D UI Studio
 
+**English** · [简体中文](README.zh-CN.md)
+
 A real iPhone becomes a tray in a shared Web 3D world. Gently toss a ball, move to catch it, and tap **Add ball** on your phone after a miss.
 
 **Developer preview — not a one-click consumer install.** The desktop workspace runs from this repository. Playing requires Xcode 27, your own iPhone signing and a physical iPhone on iOS 27. No generally installable iPhone binary or TestFlight invitation is included. Wireless interruptions and formal physical acceptance remain open.
