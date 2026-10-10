@@ -41,6 +41,7 @@ import type { LiveRenderScheduler } from './liveRenderScheduler'
 import { StudioEnvironment } from './StudioEnvironment'
 
 interface StudioSceneProps {
+  active?: boolean
   preset: StudioPreset
   animate: boolean
   ambientMotion: boolean
@@ -131,9 +132,10 @@ function LiveFrameRenderObserver({
 }
 
 function LiveRenderSchedulerBridge({
-  scheduler,
+  scheduler, active,
 }: {
   scheduler: LiveRenderScheduler
+  active: boolean
 }) {
   const advance = useThree((state) => state.advance)
   const setFrameloop = useThree((state) => state.setFrameloop)
@@ -155,14 +157,14 @@ function LiveRenderSchedulerBridge({
 
   useEffect(() => {
     const updateVisibility = () => {
-      scheduler.setVisible(document.visibilityState === 'visible')
+      scheduler.setVisible(active && document.visibilityState === 'visible')
     }
     updateVisibility()
     document.addEventListener('visibilitychange', updateVisibility)
     return () => {
       document.removeEventListener('visibilitychange', updateVisibility)
     }
-  }, [scheduler])
+  }, [active, scheduler])
 
   return null
 }
@@ -376,6 +378,7 @@ function SideReviewCamera({
 }
 
 export function StudioScene({
+  active = true,
   preset,
   animate,
   ambientMotion,
@@ -405,7 +408,7 @@ export function StudioScene({
   return (
     <Canvas
       frameloop={
-        renderConfiguration.renderScheduleMode === 'phase'
+        !active || renderConfiguration.renderScheduleMode === 'phase'
           ? 'never'
           : 'always'
       }
@@ -420,11 +423,11 @@ export function StudioScene({
       }}
       gl={{
         antialias: renderConfiguration.antialias,
-        alpha: false,
+        alpha: true,
         powerPreference: renderConfiguration.powerPreference,
       }}
     >
-      <LiveRenderSchedulerBridge scheduler={liveRenderScheduler} />
+      <LiveRenderSchedulerBridge scheduler={liveRenderScheduler} active={active} />
       <StudioEnvironment
         preset={preset}
         ambientMotion={ambientMotion}

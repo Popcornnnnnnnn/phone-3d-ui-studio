@@ -50,7 +50,8 @@ export function PhoneShell() {
           roughness={0.24}
         />
       </mesh>
-      <mesh geometry={glassGeometry} name="front-glass" position={[0, 0, depth / 2 + 0.001]}>
+      {/* Keep the opaque bezel below the emissive screen at depth / 2 + 0.0008. */}
+      <mesh geometry={glassGeometry} name="front-glass" position={[0, 0, depth / 2 + 0.0004]}>
         <meshPhysicalMaterial
           color="#050607"
           clearcoat={1}

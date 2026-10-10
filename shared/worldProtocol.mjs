@@ -1,4 +1,7 @@
 import { parseMarbleSettings } from './marbleSettings.mjs'
+import { parsePhoneProfileSelection, phoneProfile } from './phoneGeometry.mjs'
+import { marbleGeometry } from './marbleMath.mjs'
+import { DEFAULT_MARBLE_SETTINGS } from './marbleSettings.mjs'
 export const WORLD_VERSION = 2
 export const WORLD_PHASES = new Set(['waiting', 'ready', 'running', 'paused', 'unsupported'])
 const tuple = (v, n) => Array.isArray(v) && v.length === n && v.every(Number.isFinite)
@@ -21,6 +24,12 @@ export function parseWorldSnapshot(v) {
     typeof v.canStart !== 'boolean' || typeof v.canAddBall !== 'boolean' || typeof v.active !== 'boolean' ||
     !Number.isSafeInteger(v.hitCount) || v.hitCount < 0 || !['tray', 'air', 'needs-ball'].includes(v.region)) return null
   const g = v.geometry
+  if (v.deviceProfile !== undefined) {
+    const selection = parsePhoneProfileSelection(v.deviceProfile)
+    if (!selection) return null
+    const expected = marbleGeometry(DEFAULT_MARBLE_SETTINGS, phoneProfile(selection.profileId))
+    if (!['width', 'height', 'screenZ', 'cornerRadius'].every((key) => g?.[key] === expected[key])) return null
+  }
   if (v.settings !== undefined && (!parseMarbleSettings(v.settings) || g?.radius !== v.settings.ballDiameterMm / 2000)) return null
   if (!g || !['width', 'height', 'screenZ', 'cornerRadius', 'radius', 'exitHalfWidth', 'wallHeight', 'interpolationMs', 'gravity'].every((key) => Number.isFinite(g[key])) ||
     g.width <= 0 || g.height <= 0 || g.radius <= 0 || g.radius >= 0.1 || g.width >= 1 || g.height >= 1 || g.interpolationMs !== 50 ||

@@ -140,7 +140,7 @@ export class LiveRenderScheduler {
     this.cancelScheduledWork()
     this.root = root
     this.resetCadence(this.environment.nowMs())
-    root.setFrameloop(this.modeValue === 'phase' ? 'never' : 'always')
+    root.setFrameloop(!this.visibleValue || this.modeValue === 'phase' ? 'never' : 'always')
     if (this.modeValue === 'phase' && this.visibleValue) this.ensureCadence()
     return () => this.detach(root)
   }
@@ -151,13 +151,14 @@ export class LiveRenderScheduler {
     this.pending = null
     this.cancelScheduledWork()
     this.resetCadence(this.environment.nowMs())
-    this.root?.setFrameloop(mode === 'phase' ? 'never' : 'always')
+    this.root?.setFrameloop(!this.visibleValue || mode === 'phase' ? 'never' : 'always')
     if (mode === 'phase' && this.visibleValue) this.ensureCadence()
   }
 
   setVisible(visible: boolean) {
     if (visible === this.visibleValue) return
     this.visibleValue = visible
+    this.root?.setFrameloop(!visible || this.modeValue === 'phase' ? 'never' : 'always')
     if (!visible) {
       this.visibilityInterruptions += 1
       this.cancelScheduledWork()

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { Quaternion, Vector3 } from 'three'
 import { parseSpatialMessage, type SpatialPose, type Quat, type Vec3 } from '../../shared/spatialProtocol.mjs'
 import { CAMERA_FROM_BODY, CAMERA_IN_BODY, SPATIAL_MODEL_SCALE, SPATIAL_START, SpatialTracker, applyCalibration, cameraToBody, makeCalibration } from './spatialTracking'
+import { PHONE_PROFILES, selectPhoneProfile } from '../../shared/phoneGeometry.mjs'
+import { cameraInBodyApprox } from '../../shared/spatialMath.mjs'
 
 const flat = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2)
 function pose(sequence = 1, bodyPosition: Vec3 = [1, 2, 3], bodyRotation = flat, extra = {}) {
@@ -57,6 +59,20 @@ describe('spatial coordinates', () => {
   })
 })
 describe('spatial lifecycle and rendered pose', () => {
+  it('invalidates calibration on model replacement and uses the new lever arm while rotating', () => {
+    const tracker = connected(); tracker.setOrigin(1000)
+    const selection = selectPhoneProfile('iPhone17,4'), profile = PHONE_PROFILES[selection.profileId]
+    tracker.receive({ type: 'spatial-link', connected: true, sessionId: 'session-a', connectionId: 'plus', deviceProfile: selection }, 1100)
+    expect(tracker.calibration).toBeNull(); expect(tracker.latest).toBeNull()
+    expect(tracker.profile).toBe(profile)
+    const sample = (sequence: number, rotation: Quaternion) => ({ ...pose(sequence), connectionId: 'plus',
+      positionMeters: new Vector3(1, 2, 3).add(new Vector3(...cameraInBodyApprox(profile)).applyQuaternion(rotation)).toArray(),
+      quaternion: rotation.clone().multiply(CAMERA_FROM_BODY.clone().invert()).toArray() })
+    tracker.receive(sample(1, flat), 1100); expect(tracker.setOrigin(1100)).toBe(true)
+    tracker.receive(sample(2, new Quaternion()), 1150)
+    closeVector(tracker.render(1150).position, SPATIAL_START)
+    expect(tracker.report().deviceProfile).toEqual(selection)
+  })
   it.each([0, 1, 2])('renders a 20 cm translation on axis %i without grounding or camera compensation', (axis) => {
     const tracker = connected()
     expect(tracker.setOrigin(1000)).toBe(true)

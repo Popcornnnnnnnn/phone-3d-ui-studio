@@ -109,15 +109,25 @@ export function LocalIPhone17Asset() {
 
     return {
       aluminum: new MeshPhysicalMaterial({
-        color: '#56595d',
-        metalness: 0.68,
-        roughness: 0.4,
-        clearcoat: 0.12,
-        clearcoatRoughness: 0.3,
+        color: '#474b50',
+        metalness: 0.8,
+        roughness: 0.44,
+        clearcoat: 0.04,
+        clearcoatRoughness: 0.4,
+        envMapIntensity: 0.85,
         normalMap: sourceBodyMaterial?.normalMap ?? null,
-        normalScale: sourceBodyMaterial?.normalScale,
+        normalScale: sourceBodyMaterial?.normalScale.clone().multiplyScalar(0.22),
         metalnessMap: sourceBodyMaterial?.metalnessMap ?? null,
         roughnessMap: sourceBodyMaterial?.roughnessMap ?? null,
+      }),
+      screenBezel: new MeshPhysicalMaterial({
+        color: '#080b10',
+        metalness: 0,
+        roughness: 0.3,
+        specularIntensity: 0.35,
+        clearcoat: 0.12,
+        clearcoatRoughness: 0.24,
+        envMapIntensity: 0.3,
       }),
       cameraPlate: new MeshPhysicalMaterial({
         color: '#2b2c2d',
@@ -179,6 +189,8 @@ export function LocalIPhone17Asset() {
         if (
           object.name === '17-GlassRough' ||
           object.name === '17-Matte' ||
+          // ScreenSurface supplies the glass coat above the displayed pixels.
+          object.name === '17-ScreenEdge.001' ||
           object.name === '17-USB' ||
           /17-Screw/.test(object.name)
         ) {
@@ -194,6 +206,8 @@ export function LocalIPhone17Asset() {
           object.material = materials.aluminum
         } else if (object.name === '17-GlassClear') {
           object.material = materials.cameraPlate
+        } else if (object.name === '17-ScreenEdge') {
+          object.material = materials.screenBezel
         } else if (object.name === '17-Logo') {
           object.material = materials.logo
         } else if (object.name === '17-Flash') {

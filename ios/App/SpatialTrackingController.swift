@@ -71,6 +71,11 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
 
     func start() {
         guard !gate.requested else { return }
+        guard BridgeEndpointStore.current != nil else {
+            connection = "Mac address needed"
+            guidance = "Scan the pairing code in the Mac app or enter its address."
+            return
+        }
         let generation = gate.start()
         begin(generation)
     }
@@ -117,16 +122,14 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
 
     private func connect() {
         guard gate.requested && gate.foreground,
-              let value = Bundle.main.object(forInfoDictionaryKey: "LiveBridgeURL") as? String,
-              var url = URLComponents(string: value) else {
+              let bridge = BridgeEndpointStore.current else {
             connection = "Invalid bridge URL"
             return
         }
-        url.queryItems = [
-            URLQueryItem(name: "role", value: "phone-spatial"),
-            URLQueryItem(name: "sessionId", value: sessionId)
-        ]
-        guard let endpoint = url.url else { return }
+        let endpoint = bridge.socketURL(role: "phone-spatial", extra: [
+            URLQueryItem(name: "sessionId", value: sessionId),
+            URLQueryItem(name: "deviceModel", value: Self.hardwareModel)
+        ])
         socket.connect(to: endpoint)
         let generation = gate.generation
         let timeout = DispatchWorkItem { [weak self] in
@@ -138,6 +141,17 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
         }
         connectTimeout = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: timeout)
+    }
+
+    private static var hardwareModel: String {
+        var info = utsname()
+        uname(&info)
+        let capacity = MemoryLayout.size(ofValue: info.machine)
+        return withUnsafePointer(to: &info.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: capacity) {
+                String(cString: $0)
+            }
+        }
     }
 
     private func scheduleReconnect() {
@@ -285,7 +299,7 @@ final class SpatialTrackingController: NSObject, ObservableObject, ARSessionDele
         let reason: String
         switch frame.camera.trackingState {
         case .normal:
-            state = "normal"; reason = "Tracking ready. Set origin in the Web workspace."
+            state = "normal"; reason = "Tracking ready. Start a round in Marble or set origin in Tracking on your Mac."
         case .notAvailable:
             state = "unavailable"; reason = "Tracking unavailable. Keep the rear camera unobstructed."
         case .limited(let limitation):

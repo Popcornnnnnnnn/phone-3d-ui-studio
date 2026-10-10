@@ -13,12 +13,12 @@ This candidate is a **source-based developer preview**, not a generally installa
 ## Remaining consumer-install blockers
 
 1. **iPhone distribution.** Current app requires iOS 27/Xcode 27 and developer signing. No TestFlight build exists. External TestFlight needs App Store Connect setup, a build upload and applicable beta review; a development-signed app is not universal. See [Apple TestFlight](https://developer.apple.com/testflight/).
-2. **Connection setup.** The app embeds `LiveBridgeURL` and signing defaults. Developers can change them before building. Non-developers need runtime pairing/address configuration.
-3. **Desktop installation.** The launcher needs Node and npm dependencies; it is not a signed Mac installer.
+2. **Connection setup.** The updated iPhone app supports runtime QR/address configuration for spatial and ScreenCaptureKit modes. End-to-end physical pairing acceptance remains pending.
+3. **Desktop installation.** `npm run app:build` creates a self-contained Apple Silicon Mac app with a native connection panel and embedded Web renderer. It is locally ad-hoc signed; Developer ID signing, notarization and independent-machine acceptance are still required for public distribution.
 4. **Acceptance.** Real Wi-Fi sessions have shown tracking-limited pauses and snapshot-receipt timeouts. Five-minute wireless acceptance, broader-device checks and S1 precision/extrinsics remain open.
 5. **Distribution scope.** The GitHub repository and source preview are now public. No public source license has been selected; repository visibility alone does not grant an open-source license. Licensed GLBs and signing material stay out of artifacts.
 
-For invited non-developer testers, the next release work is a distributed iPhone build, in-app pairing, a packaged desktop launcher and completion of wireless acceptance.
+For invited non-developer testers, the remaining release work is a distributed iPhone build, Mac signing/notarization, physical pairing verification and completion of wireless acceptance. See [Mac preview](MAC_APP.zh-CN.md).
 
 ## Validation boundary
 

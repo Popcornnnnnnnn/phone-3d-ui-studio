@@ -1,3 +1,4 @@
+#if canImport(ScreenCaptureKit)
 import Combine
 import CoreMedia
 import CoreImage
@@ -6,25 +7,6 @@ import ScreenCaptureKit
 import UIKit
 
 final class ScreenCaptureController: NSObject, ObservableObject {
-    struct BenchmarkRun: Identifiable, Equatable {
-        let id: String
-        let startedAt: Date
-        let endsAt: Date
-        let durationMs: Int
-        let warmupMs: Int
-        let targetFps: Int
-        let encoderProfile: String
-        let encoderProfileActive: String?
-        let encoderTuning: String
-        let encoderTuningActive: String?
-        let requestedShortEdge: Int
-        let activeShortEdge: Int?
-        let activeWidth: Int?
-        let activeHeight: Int?
-        let streamGeneration: Int64
-        let h264PipelineEpoch: UInt64?
-    }
-
     private struct CaptureStreamIdentity: Equatable {
         let generation: Int64
         let requestedShortEdge: Int
@@ -310,53 +292,6 @@ final class ScreenCaptureController: NSObject, ObservableObject {
         let frameStatusCounts: SCKFrameStatusCounts
         let lastFrameStatus: String
         let lastFrameFreshContent: Bool
-    }
-
-    enum CaptureState: Equatable {
-        case idle
-        case choosing
-        case starting
-        case streaming
-        case failed(String)
-
-        var label: String {
-            switch self {
-            case .idle:
-                return "Ready"
-            case .choosing:
-                return "Choose Full Display in the system sheet"
-            case .starting:
-                return "Starting live capture..."
-            case .streaming:
-                return "Streaming screen and motion"
-            case let .failed(message):
-                return message
-            }
-        }
-
-        var isActive: Bool {
-            switch self {
-            case .choosing, .starting, .streaming:
-                return true
-            case .idle, .failed:
-                return false
-            }
-        }
-
-        var diagnosticValue: String {
-            switch self {
-            case .idle:
-                return "idle"
-            case .choosing:
-                return "choosing"
-            case .starting:
-                return "starting"
-            case .streaming:
-                return "streaming"
-            case .failed:
-                return "failed"
-            }
-        }
     }
 
     @Published private(set) var captureState: CaptureState = .idle
@@ -715,7 +650,7 @@ final class ScreenCaptureController: NSObject, ObservableObject {
             return
         }
         guard let bridgeURL = bridgeURL() else {
-            captureState = .failed("LiveBridgeURL is missing or invalid")
+            captureState = .failed("Scan the pairing code in the Mac app or enter its address first.")
             return
         }
 
@@ -1354,10 +1289,7 @@ final class ScreenCaptureController: NSObject, ObservableObject {
     }
 
     private func bridgeURL() -> URL? {
-        guard
-            let value = Bundle.main.object(forInfoDictionaryKey: "LiveBridgeURL") as? String
-        else { return nil }
-        return URL(string: value)
+        BridgeEndpointStore.current?.socketURL(role: "phone")
     }
 
     private func poseBridgeURL(from bridgeURL: URL) -> URL {
@@ -1931,7 +1863,9 @@ final class ScreenCaptureController: NSObject, ObservableObject {
     }
 
     private func startStream(with filter: SCContentFilter) {
-        guard inputEnabled else { return }
+        // A late picker callback must not restart capture after pairing has
+        // stopped it and changed the bridge endpoint.
+        guard inputEnabled, picker.isActive else { return }
         finishBenchmark(result: "cancelled")
         guard
             let dimensions = captureOutputDimensions(
@@ -2867,3 +2801,5 @@ extension ScreenCaptureController: SCStreamDelegate {
         }
     }
 }
+
+#endif

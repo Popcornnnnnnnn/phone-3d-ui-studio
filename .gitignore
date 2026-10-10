@@ -1,6 +1,7 @@
 # Dependencies and builds
 node_modules/
 dist/
+build/
 .vite/
 coverage/
 *.tsbuildinfo

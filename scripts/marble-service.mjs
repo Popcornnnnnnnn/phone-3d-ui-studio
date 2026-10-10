@@ -5,6 +5,7 @@ import { cameraToBody, makeCalibration, applyCalibration } from '../shared/spati
 import { marbleGeometry, scaleMarbleTranslation } from '../shared/marbleMath.mjs'
 import { DEFAULT_MARBLE_SETTINGS } from '../shared/marbleSettings.mjs'
 import { parseWorldCommand, WORLD_VERSION } from '../shared/worldProtocol.mjs'
+import { phoneProfile, selectPhoneProfile } from '../shared/phoneGeometry.mjs'
 
 // A v1 client can still show an actionable upgrade notice and send receipts without breaking S1.
 function legacySnapshot(s) {
@@ -18,15 +19,24 @@ export class MarbleService {
     this.phoneSource = null; this.latest = null; this.poseReceivedAt = -Infinity; this.phoneCapable = false
     this.phase = 'waiting'; this.reason = 'Start Spatial tracking on the iPhone.'
     this.settings = { ...DEFAULT_MARBLE_SETTINGS }
+    this.deviceProfile = selectPhoneProfile()
     this.engineReady = false; this.active = false; this.lastTick = now(); this.lastSnapshot = -Infinity; this.accumulator = 0
   }
   addPeer(socket, role) {
     if (!this.peers.has(socket)) this.peers.set(socket, { socket, role, id: randomUUID(), version: null, awaiting: null, pending: null, commands: new Map() })
   }
   setPhone(source) {
+    const selection = source?.deviceProfile ?? selectPhoneProfile(source?.deviceModel)
     this.phoneSource = source; this.latest = null; this.source = null; this.phoneCapable = false
     if (this.active) this.pause('iPhone connection changed. Restore tracking and start a new round.')
+    if (source && selection.profileId !== this.deviceProfile.profileId) {
+      // A frozen previous tray must not be advertised with the replacement phone's dimensions.
+      this.core?.free(); this.core = null; this.calibration = null; this.motion = null
+      this.active = false; this.ownerId = null
+    }
+    if (source) this.deviceProfile = selection
   }
+  get profile() { return phoneProfile(this.deviceProfile.profileId) }
   removePeer(socket) {
     const peer = this.peers.get(socket)
     if (peer?.id === this.ownerId) { this.pause('Control page disconnected. Start a new round to take control.'); this.ownerId = null }
@@ -40,7 +50,7 @@ export class MarbleService {
     } else if (message.type === 'spatial-pose') {
       this.latest = message; this.poseReceivedAt = at
       if (this.motion && this.phase === 'running' && this.calibration && this.fresh(at)) {
-        const result = this.motion.push(applyCalibration(cameraToBody(message), this.calibration), message.sampledAtMs)
+        const result = this.motion.push(applyCalibration(cameraToBody(message, this.profile), this.calibration), message.sampledAtMs)
         if (result === 'jump') this.pause('Tracking jumped. Hold the phone above a textured surface and recalibrate.')
       }
     }
@@ -99,11 +109,11 @@ export class MarbleService {
       if (this.phase === 'running' && this.ownerId !== peer.id) reason = 'Another page controls this round.'
       else if (!this.engineReady || !this.fresh()) reason = 'Wait for normal tracking and clock synchronization.'
       else {
-        const body = cameraToBody(this.latest), calibration = makeCalibration(body)
+        const body = cameraToBody(this.latest, this.profile), calibration = makeCalibration(body)
         if (!calibration || !isTrayUp(body)) reason = 'Hold the screen facing up and nearly level, with the top toward the Mac.'
         else {
           const settings = command.settings ?? this.settings
-          const next = new MarbleWorld(applyCalibration(body, calibration), settings)
+          const next = new MarbleWorld(applyCalibration(body, calibration), settings, this.profile)
           this.core?.free(); this.calibration = calibration; this.settings = { ...settings }; this.core = next
           this.motion = new TrayMotion(this.core.phone, this.latest.sampledAtMs, this.now())
           this.ownerId = peer.id; this.epoch++; this.phase = 'running'; this.active = true
@@ -112,14 +122,14 @@ export class MarbleService {
         }
       }
     } else if (peer.role !== 'phone' && this.ownerId !== peer.id) reason = 'This page is an observer.'
-    else if (command.action === 'pause') { this.pause('Round paused. Restore tracking and start a new round.'); this.ownerId = null; ok = true }
+    else if (command.action === 'pause') { this.pause('Round paused. Start a new round to recalibrate and clear old balls.'); this.ownerId = null; ok = true }
     else if (command.action === 'stop') {
       this.core?.free(); this.core = null; this.calibration = null; this.motion = null; this.active = false; this.ownerId = null
       this.epoch++; this.phase = 'ready'; ok = true
     } else if (!this.core || !this.fresh() || this.phase !== 'running') reason = 'Restore tracking and start a new round.'
     else if (command.action === 'add-ball') {
       // Check both the latest sample and the simulated tray, without teleporting the kinematic body.
-      const up = isTrayUp(cameraToBody(this.latest))
+      const up = isTrayUp(cameraToBody(this.latest, this.profile))
       ok = up && this.core.addBall()
       reason = ok ? 'New ball added. Gently toss and catch it.' : this.core.activeBallId ? 'Keep playing the current ball.' : 'Hold the screen facing up and nearly level to add a ball.'
     }
@@ -170,10 +180,11 @@ export class MarbleService {
       sequence: this.sequence++, serverTimeMs: this.now(), phase, reason, ownerId: this.ownerId,
       phoneSessionId: this.phoneSource?.sessionId ?? null, phoneConnectionId: this.phoneSource?.connectionId ?? null,
       source: this.source ?? null, active: this.active, canStart: this.engineReady && fresh,
-      geometry: this.core?.geometry ?? marbleGeometry(this.settings), settings: { ...this.settings },
+      deviceProfile: { ...this.deviceProfile },
+      geometry: this.core?.geometry ?? marbleGeometry(this.settings, this.profile), settings: { ...this.settings },
       phone: null, balls: [], activeBallId: null, hitCount: 0, lastImpact: null, region: 'needs-ball',
       motion: this.motion?.diagnostics() ?? null,
-      ...state, canAddBall: !!state?.canAddBall && phase === 'running' && fresh && isTrayUp(cameraToBody(this.latest)),
+      ...state, canAddBall: !!state?.canAddBall && phase === 'running' && fresh && isTrayUp(cameraToBody(this.latest, this.profile)),
     }
   }
   emitSnapshot() { const s = this.snapshot(); for (const peer of this.peers.values()) this.offer(peer, s) }

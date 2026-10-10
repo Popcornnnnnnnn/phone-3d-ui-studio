@@ -1,8 +1,8 @@
 # iPhone input modes
 
-For a fresh installation, use [the current setup guide](../docs/QUICKSTART.zh-CN.md). This preview requires Xcode 27, an iOS 27 physical device, your own signing team and changing the embedded hostname. There is no public TestFlight installation. Historical candidate notes below describe earlier runs, not the installation state of a new clone.
+For a fresh installation, use [the current setup guide](../docs/QUICKSTART.zh-CN.md). Live tracking and screen sharing require Xcode 27, an iOS 27 physical device and your own signing team. The app can scan the Mac app's QR code or save a runtime address in **Mac connection**; changing the embedded hostname is optional. There is no public TestFlight installation. Historical candidate notes below describe earlier runs, not the installation state of a new clone. See [Mac pairing](../docs/MAC_APP.zh-CN.md).
 
-The app opens in **Spatial tracking** without starting the camera. Tap **Start tracking**, allow Camera, hold the phone over a textured surface and use **Set origin** in the Web workspace. Camera images remain on the device.
+The app opens in **Tracking** without starting the camera. Tap **Start tracking**, allow Camera, hold the phone over a textured surface, and wait for the Mac connection and normal tracking. On Mac, choose **Start round** in Marble or **Set origin** in Tracking. Camera images remain on the device. Saving a Mac address alone does not establish a connection.
 
 **Screen mirroring** keeps the previous live-screen workflow below. Switching modes stops the previous controller first; switching into screen mirroring does not automatically start sharing. Spatial tracking pauses in the background and requires recalibration after returning.
 
@@ -53,8 +53,30 @@ DEVELOPER_DIR=/Applications/Xcode-27-beta.app/Contents/Developer xcodebuild -pro
   build
 ```
 
-ScreenCaptureKit is present in the iOS 27 device SDK but not the simulator SDK,
-so this target must be compiled for a physical-device architecture.
+ScreenCaptureKit is present in the iOS 27 device SDK but not the simulator SDK.
+The app now also builds for Simulator to review the same SwiftUI interface.
+The simulator controller explicitly reports screen sharing as unavailable; it
+never simulates a live connection. AR tracking, QR camera input and real capture
+still require an iPhone.
+
+For UI validation on an already booted simulator:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode-27-beta.app/Contents/Developer xcodebuild test \
+  -project Phone3DUIStudio.xcodeproj -scheme Phone3DUIStudio \
+  -destination 'platform=iOS Simulator,id=SIMULATOR_UDID' \
+  -derivedDataPath build/SimulatorUI CODE_SIGNING_ALLOWED=NO
+```
+
+The UI smoke test exercises connection disclosure, address validation, mode
+switching, and light/dark appearance, and saves screenshot attachments. It
+cancels address changes and restores System appearance. `simslim` can manage
+these simulators; it is an optional local tool, not an app dependency.
+
+The phone interface uses **Tracking** and **Screen mirroring**, a collapsible
+**Mac connection** card, and an appearance control in the navigation bar.
+**Start tracking** works with both Marble and Tracking on the Mac. Screen
+mirroring uses **Start sharing**, followed by **Full Display** in the system UI.
 
 ## Run on a physical iPhone
 
@@ -63,20 +85,18 @@ so this target must be compiled for a physical-device architecture.
    to **Wi-Fi only**, even with USB attached; wired-preferred is an explicit
    diagnostic control. The separate pose socket still follows system routing,
    so unplug USB for a pure wireless video-and-pose comparison.
-2. Update `LiveBridgeURL` in both targets in `project.yml` only if the Mac's
+2. Update `LiveBridgeURL` in the app target in `project.yml` only if the Mac's
    local hostname is not `forge.local`, then regenerate.
 3. Open the generated project in Xcode 27. Select your Team for the app target;
    change the bundle identifier if Xcode asks.
 4. Run the app on the iPhone and accept Local Network and Motion permissions.
 5. Start the bridge, open the Mac web app, and select **Live iPhone**.
-6. On iPhone tap **Start ScreenCaptureKit**, then choose **Full Display** in the
+6. On iPhone tap **Start sharing**, then choose **Full Display** in the
    system sheet. Keep the companion app in the foreground for a controlled
    latency benchmark.
 
-ScreenCaptureKit in the host app is the measured low-latency path. The included
-ReplayKit broadcast extension is only a compatibility fallback; it is not used
-for performance rankings and can produce an invalid-broadcast-session alert on
-current iOS 27 builds.
+ScreenCaptureKit in the app is the measured low-latency path. The unsupported
+ReplayKit broadcast extension has been removed from the iOS 27 target.
 
 ## Transport and benchmark controls
 

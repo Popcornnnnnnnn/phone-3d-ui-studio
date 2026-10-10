@@ -15,6 +15,12 @@ export interface StudioPreset {
 
 export const studioPresets: readonly StudioPreset[] = [
   {
+    id: 'studio', name: 'Studio', daylight: true,
+    backgroundTop: '#f2f3f5', backgroundBottom: '#e9ecf0', backgroundAccent: '#ffffff',
+    shadow: '#303747', keyColor: '#ffffff', fillColor: '#dbe3ee', rimColor: '#ffffff',
+    keyLight: 3, fillLight: 1.4,
+  },
+  {
     id: 'pearl',
     name: 'Daylight',
     daylight: true,

@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/start-studio.mjs",
+    "app:build": "node scripts/build-macos-app.mjs",
+    "app:build:local": "node scripts/build-macos-app.mjs --with-local-model",
+    "app:smoke": "node scripts/desktop-smoke.mjs",
     "bridge": "node scripts/live-bridge.mjs",
     "benchmark:sweep": "node scripts/benchmark-sweep.mjs",
     "dev": "vite",

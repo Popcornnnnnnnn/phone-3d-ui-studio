@@ -1,6 +1,6 @@
 import { useGLTF } from '@react-three/drei'
-import { Suspense, useEffect, useMemo } from 'react'
-import { Mesh } from 'three'
+import { useEffect, useMemo } from 'react'
+import { AdditiveBlending, Mesh, type BufferGeometry } from 'three'
 import { IPHONE_17_SCENE, type ScreenOrientation } from '../model/iphone17'
 import { createRoundedRectangleGeometry } from '../model/roundedRectangle'
 import type { ScreenMedia } from '../studio/screenMedia'
@@ -14,6 +14,30 @@ interface ScreenSurfaceProps {
   media: ScreenMedia | null
   orientation: ScreenOrientation
   useImportedGeometry?: boolean
+}
+
+function ScreenGlass({ geometry }: { geometry: BufferGeometry }) {
+  return (
+    <mesh name="screen-glass" geometry={geometry}>
+      {/* A reflection-only coat preserves the display's existing color pipeline.
+          Polygon offset stabilizes the shared surface without raising another edge. */}
+      <meshPhysicalMaterial
+        color="#000000"
+        metalness={0}
+        roughness={0.18}
+        specularIntensity={0.45}
+        envMapIntensity={0.6}
+        transparent
+        opacity={0.18}
+        blending={AdditiveBlending}
+        depthWrite={false}
+        toneMapped={false}
+        polygonOffset
+        polygonOffsetFactor={-1}
+        polygonOffsetUnits={-1}
+      />
+    </mesh>
+  )
 }
 
 function ProceduralScreenSurface({ media, orientation }: ScreenSurfaceProps) {
@@ -30,13 +54,12 @@ function ProceduralScreenSurface({ media, orientation }: ScreenSurfaceProps) {
   useEffect(() => () => geometry.dispose(), [geometry])
 
   return (
-    <mesh
-      geometry={geometry}
-      name="screen-mesh"
-      position={[0, 0, IPHONE_17_SCENE.depth / 2 + 0.0008]}
-    >
-      <ScreenSurfaceMaterial media={media} orientation={orientation} />
-    </mesh>
+    <group position={[0, 0, IPHONE_17_SCENE.depth / 2 + 0.0008]}>
+      <mesh geometry={geometry} name="screen-mesh">
+        <ScreenSurfaceMaterial media={media} orientation={orientation} />
+      </mesh>
+      <ScreenGlass geometry={geometry} />
+    </group>
   )
 }
 
@@ -64,14 +87,15 @@ function ImportedScreenSurface({ media, orientation }: ScreenSurfaceProps) {
   }
 
   return (
-    <mesh
-      geometry={geometry}
-      name="screen-mesh"
+    <group
       position={[0, 0, 0.0008]}
       scale={LOCAL_IPHONE_17_MODEL_SCALE}
     >
-      <ScreenSurfaceMaterial media={media} orientation={orientation} />
-    </mesh>
+      <mesh geometry={geometry} name="screen-mesh">
+        <ScreenSurfaceMaterial media={media} orientation={orientation} />
+      </mesh>
+      <ScreenGlass geometry={geometry} />
+    </group>
   )
 }
 
@@ -84,11 +108,5 @@ export function ScreenSurface({
     return <ProceduralScreenSurface media={media} orientation={orientation} />
   }
 
-  return (
-    <Suspense
-      fallback={<ProceduralScreenSurface media={media} orientation={orientation} />}
-    >
-      <ImportedScreenSurface media={media} orientation={orientation} />
-    </Suspense>
-  )
+  return <ImportedScreenSurface media={media} orientation={orientation} />
 }

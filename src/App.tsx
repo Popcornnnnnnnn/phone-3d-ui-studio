@@ -1,5 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAppearance, type Appearance } from './appearance'
 import { SpatialExperience } from './spatial/SpatialExperience'
+import { WorkspaceConnection, WorkspaceInspector, WorkspaceStatus } from './workspace/WorkspaceUI'
+import { SpatialViewport } from './spatial/SpatialViewport'
+import { SpatialWorkspace } from './spatial/SpatialWorkspace'
+import { MarbleWorkspace } from './marble/MarbleWorkspace'
 import {
   IPHONE_17_MM,
   type ReviewView,
@@ -82,27 +87,63 @@ function formatPoseVerdict(value: PoseAccuracySnapshot['verdict']) {
 
 export function App() {
   const [mode, setMode] = useState(() => new URLSearchParams(location.search).get('mode') === 'mirroring' ? 'mirroring' : 'spatial')
-  return <>
-    <nav className="studio-mode-nav" aria-label="Studio mode">
-      {(['spatial', 'mirroring'] as const).map((value) =>
-        <button key={value} aria-pressed={mode === value} onClick={() => {
-          setMode(value)
-          const url = new URL(location.href)
-          url.searchParams.set('mode', value)
-          history.replaceState(null, '', url)
-        }}>{value === 'spatial' ? 'Spatial tracking' : 'Screen mirroring'}</button>)}
-    </nav>
-    {mode === 'spatial' ? <SpatialExperience /> : <MirroringApp />}
-  </>
+  const [experience, setExperience] = useState<'tracking' | 'marble'>(() => new URLSearchParams(location.search).get('experience') === 'tracking' ? 'tracking' : 'marble')
+  const desktop = document.documentElement.dataset.desktop === 'true'
+  const activeWorkspace = mode === 'mirroring' ? 'mirroring' : experience
+  const [visited, setVisited] = useState(() => new Set([activeWorkspace]))
+  const { appearance } = useAppearance()
+  const navigate = useCallback((nextMode: string, nextExperience = experience) => {
+    setMode(nextMode)
+    setExperience(nextExperience)
+    const nextWorkspace = nextMode === 'mirroring' ? 'mirroring' : nextExperience
+    setVisited((current) => current.has(nextWorkspace) ? current : new Set([...current, nextWorkspace]))
+    const url = new URL(location.href)
+    url.searchParams.set('mode', nextMode)
+    url.searchParams.set('experience', nextExperience)
+    history.replaceState(null, '', url)
+  }, [experience])
+  useEffect(() => {
+    window.phoneStudioSetWorkspace = (workspace) => {
+      if (workspace === 'mirroring') navigate('mirroring')
+      else if (workspace === 'marble' || workspace === 'tracking') navigate('spatial', workspace)
+    }
+    return () => { delete window.phoneStudioSetWorkspace }
+  }, [navigate])
+  return <div className="studio-app">
+    {!desktop && <nav className="studio-mode-nav" aria-label="Studio mode">
+        {(['spatial', 'mirroring'] as const).map((value) =>
+          <button key={value} aria-pressed={mode === value} onClick={() => navigate(value)}>{value === 'spatial' ? 'Spatial tracking' : 'Screen mirroring'}</button>)}
+        <label className="appearance-picker">Appearance
+          <select value={appearance} onChange={(event) => {
+            const value = event.target.value as Appearance
+            window.phoneStudioSetAppearance(value)
+            const url = new URL(location.href)
+            url.searchParams.set('appearance', value)
+            history.replaceState(null, '', url)
+          }}>
+            <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
+          </select>
+        </label>
+    </nav>}
+    {desktop ? <div className="studio-panels">
+      {(['marble', 'tracking', 'mirroring'] as const).map((workspace) => visited.has(workspace) &&
+        <div key={workspace} className={'studio-panel' + (workspace === activeWorkspace ? ' is-active' : '')}
+          aria-hidden={workspace !== activeWorkspace} inert={workspace !== activeWorkspace}>
+          {workspace === 'marble' ? <MarbleWorkspace active={workspace === activeWorkspace} />
+            : workspace === 'tracking' ? <SpatialWorkspace active={workspace === activeWorkspace} />
+              : <MirroringApp active={workspace === activeWorkspace} />}
+        </div>)}
+    </div> : mode === 'spatial' ? <SpatialExperience experience={experience} onExperienceChange={(value) => navigate('spatial', value)} showNavigation /> : <MirroringApp />}
+  </div>
 }
 
-function MirroringApp() {
-  const [presetId, setPresetId] = useState('pearl')
+function MirroringApp({ active = true }: { active?: boolean }) {
+  const [presetId, setPresetId] = useState('studio')
   const [animate, setAnimate] = useState(true)
   const [ambientMotion, setAmbientMotion] = useState(true)
   const [showGrid, setShowGrid] = useState(false)
   const [showAxes, setShowAxes] = useState(false)
-  const [view, setView] = useState<ReviewView>('calibration')
+  const [view, setView] = useState<ReviewView>('hero')
   const [cameraResetRevision, setCameraResetRevision] = useState(0)
   const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
   const [sourceMode, setSourceMode] = useState<ScreenSourceMode>('live')
@@ -120,8 +161,8 @@ function MirroringApp() {
     ),
   )
   const preset = useMemo(() => findStudioPreset(presetId), [presetId])
-  const localVideo = useLocalVideoSource()
-  const livePhone = useLivePhoneSource(renderConfiguration, liveRenderScheduler)
+  const localVideo = useLocalVideoSource(active)
+  const livePhone = useLivePhoneSource(renderConfiguration, liveRenderScheduler, active)
   const screenMedia = sourceMode === 'live' ? livePhone.media : localVideo.media
   const sourceReady = screenMedia !== null
   const sourceStatus =
@@ -144,24 +185,11 @@ function MirroringApp() {
       : null
 
   return (
-    <main className={preset.daylight ? 'app-shell daylight' : 'app-shell'}>
-      <header className="topbar">
-        <div className="brand-cluster">
-          <img className="brand-logo" src="/icon-192.png" alt="" />
-          <div>
-            <p className="eyebrow">Live iPhone input · local prototype</p>
-            <h1>Phone 3D UI Studio</h1>
-          </div>
-        </div>
-        <div className="status-cluster" aria-label="Source status">
-          <span className="status-dot" aria-hidden="true" />
-          <span>{sourceMode === 'live' ? 'Live device' : 'Local preview'}</span>
-        </div>
-      </header>
-
-      <section className="workspace">
-        <div className="viewport" aria-label="Interactive 3D phone viewport">
+    <main className="workspace-shell mirroring-workspace">
+      <div className="workspace-content">
+        <SpatialViewport label="Interactive 3D phone viewport" onReset={() => setCameraResetRevision((value) => value + 1)} controls={null}>
           <StudioScene
+            active={active}
             preset={preset}
             animate={sourceMode === 'local' && animate}
             ambientMotion={ambientMotion}
@@ -207,108 +235,13 @@ function MirroringApp() {
             renderConfiguration={renderConfiguration}
             useTabletopStandard={sourceMode === 'live'}
           />
-          <div className="viewport-label">
-            <span>Preview 01</span>
-            <span>
-              {view === 'calibration' || view === 'hero'
-                ? 'Drag to orbit · Right-drag to move · Scroll to zoom'
-                : `${view} review`}
-            </span>
-          </div>
-        </div>
-
-        <aside className="inspector" aria-label="Studio controls">
-          <section className="panel-section">
-            <p className="section-kicker">Scene</p>
-            <h2>Scene mode</h2>
-            <div className="preset-grid">
-              {studioPresets.map((item) => (
-                <button
-                  className={item.id === preset.id ? 'preset active' : 'preset'}
-                  key={item.id}
-                  onClick={() => setPresetId(item.id)}
-                  type="button"
-                  aria-pressed={item.id === preset.id}
-                >
-                  <span
-                    className="swatch"
-                    style={{
-                      background: `linear-gradient(145deg, ${item.backgroundTop}, ${item.backgroundAccent} 58%, ${item.backgroundBottom})`,
-                      color: item.fillColor,
-                    }}
-                  />
-                  <span>{item.name}</span>
-                </button>
-              ))}
-            </div>
-            <div className="scene-toggle-grid" role="group" aria-label="Scene helpers">
-              <button
-                className={ambientMotion ? 'scene-toggle active' : 'scene-toggle'}
-                type="button"
-                aria-pressed={ambientMotion}
-                onClick={() => setAmbientMotion((value) => !value)}
-              >
-                <span>Ambient motion</span>
-                <span className="toggle-track" aria-hidden="true"><span /></span>
-              </button>
-              <button
-                className={showGrid ? 'scene-toggle active' : 'scene-toggle'}
-                type="button"
-                aria-pressed={showGrid}
-                onClick={() => setShowGrid((value) => !value)}
-              >
-                <span>Grid</span>
-                <span className="toggle-track" aria-hidden="true"><span /></span>
-              </button>
-              <button
-                className={showAxes ? 'scene-toggle active' : 'scene-toggle'}
-                type="button"
-                aria-pressed={showAxes}
-                onClick={() => setShowAxes((value) => !value)}
-              >
-                <span>Axes</span>
-                <span className="toggle-track" aria-hidden="true"><span /></span>
-              </button>
-            </div>
-          </section>
-
-          <section className="panel-section">
-            <p className="section-kicker">Review camera</p>
-            <h2>Model views</h2>
-            <div className="view-switcher model-views" role="group" aria-label="Model review view">
-              {([
-                ['calibration', 'Calibration'],
-                ['hero', 'Hero'],
-                ['side', 'Side'],
-                ['front', 'Front'],
-                ['back', 'Back'],
-              ] as const).map(([item, label]) => (
-                <button
-                  className={item === view ? 'view-button active' : 'view-button'}
-                  key={item}
-                  type="button"
-                  aria-pressed={item === view}
-                  onClick={() => {
-                    setView(item)
-                    if (item === 'side') setShowGrid(true)
-                    setCameraResetRevision((value) => value + 1)
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p className="source-description">
-              Side uses an orthographic camera and horizontal grid so a physical 45° lift appears as a true 45° profile.
-            </p>
-          </section>
-
-          <section className="panel-section source-card">
-            <div>
-              <p className="section-kicker">Screen source</p>
-              <h2>Isolated mesh</h2>
-            </div>
-            <span className={sourceReady ? 'chip ready' : 'chip'}>{sourceStatus}</span>
+          <WorkspaceStatus live={sourceReady && !livePhone.screenStale}>{sourceMode === 'local' ? sourceReady ? 'Local video' : 'Preview' : livePhone.screenStale ? 'Screen paused' : sourceReady ? 'Live screen' : 'Preview'}</WorkspaceStatus>
+        </SpatialViewport>
+        <WorkspaceInspector title="Screen mirroring" description="Your screen and motion, together.">
+          {sourceMode === 'live' && !livePhone.stats.phones && <WorkspaceConnection description="Pair your iPhone, then start screen sharing in the iPhone app." />}
+          <section className="workspace-section">
+            <h2>Screen source</h2>
+            {sourceReady && <p className="workspace-notice">{sourceStatus}</p>}
             <div className="view-switcher two-column" role="group" aria-label="Screen source mode">
               {(['local', 'live'] as const).map((item) => (
                 <button
@@ -322,11 +255,6 @@ function MirroringApp() {
                 </button>
               ))}
             </div>
-            <p className="source-description">
-              {sourceMode === 'local'
-                ? 'The selected recording stays in browser memory and is never uploaded.'
-                : 'The iPhone sends live frames over your local network through the bridge on port 4319.'}
-            </p>
             {sourceMode === 'local' ? (
               <label className="wide-button file-button">
                 <span>{sourceReady ? 'Replace local video' : 'Choose local video'}</span>
@@ -341,21 +269,7 @@ function MirroringApp() {
                   }}
                 />
               </label>
-            ) : (
-              <button
-                className="wide-button"
-                type="button"
-                onClick={
-                  livePhone.status === 'idle' || livePhone.status === 'error'
-                    ? livePhone.connect
-                    : livePhone.disconnect
-                }
-              >
-                {livePhone.status === 'idle' || livePhone.status === 'error'
-                  ? 'Connect local bridge'
-                  : 'Disconnect live input'}
-              </button>
-            )}
+            ) : null}
             {screenMedia && (
               <p className="source-meta" title={screenMedia.name}>
                 <span>{screenMedia.name}</span>
@@ -405,36 +319,7 @@ function MirroringApp() {
                   ))}
                 </div>
               </>
-            ) : (
-              <dl className="live-stats">
-                <div><dt>Phone</dt><dd>{livePhone.stats.phones ? 'Connected' : 'Waiting'}</dd></div>
-                <div><dt>Capture</dt><dd>{formatCaptureState(livePhone.stats.captureState)}</dd></div>
-                <div><dt>Codec</dt><dd>{livePhone.stats.codec?.toUpperCase() ?? '—'}</dd></div>
-                <div><dt>Frames</dt><dd>{livePhone.stats.frames}</dd></div>
-                {livePhone.stats.codec === 'webrtc' ? (
-                  <>
-                    <div><dt>Negotiated video</dt><dd>{livePhone.stats.webRTCCodecMimeType?.replace('video/', '') ?? '—'}</dd></div>
-                    <div>
-                      <dt title="Jitter buffer + decode + half of network RTT; excludes iPhone capture/encode and the final 3D paint.">
-                        Receive estimate
-                      </dt>
-                      <dd>{formatLatency(livePhone.stats.frameLatencyMs)}</dd>
-                    </div>
-                    <div><dt>Video FPS (10s)</dt><dd>{formatRate(livePhone.stats.webRTCFps, 'fps')}</dd></div>
-                    <div><dt>Bitrate</dt><dd>{formatRate(livePhone.stats.webRTCBitrateMbps, 'Mbps')}</dd></div>
-                    <div><dt>Network RTT</dt><dd>{formatLatency(livePhone.stats.webRTCRoundTripMs)}</dd></div>
-                    <div><dt>Jitter buffer</dt><dd>{formatLatency(livePhone.stats.webRTCJitterBufferMs)}</dd></div>
-                    <div><dt>Jitter minimum</dt><dd>{formatLatency(livePhone.stats.webRTCJitterMinimumMs)}</dd></div>
-                    <div><dt>Jitter target</dt><dd>{formatLatency(livePhone.stats.webRTCJitterTargetMs)}</dd></div>
-                    <div><dt>Decode</dt><dd>{formatLatency(livePhone.stats.webRTCDecodeMs)}</dd></div>
-                    <div><dt>Packet loss</dt><dd>{formatPercent(livePhone.stats.webRTCPacketLossPercent)}</dd></div>
-                    <div><dt>Dropped frames</dt><dd>{livePhone.stats.webRTCFramesDropped}</dd></div>
-                  </>
-                ) : (
-                  <div><dt>Frame latency</dt><dd>{formatLatency(livePhone.stats.frameLatencyMs)}</dd></div>
-                )}
-              </dl>
-            )}
+            ) : null}
             {sourceMode === 'live' && livePhone.stats.captureState === 'choosing' && (
               <p className="source-description">
                 The iPhone is connected, but capture has not started. Select Full Display in the iOS system sheet.
@@ -452,11 +337,78 @@ function MirroringApp() {
             )}
           </section>
 
-          <section className="panel-section source-card">
-            <div>
-              <p className="section-kicker">Pose source</p>
-              <h2>{sourceMode === 'live' ? 'Live device motion' : 'Simulated motion'}</h2>
+          <section className="workspace-section">
+            <h2>View</h2>
+            <div className="view-switcher model-views" role="group" aria-label="Model review view">
+              {([
+                ['calibration', 'Calibration'],
+                ['hero', 'Hero'],
+                ['side', 'Side'],
+                ['front', 'Front'],
+                ['back', 'Back'],
+              ] as const).map(([item, label]) => (
+                <button
+                  className={item === view ? 'view-button active' : 'view-button'}
+                  key={item}
+                  type="button"
+                  aria-pressed={item === view}
+                  onClick={() => {
+                    setView(item)
+                    if (item === 'side') setShowGrid(true)
+                    setCameraResetRevision((value) => value + 1)
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+            {view === 'side' && <p className="source-description">
+              Side uses an orthographic camera and horizontal grid so a physical 45° lift appears as a true 45° profile.
+            </p>}
+          </section>
+
+          <details className="workspace-disclosure">
+            <summary>Scene</summary>
+            <label className="workspace-select-row">Background<select value={presetId} onChange={(event) => setPresetId(event.target.value)}>
+              {studioPresets.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select></label>
+            <div className="scene-toggle-grid" role="group" aria-label="Scene helpers">
+              <button
+                className="scene-toggle"
+                role="switch"
+                type="button"
+                aria-checked={ambientMotion}
+                disabled={preset.id === 'studio'}
+                onClick={() => setAmbientMotion((value) => !value)}
+              >
+                <span>Ambient motion</span>
+                <span className="toggle-track" aria-hidden="true"><span /></span>
+              </button>
+              <button
+                className="scene-toggle"
+                role="switch"
+                type="button"
+                aria-checked={showGrid}
+                onClick={() => setShowGrid((value) => !value)}
+              >
+                <span>Grid</span>
+                <span className="toggle-track" aria-hidden="true"><span /></span>
+              </button>
+              <button
+                className="scene-toggle"
+                role="switch"
+                type="button"
+                aria-checked={showAxes}
+                onClick={() => setShowAxes((value) => !value)}
+              >
+                <span>Axes</span>
+                <span className="toggle-track" aria-hidden="true"><span /></span>
+              </button>
+            </div>
+          </details>
+
+          <details className="workspace-disclosure">
+            <summary>Motion</summary>
             <span className={sourceMode === 'local' || (livePhone.poseReady && !livePhone.poseStale) ? 'chip ready' : 'chip'}>
               {sourceMode === 'local'
                 ? 'Ready'
@@ -691,14 +643,54 @@ function MirroringApp() {
                 </p>
               </>
             )}
-          </section>
+          </details>
 
           {sourceMode === 'live' && (
-            <section className="panel-section source-card">
-              <div>
-                <p className="section-kicker">Latency measurement</p>
-                <h2>Performance recording</h2>
-              </div>
+            <details className="workspace-disclosure">
+              <summary>Diagnostics</summary>
+              <details className="workspace-disclosure workspace-subdetails"><summary>Stream details</summary>
+              <dl className="live-stats">
+                <div><dt>Phone</dt><dd>{livePhone.stats.phones ? 'Connected' : 'Waiting'}</dd></div>
+                <div><dt>Capture</dt><dd>{formatCaptureState(livePhone.stats.captureState)}</dd></div>
+                <div><dt>Codec</dt><dd>{livePhone.stats.codec?.toUpperCase() ?? '—'}</dd></div>
+                <div><dt>Frames</dt><dd>{livePhone.stats.frames}</dd></div>
+                {livePhone.stats.codec === 'webrtc' ? (
+                  <>
+                    <div><dt>Negotiated video</dt><dd>{livePhone.stats.webRTCCodecMimeType?.replace('video/', '') ?? '—'}</dd></div>
+                    <div>
+                      <dt title="Jitter buffer + decode + half of network RTT; excludes iPhone capture/encode and the final 3D paint.">
+                        Receive estimate
+                      </dt>
+                      <dd>{formatLatency(livePhone.stats.frameLatencyMs)}</dd>
+                    </div>
+                    <div><dt>Video FPS (10s)</dt><dd>{formatRate(livePhone.stats.webRTCFps, 'fps')}</dd></div>
+                    <div><dt>Bitrate</dt><dd>{formatRate(livePhone.stats.webRTCBitrateMbps, 'Mbps')}</dd></div>
+                    <div><dt>Network RTT</dt><dd>{formatLatency(livePhone.stats.webRTCRoundTripMs)}</dd></div>
+                    <div><dt>Jitter buffer</dt><dd>{formatLatency(livePhone.stats.webRTCJitterBufferMs)}</dd></div>
+                    <div><dt>Jitter minimum</dt><dd>{formatLatency(livePhone.stats.webRTCJitterMinimumMs)}</dd></div>
+                    <div><dt>Jitter target</dt><dd>{formatLatency(livePhone.stats.webRTCJitterTargetMs)}</dd></div>
+                    <div><dt>Decode</dt><dd>{formatLatency(livePhone.stats.webRTCDecodeMs)}</dd></div>
+                    <div><dt>Packet loss</dt><dd>{formatPercent(livePhone.stats.webRTCPacketLossPercent)}</dd></div>
+                    <div><dt>Dropped frames</dt><dd>{livePhone.stats.webRTCFramesDropped}</dd></div>
+                  </>
+                ) : (
+                  <div><dt>Frame latency</dt><dd>{formatLatency(livePhone.stats.frameLatencyMs)}</dd></div>
+                )}
+              </dl>
+              <button
+                className="wide-button"
+                type="button"
+                onClick={
+                  livePhone.status === 'idle' || livePhone.status === 'error'
+                    ? livePhone.connect
+                    : livePhone.disconnect
+                }
+              >
+                {livePhone.status === 'idle' || livePhone.status === 'error'
+                  ? 'Connect local bridge'
+                  : 'Disconnect live input'}
+              </button>
+              </details>
               <span
                 className={
                   livePhone.measurement.status === 'running'
@@ -875,11 +867,11 @@ function MirroringApp() {
                   </button>
                 </>
               )}
-            </section>
+            </details>
           )}
 
-          <section className="panel-section metrics">
-            <p className="section-kicker">Calibrated geometry</p>
+          <details className="workspace-disclosure metrics">
+            <summary>Device details</summary>
             <dl>
               <div>
                 <dt>Body</dt>
@@ -894,9 +886,10 @@ function MirroringApp() {
                 <dd>Black</dd>
               </div>
             </dl>
-          </section>
-        </aside>
-      </section>
+          </details>
+          <p className="workspace-footnote">Prototype · physical validation pending</p>
+        </WorkspaceInspector>
+      </div>
     </main>
   )
 }

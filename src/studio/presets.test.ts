@@ -11,14 +11,15 @@ describe('studio presets', () => {
     expect(findStudioPreset('missing').id).toBe(studioPresets[0].id)
   })
 
-  it('uses the daylight environment as the default preset', () => {
-    expect(studioPresets).toHaveLength(2)
-    expect(studioPresets[0]).toMatchObject({
+  it('defaults to the neutral studio and keeps atmospheric backgrounds selectable', () => {
+    expect(studioPresets).toHaveLength(3)
+    expect(studioPresets[0]).toMatchObject({ id: 'studio', name: 'Studio' })
+    expect(studioPresets[1]).toMatchObject({
       id: 'pearl',
       name: 'Daylight',
       daylight: true,
     })
-    expect(studioPresets[1]).toMatchObject({
+    expect(studioPresets[2]).toMatchObject({
       id: 'warm',
       name: 'Night',
       daylight: false,

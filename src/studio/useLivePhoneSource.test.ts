@@ -3,6 +3,7 @@ import {
   buildH264DecoderConfig,
   buildH264MeasurementConfiguration,
   browserClientIdForSession,
+  browserBridgeUrl,
   browserPrepareReadyAck,
   browserReceiverStatusHeartbeatDue,
   bridgeReconnectDelayMs,
@@ -644,5 +645,22 @@ describe('H.264 decoder recovery diagnostics', () => {
     expect(nextValidFrameLatencyMs(null, 120, 100)).toBe(20)
     expect(nextValidFrameLatencyMs(20, 130, null)).toBe(20)
     expect(nextValidFrameLatencyMs(20, 100, 110)).toBe(20)
+  })
+})
+
+
+describe('desktop session bridge routing', () => {
+  it('routes video, pose and signaling to the same dynamic app endpoint', () => {
+    const page = 'http://127.0.0.1:60541/?desktop=1&bridge=ws%3A%2F%2F127.0.0.1%3A60539%2F'
+    for (const role of ['browser', 'browser-pose', 'browser-webrtc']) {
+      const url = new URL(browserBridgeUrl(role, page, 'test-client'))
+      expect(url.origin).toBe('ws://127.0.0.1:60539')
+      expect(url.searchParams.get('role')).toBe(role)
+      expect(url.searchParams.get('clientId')).toBe('test-client')
+    }
+  })
+  it('keeps the browser development default when no endpoint is supplied', () => {
+    expect(browserBridgeUrl('browser', 'http://192.168.1.8:5173/', 'test-client'))
+      .toBe('ws://192.168.1.8:4319/?role=browser&clientId=test-client')
   })
 })

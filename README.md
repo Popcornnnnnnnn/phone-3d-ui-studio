@@ -2,7 +2,20 @@
 
 A real iPhone becomes a tray in a shared Web 3D world. Gently toss a ball, move to catch it, and tap **Add ball** on your phone after a miss.
 
-**Developer preview — not a one-click consumer install.** The desktop workspace runs from this repository. Playing requires Xcode 27, your own iPhone signing and a physical iPhone on iOS 27. No generally installable iPhone binary or TestFlight invitation is included. Wireless interruptions and formal physical acceptance remain open.
+**Developer preview.** A native Mac host now bundles the desktop workspace, with a QR connection panel and an embedded Web 3D renderer. The locally built Mac app is ad-hoc signed; public signing/notarization and independent-machine acceptance remain open. Playing still requires Xcode 27, your own iPhone signing and a physical iPhone on iOS 27. No TestFlight invitation is included. Wireless physical acceptance remains open.
+
+## Native Mac preview
+
+On an Apple Silicon Mac with Xcode tools, Node 24+ and installed npm dependencies:
+
+```sh
+npm run app:build
+open "build/macos/Phone 3D Studio.app"
+```
+
+The app contains its own runtime, starts an isolated local session, and closes it on quit. Click **Connect iPhone**, then **Mac connection → Scan QR code** in the updated iPhone app. Pair again after restarting the Mac session. iPhone 17, 16 and 16 Plus have shared geometry profiles; physical validation remains pending. Unknown hardware is labeled as a fallback.
+
+[Mac 安装、配对与验证边界](docs/MAC_APP.zh-CN.md)
 
 ## Spatial interaction — in motion
 

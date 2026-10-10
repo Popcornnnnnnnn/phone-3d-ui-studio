@@ -26,10 +26,14 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Phone 3D Studio
+        CFBundleURLTypes:
+          - CFBundleURLName: com.phone3dui.studio.pairing
+            CFBundleURLSchemes:
+              - phone3dstudio
         UILaunchScreen: {}
         NSLocalNetworkUsageDescription: Connects directly to your Mac to stream the live screen and device pose.
         NSMotionUsageDescription: Uses device motion to drive the matching 3D phone pose on your Mac.
-        NSCameraUsageDescription: Tracks your phone position in space. Camera images stay on this device and are not streamed or saved.
+        NSCameraUsageDescription: Scans the Mac pairing code and tracks your phone position in space. Camera images stay on this device and are not streamed or saved.
         NSScreenCaptureUsageDescription: Streams your selected iPhone display directly to your Mac for the live 3D preview.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -48,41 +52,24 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - sdk: ARKit.framework
-      - sdk: ScreenCaptureKit.framework
       - package: WebRTC
-      - target: Phone3DBroadcastExtension
-        embed: true
-  Phone3DBroadcastExtension:
-    type: app-extension
+  Phone3DStudioUITests:
+    type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: BroadcastExtension/SampleHandler.swift
-      - path: Shared/FrameRateGate.swift
-      - path: Shared/H264Encoder.swift
-      - path: Shared/LiveProtocol.swift
-      - path: Shared/LiveSocket.swift
-      - path: Shared/MotionStreamer.swift
-    info:
-      path: BroadcastExtension/Info.plist
-      properties:
-        CFBundleDisplayName: Phone 3D Broadcast
-        LiveBridgeURL: ws://forge.local:4319/?role=phone
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
-        NSLocalNetworkUsageDescription: Streams the captured screen and device pose directly to your Mac on the local network.
-        NSMotionUsageDescription: Uses device motion to drive the matching 3D phone pose on your Mac.
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.broadcast-services-upload
-          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SampleHandler
-          RPBroadcastProcessMode: RPBroadcastProcessModeSampleBuffer
+      - path: UITests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.phone3dui.studio.broadcast
-        PRODUCT_NAME: Phone3DBroadcastExtension
-        GENERATE_INFOPLIST_FILE: NO
-        SKIP_INSTALL: YES
-        APPLICATION_EXTENSION_API_ONLY: YES
-        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_BUNDLE_IDENTIFIER: com.phone3dui.studio.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Phone3DUIStudio
     dependencies:
-      - sdk: ReplayKit.framework
-      - sdk: VideoToolbox.framework
+      - target: Phone3DUIStudio
+schemes:
+  Phone3DUIStudio:
+    build:
+      targets:
+        Phone3DUIStudio: all
+    test:
+      targets:
+        - Phone3DStudioUITests

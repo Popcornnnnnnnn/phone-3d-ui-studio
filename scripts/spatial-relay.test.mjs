@@ -16,6 +16,19 @@ const pose = (sequence = 1) => ({
   trackingState: 'normal', reason: 'ready', positionMeters: [1, 2, 3], quaternion: [0, 0, 0, 1],
 })
 describe('isolated spatial relay', () => {
+  it('binds the model to its connection and sends the same selection to late observers', () => {
+    const relay = createSpatialRelay(), browser = new Socket(), first = new Socket(), second = new Socket()
+    const firstURL = url('phone-spatial'); firstURL.searchParams.set('deviceModel', 'iPhone17,4')
+    relay.accept(first, firstURL); relay.accept(browser, url('browser-spatial'))
+    expect(browser.messages.at(-1).deviceProfile).toMatchObject({ profileId: 'iphone-16-plus', status: 'recognized' })
+    const secondURL = url('phone-spatial'); secondURL.searchParams.set('deviceModel', 'iPhone99,1')
+    relay.accept(second, secondURL)
+    expect(browser.messages.at(-1).deviceProfile).toMatchObject({ profileId: 'iphone-17', status: 'unrecognized', deviceModel: 'iPhone99,1' })
+    first.emit('close')
+    const late = new Socket(); relay.accept(late, url('browser-spatial'))
+    expect(late.messages.at(-1).deviceProfile).toEqual(browser.messages.at(-1).deviceProfile)
+    relay.shutdown()
+  })
   it('does not claim any existing video or pose role', () => {
     const relay = createSpatialRelay()
     for (const role of ['browser', 'phone', 'browser-pose', 'phone-pose', 'phone-webrtc']) {

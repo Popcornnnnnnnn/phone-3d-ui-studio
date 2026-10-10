@@ -1,7 +1,8 @@
 import { parseSpatialMessage, SPATIAL_STALE_MS, type SpatialPose } from '../../shared/spatialProtocol.mjs'
 import { SPATIAL_START, cameraToBody, makeCalibration, applyCalibration, type Calibration, type Transform } from '../../shared/spatialMath.mjs'
 export { SPATIAL_MODEL_SCALE, SPATIAL_START, CAMERA_IN_BODY, CAMERA_FROM_BODY, cameraToBody, makeCalibration, applyCalibration, type Calibration, type Transform } from '../../shared/spatialMath.mjs'
-import { CAMERA_IN_BODY } from '../../shared/spatialMath.mjs'
+import { cameraInBodyApprox } from '../../shared/spatialMath.mjs'
+import { parsePhoneProfileSelection, phoneProfile, selectPhoneProfile } from '../../shared/phoneGeometry.mjs'
 export type TrackingPhase = 'connecting' | 'disconnected' | 'initializing' | 'calibrate' | 'tracking' | 'limited' | 'stale' | 'error'
 
 export class SpatialTracker {
@@ -9,6 +10,8 @@ export class SpatialTracker {
   reason = 'Connecting to the local bridge.'
   sessionId: string | null = null
   connectionId: string | null = null
+  deviceProfile = selectPhoneProfile()
+  get profile() { return phoneProfile(this.deviceProfile.profileId) }
   sequence = -1
   latest: SpatialPose | null = null
   source: SpatialPose['source'] | null = null
@@ -45,11 +48,14 @@ export class SpatialTracker {
     if (envelope.type === 'spatial-link') {
       if (envelope.connected !== true) { this.disconnect(); return }
       if (typeof envelope.sessionId !== 'string' || typeof envelope.connectionId !== 'string') return
+      const selection = envelope.deviceProfile === undefined ? selectPhoneProfile() : parsePhoneProfileSelection(envelope.deviceProfile)
+      if (!selection) return
       if (this.connectionId === envelope.connectionId && this.sessionId === envelope.sessionId) return
       this.invalidate('initializing', 'Waiting for a fresh tracking frame.')
       this.sessionId = envelope.sessionId; this.connectionId = envelope.connectionId
+      this.deviceProfile = selection
       this.sequence = -1; this.latest = null; this.source = null
-      this.record({ event: 'session', atMs: now, sessionId: this.sessionId, connectionId: this.connectionId })
+      this.record({ event: 'session', atMs: now, sessionId: this.sessionId, connectionId: this.connectionId, deviceProfile: selection })
       return
     }
     const sample = parseSpatialMessage(value)
@@ -96,7 +102,7 @@ export class SpatialTracker {
   setOrigin(now = Date.now()) {
     this.checkFreshness(now)
     if (!this.isFresh(now) || !this.latest) return false
-    const calibration = makeCalibration(cameraToBody(this.latest))
+    const calibration = makeCalibration(cameraToBody(this.latest, this.profile))
     if (!calibration) {
       this.reason = 'Hold the screen facing up, with its top pointing toward the Mac.'
       return false
@@ -109,7 +115,7 @@ export class SpatialTracker {
   render(now = Date.now()) {
     this.checkFreshness(now)
     if (this.phase === 'tracking' && this.calibration && this.latest) {
-      this.rendered = applyCalibration(cameraToBody(this.latest), this.calibration)
+      this.rendered = applyCalibration(cameraToBody(this.latest, this.profile), this.calibration)
       this.renderedAtMs = now
       this.record({ event: 'render-submission', atMs: now, sessionId: this.sessionId,
         sequence: this.sequence, sampleAgeMs: this.sampleAge(now), ...this.rendered })
@@ -119,7 +125,7 @@ export class SpatialTracker {
   report() {
     this.recording = false
     return { schema: 'phone3d.spatial.v1', units: 'meters', origin: 'ARCamera',
-      cameraInBodyApproxMeters: CAMERA_IN_BODY, initialDisplayPositionMeters: SPATIAL_START,
+      deviceProfile: this.deviceProfile, cameraInBodyApproxMeters: cameraInBodyApprox(this.profile), initialDisplayPositionMeters: SPATIAL_START,
       timingEvidence: 'CPU render submission, not visible photon latency',
       physicalAcceptance: 'not established by this telemetry', droppedRecords: this.droppedRecords, records: this.records }
   }

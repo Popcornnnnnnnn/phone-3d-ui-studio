@@ -21,7 +21,7 @@ function seekVideoToStart(element: HTMLVideoElement) {
   element.currentTime = 0
 }
 
-export function useLocalVideoSource() {
+export function useLocalVideoSource(active = true) {
   const activeVideo = useRef<ActiveVideo | null>(null)
   const [media, setMedia] = useState<ScreenMedia | null>(null)
   const [status, setStatus] = useState<LocalVideoStatus>('idle')
@@ -120,6 +120,7 @@ export function useLocalVideoSource() {
     setStatus('ready')
   }, [])
 
+  useEffect(() => { if (!active) pause() }, [active, pause])
   useEffect(() => clear, [clear])
 
   return { clear, error, media, pause, play, reset, selectFile, status }

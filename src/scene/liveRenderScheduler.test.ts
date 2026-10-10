@@ -102,6 +102,20 @@ describe('live render scheduler', () => {
     })
   })
 
+  it('suspends a retained vsync canvas while its workspace is hidden', () => {
+    const environment = new FakeEnvironment()
+    const scheduler = new LiveRenderScheduler('vsync', environment)
+    const { frameloops, root } = createRoot()
+    scheduler.attach(root)
+    scheduler.setVisible(false)
+    expect(frameloops.at(-1)).toBe('never')
+    scheduler.reconfigure('vsync')
+    expect(frameloops.at(-1)).toBe('never')
+    scheduler.setVisible(true)
+    expect(frameloops.at(-1)).toBe('always')
+    expect(scheduler.snapshot().attached).toBe(true)
+  })
+
   it('reports an explicit diagnostic phase cap', () => {
     const environment = new FakeEnvironment()
     const scheduler = new LiveRenderScheduler('phase', environment, 90)

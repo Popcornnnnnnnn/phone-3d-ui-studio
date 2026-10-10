@@ -5,7 +5,7 @@
 ## 准备环境
 
 - Mac，Node.js 24 或更新版本，npm。
-- **iOS 27 真机 iPhone**、**Xcode 27**（iOS 27 设备 SDK）、XcodeGen。当前完整 App 的 ScreenCaptureKit 支线使整个工程仍要求该版本；不能根据 ARKit 本身的最低版本推断 App 兼容性。当前目标不能使用模拟器构建。
+- **iOS 27 真机 iPhone**、**Xcode 27**（iOS 27 设备 SDK）、XcodeGen。实际追踪和投屏仍需要真机；模拟器可以构建并检查界面，无法执行这两项硬件功能。
 - Mac/iPhone 同一可互访的局域网；首次安装可以使用 USB。
 - GitHub 仓库现已公开，可直接下载源码或克隆，无需额外仓库访问权限。
 
@@ -30,8 +30,8 @@ PHONE_STUDIO_PORT=17317 PHONE_BRIDGE_PORT=17319 PHONE_BRIDGE_FRAME_PORT=17320 np
 
 ## 安装 iPhone App
 
-1. 修改 `ios/project.yml` 中两个目标的 `LiveBridgeURL`，使用 Mac 地址，例如 `ws://192.168.1.20:4319/?role=phone`。这里的 IP 必须替换，原工程的 `forge.local` 不是你的 Mac。
-2. 将 `DEVELOPMENT_TEAM` 改成自己的 Team ID；必要时修改主 App 和扩展的 bundle identifier，扩展保留主 App ID 前缀。不要提交证书或 provisioning profile。
+1. 如需预设连接地址，可修改 `ios/project.yml` 中 App 目标的 `LiveBridgeURL`，例如 `ws://192.168.1.20:4319/?role=phone`。使用 App 内二维码配对时无需修改这个默认值。
+2. 将 `DEVELOPMENT_TEAM` 改成自己的 Team ID；必要时修改 App 的 bundle identifier。不要提交证书或 provisioning profile。
 3. 运行：
 
    ```sh
@@ -41,13 +41,13 @@ PHONE_STUDIO_PORT=17317 PHONE_BRIDGE_PORT=17319 PHONE_BRIDGE_FRAME_PORT=17320 np
    ```
 
 4. 在 **Xcode 27** 中选择主 App scheme、自己的 Team 和连接的真实 iPhone，然后 Run。首次按设备提示信任开发者、启用 Developer Mode。
-5. 打开 **Phone 3D Studio → Spatial tracking → Start tracking**，允许相机和本地网络访问。
+5. 打开 Mac App 的 **Connect iPhone**，在手机的 **Mac connection → Scan QR code** 扫描；然后点击 **Start tracking**，允许相机和本地网络访问。保存地址只是配对，须看到手机已连接且追踪正常。
 
-现有开发签名 `.app` 不能作为所有人的通用安装包。首次安装后可以拔掉 USB 使用 Wi-Fi。若 Mac IP 改变，当前 App 需要改地址并重新构建；尚未提供二维码配对或 App 内地址设置。
+现有开发签名 `.app` 不能作为所有人的通用安装包。首次安装后可以拔掉 USB 使用 Wi-Fi。若 Mac IP 改变，在 App 内重新扫码或手动输入地址即可。
 
 ## 开始玩与调参
 
-- 屏幕朝上、顶部朝向 Mac，后摄面对有纹理、光照足够的表面，等待 Web Ready。
+- 屏幕朝上、顶部朝向 Mac，后摄面对有纹理、光照足够的表面，等待 Mac 显示 **Ready to play**。手机的 **Tracking** 同时服务于 Mac 的 **Marble** 和 **Tracking**。
 - 在 **Play settings** 调整位移比例、直径和弹性，然后 **Start round**。初始位置在参考网格上方 20 cm，这是展示约定。
 - 默认位移 50%：真实平移 20 cm 对应虚拟 10 cm，旋转不缩放。托盘的平移速度也相应减小，轻颠的能量随之减小；程序不会自动补足弹起高度。
 - 改参数后 **Apply & restart** 才生效：清除旧球、重新设原点，保留观察视角。设置由桥接持有，后来的观察页面会看到当前值；重启桥接恢复默认。
@@ -60,6 +60,7 @@ PHONE_STUDIO_PORT=17317 PHONE_BRIDGE_PORT=17319 PHONE_BRIDGE_FRAME_PORT=17320 np
 | Waiting for iPhone | 检查地址、端口、同网和本地网络权限，保持 App 前台 |
 | 纹理不足 | 连接可能还在；后摄对准书页等纹理，恢复后重新开始 |
 | Display paused / reconnecting | 位姿或快照回执超时；冻结并要求新回合，不自动续算 |
+| Mac 地址变化或端口被占用 | 打开 **Connect iPhone** 扫描当前二维码，再手动启动追踪；旧地址不保证能连接 |
 | 球出界 | 仅结束当前球，允许补球；不会主动断开网络 |
 | 程序生成的手机外观 | 正常；私有精细模型不随仓库发布 |
 
