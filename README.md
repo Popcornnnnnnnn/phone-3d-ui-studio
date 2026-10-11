@@ -97,6 +97,6 @@ Camera images stay on the iPhone in spatial mode. Automated/synthetic tests do n
 ## 维护与问题入口
 
 代码与必要文档沿用 [GitHub 仓库](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio)；需跟进的问题统一从 [Issues](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues) 接续，先查重，再记录进展与完成条件。
-未完成开发的快照保存在 `codex/workspace-backup-20261010` 分支，便于恢复与接续。
+未完成开发的快照保存在 `archive/workspace-backup-20261010` 归档标签，便于恢复与接续；该标签不代表功能已验收。
 项目功能与验收沿用已有记录。
 <!-- workspace-maintenance:end -->
