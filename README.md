@@ -1,22 +1,41 @@
-# Phone 3D UI Studio
+<div align="center">
+  <img src="public/icon-192.png" alt="Phone 3D UI Studio icon" width="88" />
+  <h1>Phone 3D UI Studio</h1>
+  <p>
+    <strong>Interactive 3D iPhone UI presentation studio &amp; spatial Elastic Tray physics prototype.</strong><br />
+    Orbit lighting presets and preview any UI recording directly in your browser — or connect a real iPhone over LAN to toss and catch a physical 3D ball across your phone and screen.
+  </p>
 
-**English** · [简体中文](README.zh-CN.md)
+  <p>
+    <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+  </p>
 
-A real iPhone becomes a tray in a shared Web 3D world. Gently toss a ball, move to catch it, and tap **Add ball** on your phone after a miss.
+  <p>
+    <a href="https://popcornnnnnnnn.github.io/phone-3d-ui-studio/"><img src="https://img.shields.io/badge/Live_Web_3D_Demo-Open_Studio-0D96F6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open Live Web 3D Demo" /></a>
+    <a href="https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Popcornnnnnnnn/phone-3d-ui-studio/ci.yml?style=for-the-badge&label=CI" alt="CI status" /></a>
+    <a href="https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1"><img src="https://img.shields.io/badge/Preview-v0.2.1--alpha.1-FF9F0A?style=for-the-badge" alt="Latest preview release" /></a>
+  </p>
 
-**Developer preview — not a one-click consumer install.** The desktop workspace runs from this repository. Playing requires Xcode 27, your own iPhone signing and a physical iPhone on iOS 27. No generally installable iPhone binary or TestFlight invitation is included. Wireless interruptions and formal physical acceptance remain open.
+  <p>
+    <img src="https://img.shields.io/badge/Three.js-React_Three_Fiber-111111?style=flat-square&logo=threedotjs&logoColor=white" alt="Three.js + React Three Fiber" />
+    <img src="https://img.shields.io/badge/Physics-Rapier_120Hz-0A84FF?style=flat-square" alt="Rapier 120Hz physics" />
+    <img src="https://img.shields.io/badge/iOS_Companion-Swift_%2B_ARKit-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift + ARKit companion" />
+  </p>
+
+  <p>
+    <a href="https://popcornnnnnnnn.github.io/phone-3d-ui-studio/">Live 3D Studio</a> ·
+    <a href="#spatial-interaction--in-motion">Spatial Demo</a> ·
+    <a href="#try-in-browser">Try in Browser</a> ·
+    <a href="#run-locally-mac--iphone-spatial-preview">Run Locally</a> ·
+    <a href="#play-settings">Play Settings</a>
+  </p>
+</div>
+
+---
 
 ## Spatial interaction — in motion
 
-A preview of the new **S2.1 Elastic Tray** experience: move a phone through space, gently toss a ball, catch it, and add a new one after a miss.
-
-These are **scripted renders**, using the project's original phone model and Rapier physics. The phone inset is a projected view of the same world state. They illustrate the interaction; they are not camera footage, a live network recording, or wireless reliability evidence.
-
-**Try the developer preview:** [S2.1 release](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1) · [Setup guide](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/blob/v0.2.1-alpha.1/docs/QUICKSTART.zh-CN.md) · [Spatial implementation](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/pull/21)
-
-### A little lift. A real catch.
-
-The tray's movement supplies the energy. The same ball leaves the screen, rises through the Web world, and makes contact with the tray again.
+A preview of the **S2.1 Elastic Tray** experience: a real iPhone becomes a physical tray in a shared Web 3D world — lift the phone to toss a ball off the screen, move to catch it, and tap **Add ball** on your phone after a miss.
 
 ![Scripted S2.1 demo: a gentle lift tosses one ball, which returns to the tray through a physical collision.](docs/media/toss-and-catch.gif)
 
@@ -31,33 +50,45 @@ The tray's movement supplies the energy. The same ball leaves the screen, rises 
 </tr>
 </table>
 
-### Make it feel right
+### Tune the physics feel
 
-Adjust movement scale, ball diameter, and bounce. Each preset below starts a new round, just as **Apply & restart** does in the app.
+Adjust movement scale, ball diameter, and bounce. Each preset below starts a new round, matching **Apply & restart** in the live studio.
 
 ![Scripted comparison of movement scale, ball diameter, and bounce across three round presets.](docs/media/play-settings.gif)
 
-[Media details and limitations](docs/media/README.md)
+> **Render note:** These animations are **scripted renders** driven by the project's procedural phone model and Rapier physics to illustrate interaction behavior; they are not camera footage or wireless reliability evidence ([media details and limitations](docs/media/README.md)).
 
 ---
 
-- GitHub repository: <https://github.com/Popcornnnnnnnn/phone-3d-ui-studio>
-- Delivery board: <https://github.com/users/Popcornnnnnnnn/projects/3>
+## Try in browser
 
-## Start the desktop workspace
+Open the **[Live Web 3D Studio](https://popcornnnnnnnn.github.io/phone-3d-ui-studio/)** — no Xcode or iPhone required:
 
-Use Node.js **24+** on a Mac:
+- Switch between **Daylight**, **Obsidian**, **Pearl**, and studio lighting presets.
+- Orbit, zoom, and inspect front/rear/calibration views of the procedural 3D iPhone 17 model.
+- Drop in any local screen-recording clip (**Local video**) to preview your UI inside the 3D scene in real time.
+
+*(Live spatial ball-tossing and low-latency screen mirroring connect to a physical iPhone over the local Mac bridge below.)*
+
+---
+
+## Run locally (Mac + iPhone spatial preview)
+
+> **Developer preview status:** Running the live iPhone companion requires a Mac with **Node.js 24+**, **Xcode 27**, your own iOS signing team, and a physical iPhone on **iOS 27**. No App Store / TestFlight build is included, and wireless interruption/physical acceptance remains in progress.
 
 ```sh
 npm ci
 npm start
 ```
 
-Open the **Studio ready** URL printed in the terminal, normally <http://127.0.0.1:4317/?experience=marble>. This starts both the bridge and Web server; **Ctrl+C stops both**. Occupied ports produce an explanation without stopping another instance.
+Open the **Studio ready** URL printed in your terminal (typically <http://127.0.0.1:4317/?experience=marble>). `npm start` launches both the WebSocket bridge and Vite server together; **Ctrl+C stops both**.
 
-A procedural phone model is included. The privately licensed GLB under `public/local-assets/` is **optional** and never redistributed.
+A procedural iPhone 17 model is included out of the box. Any privately licensed GLB under `public/local-assets/` is optional and excluded from redistribution.
 
-[中文首次安装指南](docs/QUICKSTART.zh-CN.md) · [iPhone build details](ios/README.md) · [Release readiness](docs/RELEASE_READINESS.md)
+- [Preview release (`v0.2.1-alpha.1`)](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1) · [Spatial PR #21](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/pull/21)
+- [中文首次安装指南](docs/QUICKSTART.zh-CN.md) · [iPhone build details](ios/README.md) · [Release readiness](docs/RELEASE_READINESS.md)
+
+---
 
 ## Play settings
 
@@ -69,9 +100,11 @@ In **Marble → Play settings**:
 | Ball diameter | 15 mm | 10–20 mm |
 | Bounce | 0.35 | 0–0.8 |
 
-Click **Start round**, or **Apply & restart** after editing, while tracking is ready. This recalibrates and clears previous balls while retaining the observation camera. The bridge owns the parameters for that round; the phone and every browser use its snapshots. Another page cannot change a running controller's round. Rotation stays 1:1; the S1 **Tracking** mode retains metric 1:1 translation.
+Click **Start round**, or **Apply & restart** after editing, while tracking is ready. This recalibrates and clears previous balls while retaining the observation camera. The bridge owns round parameters so the phone and browser stay synchronized; rotation stays 1:1, and S1 **Tracking** keeps metric 1:1 translation.
 
-One ball is active and at most five balls are retained including ground traces. The bridge runs Rapier at 120 Hz; both screens render snapshots with a 50 ms presentation buffer. Demonstration gravity is 1.5 m/s². Real tray motion supplies energy; no automatic launch, Return or recovery teleport is used.
+One ball is active and up to five balls are retained including ground traces. The bridge steps Rapier at 120 Hz (`1.5 m/s²` demo gravity) and both screens render snapshots through a 50 ms presentation buffer.
+
+---
 
 ## Development and verification
 
@@ -80,23 +113,12 @@ npm run check
 swift test --package-path ios
 ```
 
-`npm run bridge` and `npm run dev` remain available separately. For an isolated instance:
+`npm run bridge` and `npm run dev` can also run separately, or on custom ports:
 
 ```sh
 PHONE_STUDIO_PORT=17317 PHONE_BRIDGE_PORT=17319 PHONE_BRIDGE_FRAME_PORT=17320 npm start
 ```
 
-Use the printed Web URL, which includes the selected bridge. Set the iPhone's `LiveBridgeURL` to that Mac's LAN address and bridge port before building. Web is loopback-only; the phone communicates with the LAN bridge. Use a trusted local network; the prototype has no authenticated pairing or cloud access.
+Set the iPhone app's `LiveBridgeURL` to your Mac's LAN IP and bridge port on a trusted local network. Camera frames stay on the iPhone in spatial mode. Automated/synthetic tests do not establish physical tracking accuracy or five-minute wireless stability ([experience and evidence](docs/ELASTIC_TRAY.md)).
 
-Camera images stay on the iPhone in spatial mode. Automated/synthetic tests do not establish physical accuracy, visible latency or five-minute wireless reliability. See [experience and evidence](docs/ELASTIC_TRAY.md).
-
-**Spatial interaction is the main track.** Screen mirroring, image quality and transport performance remain a supporting track. Choose **Screen mirroring** on both devices for the prior workflow. [Product goal](docs/PRODUCT_GOAL.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](ROADMAP.md). Previous plans remain under `docs/legacy/` and `experiments/`.
-
-
-<!-- workspace-maintenance:start -->
-## 维护与问题入口
-
-代码与必要文档沿用 [GitHub 仓库](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio)；需跟进的问题统一从 [Issues](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues) 接续，先查重，再记录进展与完成条件。
-未完成开发的快照保存在 `archive/workspace-backup-20261010` 归档标签，便于恢复与接续；该标签不代表功能已验收。
-项目功能与验收沿用已有记录。
-<!-- workspace-maintenance:end -->
+- [Product goal](docs/PRODUCT_GOAL.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](ROADMAP.md) · [Issues](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues)

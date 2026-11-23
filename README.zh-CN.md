@@ -1,22 +1,35 @@
-# Phone 3D UI Studio
+<div align="center">
+  <img src="public/icon-192.png" alt="Phone 3D UI Studio 图标" width="88" />
+  <h1>Phone 3D UI Studio</h1>
+  <p>
+    <strong>可交互的 3D iPhone UI 展示工作室与空间物理交互原型（Elastic Tray）。</strong><br />
+    直接在浏览器中调整 3D 灯光预设并预览任意录屏视频，或连接真机体验手机与桌面共享三维世界中的抛球与接球。
+  </p>
 
-[English](README.md) · **简体中文**
+  <p>
+    <a href="README.md">English</a> · <strong>简体中文</strong>
+  </p>
 
-一个可复用的桌面工作室，用可控制的 3D 手机展示手机界面，并提供相机预设、灯光、背景和录制能力。在内容制作 MVP 稳定后，项目还计划加入实时屏幕与设备姿态同步。
+  <p>
+    <a href="https://popcornnnnnnnn.github.io/phone-3d-ui-studio/"><img src="https://img.shields.io/badge/在线_3D_演示-立即打开-0D96F6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="打开在线 3D 演示" /></a>
+    <a href="https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Popcornnnnnnnn/phone-3d-ui-studio/ci.yml?style=for-the-badge&label=CI" alt="CI 状态" /></a>
+    <a href="https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1"><img src="https://img.shields.io/badge/开发者预览-v0.2.1--alpha.1-FF9F0A?style=for-the-badge" alt="预览版本" /></a>
+  </p>
+
+  <p>
+    <a href="https://popcornnnnnnnn.github.io/phone-3d-ui-studio/">在线 3D 工作室</a> ·
+    <a href="#空间交互演示">空间演示</a> ·
+    <a href="#浏览器在线体验">在线体验</a> ·
+    <a href="#本地运行mac--iphone-空间预览">本地运行</a> ·
+    <a href="#手感参数">手感参数</a>
+  </p>
+</div>
+
+---
 
 ## 空间交互演示
 
-下面展示新的 **S2.1 Elastic Tray** 体验：在空间中移动手机，轻轻抛起小球、接住它；如果没有接住，可以再添加一个新球。
-
-这些内容是**脚本渲染**，使用项目自有的手机模型和 Rapier 物理引擎。手机画面是同一世界状态的投影视图。它们用于说明交互设计，不是摄像机实拍、实时网络录制，也不能作为无线连接可靠性的证据。
-
-**体验开发者预览：**[S2.1 Release](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1) · [配置指南](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/blob/v0.2.1-alpha.1/docs/QUICKSTART.zh-CN.md) · [空间交互实现](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/pull/21)
-
-空间交互预览位于独立分支；默认 `main` 分支仍然是下文介绍的工作室基线。实际游玩需要一台 iPhone，并使用自己的 Xcode 签名。
-
-### 轻轻抬起，真正接住
-
-托盘移动提供能量。同一个小球会离开手机屏幕、上升到 Web 三维世界中，然后再次与托盘发生物理碰撞。
+下面是 **S2.1 Elastic Tray** 体验：真实 iPhone 会成为共享 Web 三维世界中的一个物理托盘——轻轻抬起手机抛起小球、移动去接住它；没接住时，在手机上点击 **Add ball** 继续。
 
 ![S2.1 脚本演示：轻抬托盘抛起小球，小球通过物理碰撞重新落回托盘。](docs/media/toss-and-catch.gif)
 
@@ -37,65 +50,57 @@
 
 ![移动比例、小球直径和弹性的三种回合预设脚本对比。](docs/media/play-settings.gif)
 
-[媒体详情与限制](docs/media/README.md)
+> **渲染说明：** 这些动图是基于项目程序化手机模型和 Rapier 物理引擎的**脚本渲染**，用于展示交互设计，并非真机实拍或无线可靠性证明（详见[媒体说明与限制](docs/media/README.md)）。
 
 ---
 
-- GitHub 仓库：<https://github.com/Popcornnnnnnnn/phone-3d-ui-studio>
-- 交付看板：<https://github.com/users/Popcornnnnnnnn/projects/3>
+## 浏览器在线体验
 
-## 工作室基线状态
+直接打开 **[在线 3D 工作室](https://popcornnnnnnnn.github.io/phone-3d-ui-studio/)**，无需 Xcode 或真机即可体验：
 
-- 已验收：M0 项目基础；M2 屏幕视频垂直切片
-- 进行中：M1 iPhone 17 视觉重做候选；之前只基于几何结构的验收已重新打开
-- 基线开始时间：2026-09-02
-- 内容制作 MVP 目标时间：2026-09-18
-- 实时同步候选版本目标时间：2026-10-09
-- 目标验收时间：2026-10-12
-- 当前评审项：[M1 — 重新校准 iPhone 17 资产的视觉表现](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/2)
-- M1 视觉验收后的下一项 M2 工作：[可复用工作室和相机预设](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues/5)
+- 切换 **Daylight**、**Obsidian**、**Pearl** 等工作室灯光与背景预设。
+- 自由旋转、缩放，查看程序化 3D iPhone 17 参考模型的正面、背面与校准视角。
+- 选择本地录屏视频（**Local video**），即时在 3D 手机屏幕上预览你的界面演示。
 
-排期假设由一名主要开发者完成，测试时可使用 Mac 和 iPhone，并且不要求发布到 App Store。估算、质量门槛和验收标准见 [PROJECT_PLAN.md](PROJECT_PLAN.md)。
+*(实时的 6DoF 空间抛球与低延迟真机投屏需要运行下方的本地 Mac 桥接服务并连接 iPhone。)*
 
-## 产品边界
+---
 
-项目明确区分两个交付目标：
+## 本地运行（Mac + iPhone 空间预览）
 
-1. **内容制作 MVP**：在 3D 手机上播放预先录制的手机屏幕视频，提供可复用的工作室预设、相机运动和录制能力。
-2. **实时同步扩展**：实时传输手机屏幕，并同步真实设备方向。
+> **开发者预览状态：** 完整的真机空间联动需要 Mac（**Node.js 24+**、**Xcode 27**）、个人 iOS 签名团队以及运行 **iOS 27** 的真机。当前不含 App Store 或 TestFlight 安装包，无线稳定性与实体验收仍在推进中。
 
-第一个目标本身具有独立价值，不需要等待 iOS 实时采集限制被完全解决。
-
-## 仓库结构
-
-```text
-docs/                  架构与决策记录
-src/model/             校准后的设备尺寸与测试
-src/scene/             Three.js 模型与工作室场景
-.github/               Issue 模板与项目自动化元数据
-PROJECT_PLAN.md        排期、里程碑、工作量、风险和验收门槛
-ROADMAP.md             按日期组织的交付检查点
+```sh
+npm ci
+npm start
 ```
 
-当前应用包含一个原创的程序化 iPhone 17 黑色参考模型、可独立控制的屏幕网格、确定性的正反面评审视图、三种视觉预设、模拟运动、轨道控制，以及明确的屏幕和姿态来源接口。
+打开终端打印的 **Studio ready** 地址（通常为 <http://127.0.0.1:4317/?experience=marble>）。该命令会同时启动桥接服务与 Web 前端；按 **Ctrl+C** 同时停止。
 
-用户可以选择本地视频，将其播放、暂停、重置，并通过保持比例的竖屏/横屏 contain 模式映射到手机屏幕。已确认尺寸和近似边界记录在 [docs/references/iphone-17-black.md](docs/references/iphone-17-black.md)。实时采集、相机时间线、最终场景录制和项目状态保存尚未实现。
+- [预览版本 (`v0.2.1-alpha.1`)](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1) · [空间交互 PR #21](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/pull/21)
+- [中文首次安装指南](docs/QUICKSTART.zh-CN.md) · [iPhone 构建说明](ios/README.md) · [发布就绪状态](docs/RELEASE_READINESS.md)
 
-## 本地开发
+---
 
-需要 Node.js 24 或更高版本。
+## 手感参数
 
-```bash
-npm install
-npm run dev
+在 **Marble → Play settings** 中可调节：
+
+| 参数 | 默认值 | 范围 |
+| --- | --- | --- |
+| Movement scale | 50%：真实移动 20 cm → 虚拟 10 cm | 25–100% |
+| Ball diameter | 15 mm | 10–20 mm |
+| Bounce | 0.35 | 0–0.8 |
+
+本地桥接以 120 Hz 运行 Rapier 物理（演示重力 `1.5 m/s²`），最多同时保留 5 个小球轨迹。
+
+---
+
+## 开发与验证
+
+```sh
+npm run check
+swift test --package-path ios
 ```
 
-本地工作室运行在 <http://127.0.0.1:4317>。运行 `npm run check` 执行完整验证。
-
-## 工作规则
-
-- 将源代码、生成媒体、采集的手机内容、密钥和构建缓存分开保存。
-- 不得提交个人手机屏幕、签名材料、Provisioning Profile、`.env` 文件或录制内容。
-- 本地视频选择使用内存中的 Object URL；应用不会复制、上传或序列化所选文件路径。
-- 视觉上逼真的渲染不能证明实时采集或姿态同步已经可用。
-- 每个里程碑只有在对应 GitHub Issue 中记录验收结果后才算完成。
+- [产品目标](docs/PRODUCT_GOAL.md) · [系统架构](docs/ARCHITECTURE.md) · [路线图](ROADMAP.md) · [Issues](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues)

@@ -16,6 +16,7 @@ import {
 } from './studio/poseDiagnostics'
 import { POSE_SMOOTHING_RATE } from './studio/posePresentation'
 import { studioRenderConfigurationFromSearch } from './studio/renderConfiguration'
+import { isHostedStaticDemo } from './studio/hostedDemo'
 import { useLivePhoneSource } from './studio/useLivePhoneSource'
 import { useLocalVideoSource } from './studio/useLocalVideoSource'
 
@@ -81,7 +82,11 @@ function formatPoseVerdict(value: PoseAccuracySnapshot['verdict']) {
 }
 
 export function App() {
-  const [mode, setMode] = useState(() => new URLSearchParams(location.search).get('mode') === 'mirroring' ? 'mirroring' : 'spatial')
+  const [mode, setMode] = useState<'spatial' | 'mirroring'>(() => {
+    const requested = new URLSearchParams(location.search).get('mode')
+    if (requested === 'mirroring' || requested === 'spatial') return requested
+    return isHostedStaticDemo() ? 'mirroring' : 'spatial'
+  })
   return <>
     <nav className="studio-mode-nav" aria-label="Studio mode">
       {(['spatial', 'mirroring'] as const).map((value) =>
@@ -105,7 +110,9 @@ function MirroringApp() {
   const [view, setView] = useState<ReviewView>('calibration')
   const [cameraResetRevision, setCameraResetRevision] = useState(0)
   const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
-  const [sourceMode, setSourceMode] = useState<ScreenSourceMode>('live')
+  const [sourceMode, setSourceMode] = useState<ScreenSourceMode>(() =>
+    isHostedStaticDemo() ? 'local' : 'live',
+  )
   const [renderedPose, setRenderedPose] = useState<QuaternionTuple | null>(null)
   const [renderConfiguration] = useState(() =>
     studioRenderConfigurationFromSearch(
@@ -147,7 +154,7 @@ function MirroringApp() {
     <main className={preset.daylight ? 'app-shell daylight' : 'app-shell'}>
       <header className="topbar">
         <div className="brand-cluster">
-          <img className="brand-logo" src="/icon-192.png" alt="" />
+          <img className="brand-logo" src={`${import.meta.env.BASE_URL}icon-192.png`} alt="" />
           <div>
             <p className="eyebrow">Live iPhone input · local prototype</p>
             <h1>Phone 3D UI Studio</h1>

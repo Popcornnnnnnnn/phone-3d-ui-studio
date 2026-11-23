@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isHostedStaticDemo } from '../studio/hostedDemo'
 import { WorldClient } from './WorldClient'
 import { WORLD_VERSION } from '../../shared/worldProtocol.mjs'
 
@@ -9,6 +10,12 @@ export function useMarbleWorld() {
     let stopped = false, attempt = 0
     let socket: WebSocket | null = null, retry: ReturnType<typeof setTimeout> | undefined
     function connect() {
+      if (isHostedStaticDemo()) {
+        client.disconnect()
+        client.message =
+          'Live iPhone spatial mode requires the local Mac bridge (npm start). Switch to Screen mirroring to explore the 3D studio in your browser.'
+        return
+      }
       const url = new URL(new URLSearchParams(location.search).get('bridge') ?? 'ws://127.0.0.1:4319')
       url.searchParams.set('role', 'browser-spatial')
       const current = new WebSocket(url); socket = current

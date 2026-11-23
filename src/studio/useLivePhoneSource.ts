@@ -13,6 +13,7 @@ import {
   type LiveRenderSchedulerSnapshot,
 } from '../scene/liveRenderScheduler'
 import type { PoseSample } from './contracts'
+import { isHostedStaticDemo } from './hostedDemo'
 import {
   buildLiveMeasurementReport,
   captureContentIsVerifiedFresh,
@@ -1389,6 +1390,15 @@ export function useLivePhoneSource(
     commitScreenStale(false)
     setPoseStale(false)
     setPoseDiagnostics(null)
+    if (isHostedStaticDemo()) {
+      shouldReconnectRef.current = false
+      commitStatus('idle')
+      commitError(
+        'Live iPhone bridge runs locally (npm start). Use Local Video mode to preview any clip in 3D.',
+      )
+      setStats(initialStats)
+      return
+    }
     commitStatus('connecting')
     commitError(null)
     setStats(initialStats)
