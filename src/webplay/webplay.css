@@ -1,130 +1,353 @@
-.webplay-pair-card {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 8px;
-  background: var(--app-background);
+/* Full-bleed Dark Studio 3D stage & floating glass controls */
+.webplay-stage-shell {
+  position: relative;
+  flex: 1;
+  min-height: calc(100dvh - 52px);
+  width: 100%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 42%, #ffffff 0%, #f1efe9 64%, #e5e2da 100%);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 }
 
-.webplay-pair-header {
+:root[data-color-scheme="dark"] .webplay-stage-shell {
+  background: radial-gradient(ellipse at 50% 42%, #191e2b 0%, #0d1017 55%, #07080b 100%);
+}
+
+.webplay-stage-shell.is-expanded,
+.webplay-stage-shell:fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  min-height: 100dvh;
+}
+
+.webplay-stage-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.webplay-stage-loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.webplay-hud-top-left,
+.webplay-hud-top-right {
+  position: absolute;
+  top: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.webplay-hud-top-left {
+  left: 18px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-glass-border);
+  background: var(--surface-floating);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 8px 24px var(--shadow);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.webplay-hud-sep {
+  color: var(--text-tertiary);
+}
+
+.webplay-hud-muted {
+  color: var(--text-secondary);
+}
+
+.webplay-hud-top-right {
+  right: 18px;
+}
+
+.webplay-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex: none;
+}
+
+.webplay-status-dot.is-ready,
+.webplay-status-dot.is-paired {
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.webplay-glass-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-glass-border);
+  background: var(--surface-floating);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 8px 24px var(--shadow);
+  color: var(--text-primary);
+  font: 520 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.webplay-glass-pill:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.webplay-glass-pill.is-paired {
+  border-color: rgb(75 232 157 / 35%);
+  background: var(--selection);
+  color: var(--selection-text);
+}
+
+.webplay-code-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+}
+
+/* Right-side collapsible studio drawer */
+.webplay-settings-drawer {
+  position: absolute;
+  top: 62px;
+  right: 18px;
+  bottom: 84px;
+  z-index: 15;
+  width: min(310px, calc(100vw - 36px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--surface-glass-border);
+  background: var(--surface-floating);
+  backdrop-filter: blur(24px) saturate(145%);
+  box-shadow: 0 22px 54px var(--shadow);
+}
+
+.webplay-settings-drawer select {
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.webplay-drawer-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.webplay-pair-header h2 {
+.webplay-drawer-head h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
-.webplay-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
+.webplay-icon-btn {
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 500;
+  border: 1px solid var(--border);
   background: var(--surface-secondary);
   color: var(--text-secondary);
+  cursor: pointer;
 }
 
-.webplay-badge.is-paired {
-  background: var(--selection);
-  color: var(--selection-text);
+.webplay-icon-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
-.webplay-qr-row {
+/* Bottom-center floating studio dock */
+.webplay-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 12;
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.webplay-qr-button {
-  padding: 6px !important;
-  background: #ffffff !important;
-  border-radius: 10px !important;
-  flex: none;
-}
-
-.webplay-pair-meta {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
-}
-
-.webplay-room-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--text-primary);
-}
-
-.webplay-pair-actions {
-  display: flex;
   flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 7px 11px;
+  border-radius: 18px;
+  border: 1px solid var(--surface-glass-border);
+  background: var(--surface-floating);
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: 0 18px 48px var(--shadow);
+}
+
+.webplay-dock-group {
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 
-.webplay-pair-actions button {
-  font-size: 11px;
-  padding: 5px 9px;
-}
-
-.webplay-tilt-pad-wrap {
-  display: grid;
-  gap: 10px;
-}
-
-.webplay-tilt-pad {
-  position: relative;
-  height: 124px;
+.webplay-dock button {
+  min-height: 32px;
+  padding: 6px 11px;
   border-radius: 10px;
   border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font: 530 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.webplay-dock button:not(:disabled):hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.webplay-dock button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.webplay-dock button.webplay-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.webplay-dock button.webplay-btn-primary:not(:disabled):hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.webplay-dock-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-strong);
+}
+
+.webplay-dock-select {
+  min-height: 32px;
+  max-width: 152px;
+  padding: 5px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font: 520 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+}
+
+.webplay-dock-swatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Compact tactile crosshair mini tilt pad inside dock */
+.webplay-mini-pad {
+  position: relative;
+  width: 68px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
   background:
-    linear-gradient(to right, transparent 49.5%, var(--border) 50%, transparent 50.5%),
-    linear-gradient(to bottom, transparent 49.5%, var(--border) 50%, transparent 50.5%),
-    var(--app-background);
+    linear-gradient(to right, transparent 49%, var(--border) 50%, transparent 51%),
+    linear-gradient(to bottom, transparent 49%, var(--border) 50%, transparent 51%),
+    var(--surface-secondary);
   touch-action: none;
   cursor: grab;
   user-select: none;
+  flex: none;
 }
 
-.webplay-tilt-pad:active {
+.webplay-mini-pad:active {
   cursor: grabbing;
 }
 
-.webplay-tilt-thumb {
+.webplay-mini-thumb {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 24px;
-  height: 24px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 2px 8px var(--shadow);
+  box-shadow: 0 0 10px var(--accent);
   pointer-events: none;
-  transition: transform 60ms linear;
+  transition: transform 50ms linear;
 }
 
-.webplay-quick-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
+/* Top-layer modal dialog animations (Baseline @starting-style + allow-discrete fallback friendly) */
 .webplay-dialog {
-  max-width: min(360px, calc(100vw - 32px));
+  max-width: min(380px, calc(100vw - 32px));
   padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  border: 1px solid var(--surface-glass-border);
+  border-radius: 18px;
   background: var(--surface);
   color: var(--text-primary);
-  box-shadow: 0 18px 48px var(--shadow);
+  box-shadow: 0 24px 64px var(--shadow);
+  opacity: 0;
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 0.22s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .webplay-dialog {
+    transform: scale(0.95);
+  }
+}
+
+.webplay-dialog[open] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .webplay-dialog[open] {
+    transform: scale(1);
+  }
+
+  @starting-style {
+    .webplay-dialog[open] {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .webplay-dialog {
+    transition-duration: 0.1s;
+  }
 }
 
 .webplay-dialog:modal {
@@ -132,16 +355,30 @@
 }
 
 .webplay-dialog::backdrop {
-  background: rgb(15 23 42 / 48%);
-  backdrop-filter: blur(4px);
+  background-color: rgb(5 7 12 / 0%);
+  backdrop-filter: blur(6px);
   overflow: hidden;
   overscroll-behavior: contain;
+  transition-property: background-color, display, overlay;
+  transition-duration: 0.22s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+.webplay-dialog[open]::backdrop {
+  background-color: rgb(5 7 12 / 62%);
+}
+
+@starting-style {
+  .webplay-dialog[open]::backdrop {
+    background-color: rgb(5 7 12 / 0%);
+  }
 }
 
 .webplay-dialog h1 {
   margin: 0 0 8px;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 620;
   text-wrap: balance;
 }
 
@@ -158,10 +395,18 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 14px;
+  padding: 16px;
   margin-bottom: 14px;
-  border-radius: 10px;
-  background: var(--app-background);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #181a1f;
+}
+
+.webplay-room-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
 }
 
 .webplay-dialog-actions {
@@ -170,6 +415,23 @@
   gap: 8px;
 }
 
+.webplay-dialog-actions button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font: 520 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+}
+
+.webplay-dialog-actions button:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+/* Shared cards & inspector widgets */
 .webplay-demo-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -194,7 +456,7 @@
 }
 
 .device-picker-card.is-compact {
-  padding: 4px 0 8px;
+  padding: 2px 0 6px;
 }
 
 .device-picker-header {
@@ -215,10 +477,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 999px;
   font-size: 10.5px;
-  font-weight: 500;
+  font-weight: 550;
   background: var(--selection);
   color: var(--selection-text);
 }
@@ -244,16 +506,21 @@
 }
 
 .device-swatch {
-  width: 22px !important;
-  height: 22px !important;
-  min-width: 22px !important;
-  min-height: 22px !important;
+  width: 21px !important;
+  height: 21px !important;
+  min-width: 21px !important;
+  min-height: 21px !important;
   padding: 0 !important;
   border-radius: 999px !important;
-  border: 2px solid rgb(255 255 255 / 35%) !important;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 28%);
+  border: 2px solid rgb(255 255 255 / 32%) !important;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 32%);
   cursor: pointer;
   flex: none !important;
+  transition: transform 120ms ease;
+}
+
+.device-swatch:hover {
+  transform: scale(1.08);
 }
 
 .device-swatch.is-active {
@@ -320,4 +587,17 @@
   margin: 0 0 14px !important;
   font-size: 11px !important;
   color: var(--text-secondary);
+}
+
+@media (max-width: 960px) {
+  .webplay-hide-narrow {
+    display: none;
+  }
+
+  .webplay-dock {
+    width: calc(100vw - 20px);
+    bottom: 12px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
 }

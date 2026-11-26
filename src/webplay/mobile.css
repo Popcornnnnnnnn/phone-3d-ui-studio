@@ -20,7 +20,8 @@
   gap: 10px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-floating);
+  backdrop-filter: blur(20px);
   z-index: 2;
 }
 
@@ -52,11 +53,11 @@
   min-height: 0;
   min-width: 0;
   touch-action: none;
-  background: radial-gradient(ellipse at 50% 42%, #ffffff 0%, #f0f2f5 68%, #e4e8ee 100%);
+  background: radial-gradient(ellipse at 50% 42%, #ffffff 0%, #f1efe9 66%, #e5e2da 100%);
 }
 
 :root[data-color-scheme="dark"] .mobile-play-stage {
-  background: radial-gradient(ellipse at 50% 42%, #313741 0%, #23272e 58%, #181a1f 100%);
+  background: radial-gradient(ellipse at 50% 42%, #191e2b 0%, #0d1017 55%, #07080b 100%);
 }
 
 .mobile-play-canvas-2d {
@@ -136,7 +137,8 @@
   gap: 8px;
   padding: 10px 14px max(12px, env(safe-area-inset-bottom, 12px));
   border-top: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-floating);
+  backdrop-filter: blur(20px);
   z-index: 2;
 }
 

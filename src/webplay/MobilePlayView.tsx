@@ -26,7 +26,9 @@ import {
   type WebPlayMode,
   type WebWorldSnapshot,
 } from '../../shared/webPlayProtocol.mjs'
+import { useAppearance } from '../appearance'
 import { drawMarbleScreen } from '../marble/drawMarbleScreen'
+import { createClippedMarbleMaterial } from '../marble/marbleMaterials'
 import { usePhoneAppearance } from '../model/usePhoneAppearance'
 import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
 import { DEMO_SCREENS, type DemoScreenId } from '../studio/demoScreens'
@@ -50,30 +52,6 @@ import { DEFAULT_WEB_PLAY_SETTINGS, WebTrayDriver } from './webTrayDriver'
 import './webplay.css'
 import './mobile.css'
 
-function clippedMaterial(color: string, inverse: Matrix4, slotGeometry: Vector2, screenBounds: Vector3) {
-  const material = new MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.05 })
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.inversePhone = { value: inverse }
-    shader.uniforms.slotGeometry = { value: slotGeometry }
-    shader.uniforms.screenBounds = { value: screenBounds }
-    shader.vertexShader = 'uniform mat4 inversePhone; varying vec3 phoneFragment;\n' + shader.vertexShader
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <project_vertex>',
-      '#include <project_vertex>\nphoneFragment = (inversePhone * modelMatrix * vec4(transformed, 1.0)).xyz;',
-    )
-    shader.fragmentShader = 'uniform vec2 slotGeometry; uniform vec3 screenBounds; varying vec3 phoneFragment;\n' + shader.fragmentShader
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <clipping_planes_fragment>',
-      `#include <clipping_planes_fragment>
-      vec2 delta = abs(phoneFragment.xy) - screenBounds.xy;
-      float edgeDistance = length(max(delta, 0.0)) + min(max(delta.x, delta.y), 0.0) - screenBounds.z;
-      if (edgeDistance <= 0.0 && phoneFragment.z >= slotGeometry.y - slotGeometry.x && phoneFragment.z < slotGeometry.y) discard;`,
-    )
-  }
-  material.customProgramCacheKey = () => 'marble-finite-slot-device-profile-v2'
-  return material
-}
-
 function SoloMobileScene({
   driver,
   profile,
@@ -91,6 +69,8 @@ function SoloMobileScene({
   motionActive: boolean
   onHud: (hitCount: number, canAddBall: boolean, hasActive: boolean) => void
 }) {
+  const { colorScheme } = useAppearance()
+  const isDark = colorScheme === 'dark'
   const phone = useRef<Group>(null)
   const balls = useRef<Array<Group | null>>([])
   const inverse = useMemo(() => new Matrix4(), [])
@@ -113,10 +93,10 @@ function SoloMobileScene({
     }
   }, [profile.displayPixels.height, profile.displayPixels.width])
 
-  const material = useMemo(() => clippedMaterial('#a4df83', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const marker = useMemo(() => clippedMaterial('#264b39', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const trailMaterial = useMemo(() => new MeshStandardMaterial({ color: '#9eafa0', roughness: 0.75 }), [])
-  const trailMarker = useMemo(() => new MeshStandardMaterial({ color: '#647969', roughness: 0.75 }), [])
+  const material = useMemo(() => createClippedMarbleMaterial('#56ed9f', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
+  const marker = useMemo(() => createClippedMarbleMaterial('#082418', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
+  const trailMaterial = useMemo(() => new MeshStandardMaterial({ color: '#454d5c', roughness: 0.45, metalness: 0.2 }), [])
+  const trailMarker = useMemo(() => new MeshStandardMaterial({ color: '#222833', roughness: 0.55 }), [])
   const surfaceRef = useRef(surface)
 
   useEffect(() => {
@@ -198,7 +178,16 @@ function SoloMobileScene({
   return (
     <>
       <WorkspaceLighting />
-      <ContactShadows frames={1} position={[0, 0.02, 0]} opacity={0.24} scale={0.7} blur={2.2} far={0.35} resolution={256} color="#303747" />
+      <ContactShadows
+        frames={1}
+        position={[0, 0.02, 0]}
+        opacity={isDark ? 0.52 : 0.24}
+        scale={0.7}
+        blur={2.1}
+        far={0.35}
+        resolution={256}
+        color={isDark ? '#000000' : '#1b2029'}
+      />
       <group ref={phone}>
         <SpatialPhoneModel profile={profile} finishId={finishId} media={surface.media} />
       </group>
