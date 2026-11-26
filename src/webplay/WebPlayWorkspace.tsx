@@ -14,17 +14,23 @@ import {
 import { initMarblePhysics } from '../../shared/marbleWorld.mjs'
 import { MARBLE_GEOMETRY as G } from '../../shared/marbleMath.mjs'
 import { DEFAULT_MARBLE_SETTINGS, MARBLE_SETTING_LIMITS } from '../../shared/marbleSettings.mjs'
-import { type PhoneFinishId, type PhoneProfile } from '../../shared/phoneGeometry.mjs'
+import {
+  PHONE_FINISHES,
+  PHONE_PROFILES,
+  type PhoneFinishId,
+  type PhoneProfile,
+  type PhoneProfileId,
+} from '../../shared/phoneGeometry.mjs'
 import { SPATIAL_START } from '../../shared/spatialMath.mjs'
 import { WORLD_VERSION, type WorldSnapshot } from '../../shared/worldProtocol.mjs'
 import { formatRoomCode } from '../../shared/webPlayProtocol.mjs'
+import { useAppearance } from '../appearance'
 import { drawMarbleScreen } from '../marble/drawMarbleScreen'
+import { createClippedMarbleMaterial } from '../marble/marbleMaterials'
 import { usePhoneAppearance } from '../model/usePhoneAppearance'
 import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
-import { SpatialViewport } from '../spatial/SpatialViewport'
 import { WorkspaceGrid } from '../spatial/WorkspaceGrid'
 import { WorkspaceLighting } from '../workspace/WorkspaceLighting'
-import { WorkspaceInspector, WorkspaceStatus } from '../workspace/WorkspaceUI'
 import { DeviceAppearancePicker } from './DeviceAppearancePicker'
 import { NativeDialog } from './NativeDialog'
 import { QrCodeSvg } from './QrCodeSvg'
@@ -35,29 +41,16 @@ import '../spatial/spatial.css'
 import '../marble/marble.css'
 import './webplay.css'
 
-function clippedMaterial(color: string, inverse: Matrix4, slotGeometry: Vector2, screenBounds: Vector3) {
-  const material = new MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.05 })
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.inversePhone = { value: inverse }
-    shader.uniforms.slotGeometry = { value: slotGeometry }
-    shader.uniforms.screenBounds = { value: screenBounds }
-    shader.vertexShader = 'uniform mat4 inversePhone; varying vec3 phoneFragment;\n' + shader.vertexShader
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <project_vertex>',
-      '#include <project_vertex>\nphoneFragment = (inversePhone * modelMatrix * vec4(transformed, 1.0)).xyz;',
-    )
-    shader.fragmentShader = 'uniform vec2 slotGeometry; uniform vec3 screenBounds; varying vec3 phoneFragment;\n' + shader.fragmentShader
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <clipping_planes_fragment>',
-      `#include <clipping_planes_fragment>
-      vec2 delta = abs(phoneFragment.xy) - screenBounds.xy;
-      float edgeDistance = length(max(delta, 0.0)) + min(max(delta.x, delta.y), 0.0) - screenBounds.z;
-      if (edgeDistance <= 0.0 && phoneFragment.z >= slotGeometry.y - slotGeometry.x && phoneFragment.z < slotGeometry.y) discard;`,
-    )
-  }
-  material.customProgramCacheKey = () => 'marble-finite-slot-device-profile-v2'
-  return material
-}
+const DOCK_MODELS: readonly PhoneProfileId[] = [
+  'iphone-17-pro',
+  'iphone-17-pro-max',
+  'iphone-17',
+  'iphone-16-pro',
+  'iphone-16-pro-max',
+  'iphone-16',
+  'iphone-16-plus',
+  'android-adaptive',
+]
 
 interface HudState {
   hitCount: number
@@ -82,6 +75,8 @@ function WebPlayScene({
   tiltInputRef: React.RefObject<{ x: number; y: number }>
   onHudUpdate: (hud: HudState) => void
 }) {
+  const { colorScheme } = useAppearance()
+  const isDark = colorScheme === 'dark'
   const phone = useRef<Group>(null)
   const balls = useRef<Array<Group | null>>([])
   const inverse = useMemo(() => new Matrix4(), [])
@@ -104,10 +99,10 @@ function WebPlayScene({
     }
   }, [profile.displayPixels.height, profile.displayPixels.width])
 
-  const material = useMemo(() => clippedMaterial('#a4df83', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const marker = useMemo(() => clippedMaterial('#264b39', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const trailMaterial = useMemo(() => new MeshStandardMaterial({ color: '#9eafa0', roughness: 0.75 }), [])
-  const trailMarker = useMemo(() => new MeshStandardMaterial({ color: '#647969', roughness: 0.75 }), [])
+  const material = useMemo(() => createClippedMarbleMaterial('#56ed9f', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
+  const marker = useMemo(() => createClippedMarbleMaterial('#082418', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
+  const trailMaterial = useMemo(() => new MeshStandardMaterial({ color: '#454d5c', roughness: 0.45, metalness: 0.2 }), [])
+  const trailMarker = useMemo(() => new MeshStandardMaterial({ color: '#222833', roughness: 0.55 }), [])
   const surfaceRef = useRef(surface)
 
   useEffect(() => {
@@ -214,7 +209,16 @@ function WebPlayScene({
     <>
       <WorkspaceLighting />
       <WorkspaceGrid />
-      <ContactShadows frames={1} position={[0, 0.001, 0]} opacity={0.22} scale={1.2} blur={2.4} far={0.4} resolution={256} color="#303747" />
+      <ContactShadows
+        frames={1}
+        position={[0, 0.001, 0]}
+        opacity={isDark ? 0.55 : 0.28}
+        scale={1.1}
+        blur={2.1}
+        far={0.45}
+        resolution={256}
+        color={isDark ? '#000000' : '#1b2029'}
+      />
       <group ref={phone}>
         <SpatialPhoneModel profile={profile} finishId={finishId} media={surface.media} />
       </group>
@@ -251,6 +255,8 @@ export function WebPlayWorkspace({
   const [muted, setMuted] = useState(false)
   const [viewRev, setViewRev] = useState(0)
   const [qrOpen, setQrOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [hud, setHud] = useState<HudState>({
     hitCount: 0,
@@ -260,6 +266,7 @@ export function WebPlayWorkspace({
     hasActive: true,
   })
 
+  const stageRef = useRef<HTMLElement>(null)
   const tiltInputRef = useRef({ x: 0, y: 0 })
   const [thumbPos, setThumbPos] = useState({ x: 0, y: 0 })
   const padRef = useRef<HTMLDivElement>(null)
@@ -320,6 +327,15 @@ export function WebPlayWorkspace({
   }, [active, driver, sharedRoom])
 
   useEffect(() => {
+    const onFullscreen = () => {
+      if (document.fullscreenElement === stageRef.current) setExpanded(true)
+      else setExpanded(false)
+    }
+    document.addEventListener('fullscreenchange', onFullscreen)
+    return () => document.removeEventListener('fullscreenchange', onFullscreen)
+  }, [])
+
+  useEffect(() => {
     if (!active || !driver) return
     const syncKeys = () => {
       if (draggingPadRef.current) return
@@ -330,6 +346,10 @@ export function WebPlayWorkspace({
       setThumbPos({ x, y })
     }
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Escape' && settingsOpen) {
+        setSettingsOpen(false)
+        return
+      }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return
       if (e.code === 'Space') {
         e.preventDefault()
@@ -346,7 +366,7 @@ export function WebPlayWorkspace({
         driver.restart(settings)
         return
       }
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].includes(e.code)) {
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', 'KeyA', 'KeyD'].includes(e.code)) {
         e.preventDefault()
         keysPressedRef.current.add(e.code)
         syncKeys()
@@ -361,7 +381,7 @@ export function WebPlayWorkspace({
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [active, driver, settings])
+  }, [active, driver, settings, settingsOpen])
 
   const pairUrl = useMemo(() => {
     if (typeof window === 'undefined') return `https://phone3d.popcornnn.xyz/?pair=${sharedRoom.roomCode}`
@@ -400,270 +420,296 @@ export function WebPlayWorkspace({
     }
   }, [pairUrl])
 
-  const statusText = sharedRoom.status === 'paired-p2p'
-    ? 'Phone paired · Direct P2P'
-    : sharedRoom.status === 'paired-relay'
-      ? 'Phone paired · Relay'
-      : sharedRoom.status === 'unavailable'
-        ? 'Desktop solo · Pairing offline'
-        : 'Desktop playable · Scan QR to pair'
+  const toggleFullscreen = useCallback(async () => {
+    if (expanded) {
+      if (document.fullscreenElement === stageRef.current) {
+        await document.exitFullscreen().catch(() => {})
+      }
+      setExpanded(false)
+    } else {
+      setExpanded(true)
+      if (document.fullscreenEnabled && stageRef.current?.requestFullscreen) {
+        await stageRef.current.requestFullscreen().catch(() => {})
+      }
+    }
+  }, [expanded])
 
-  const pairBadgeText = sharedRoom.status === 'paired-p2p'
-    ? 'Direct P2P'
+  const statusLabel = sharedRoom.status === 'paired-p2p'
+    ? 'Phone Paired · P2P'
     : sharedRoom.status === 'paired-relay'
-      ? 'Cloud Relay'
-      : sharedRoom.status === 'unavailable'
-        ? 'Relay Offline'
-        : 'Waiting'
+      ? 'Phone Paired · Relay'
+      : 'Solo · Drag pad or Keys'
 
   return (
-    <main className="workspace-shell marble-workspace">
-      <div className="workspace-content">
-        <SpatialViewport
-          label="Online 3D Elastic Tray"
-          onReset={() => setViewRev((n) => n + 1)}
-          controls={
-            <>
-              <span className="spatial-fullscreen-status" role="status">{hud.hitCount} catches</span>
-              <button
-                type="button"
-                onClick={() => { soundFeedback.unlock(); driver?.triggerToss(1) }}
-                disabled={!driver || !hud.hasActive}
-              >
-                Toss (Space)
-              </button>
-              <button
-                type="button"
-                onClick={() => { soundFeedback.unlock(); driver?.addBall() }}
-                disabled={!driver || !hud.canAddBall}
-              >
-                Add ball (B)
-              </button>
-              <button type="button" onClick={() => driver?.restart(settings)} disabled={!driver}>
-                Reset
-              </button>
-            </>
-          }
-        >
-          {physicsReady && driver ? (
-            <Canvas
-              frameloop={active ? 'always' : 'never'}
-              key={viewRev}
-              dpr={[1, 2]}
-              camera={{ position: [0.22, 0.42, 0.29], fov: 36, near: 0.01, far: 100 }}
-              gl={{ antialias: true, alpha: true }}
-            >
-              <WebPlayScene
-                driver={driver}
-                profile={appearance.profile}
-                finishId={appearance.finishId}
-                sharedRoom={sharedRoom}
-                tiltInputRef={tiltInputRef}
-                onHudUpdate={setHud}
-              />
-            </Canvas>
-          ) : (
-            <div style={{ display: 'grid', placeItems: 'center', height: '100%', fontSize: 13, color: 'var(--text-secondary)' }}>
-              {physicsError ?? 'Loading 120 Hz Rapier physics…'}
-            </div>
-          )}
-          <WorkspaceStatus live={sharedRoom.paired || physicsReady}>{statusText}</WorkspaceStatus>
-        </SpatialViewport>
-
-        <WorkspaceInspector title="Elastic Tray" description="Toss, tilt, and catch in your browser — or pair your real phone.">
-          <section className="webplay-pair-card" aria-label="Phone pairing">
-            <div className="webplay-pair-header">
-              <h2>Play with your phone</h2>
-              <span className={'webplay-badge' + (sharedRoom.paired ? ' is-paired' : '')}>{pairBadgeText}</span>
-            </div>
-            <div className="webplay-qr-row">
-              <button
-                type="button"
-                className="webplay-qr-button"
-                onClick={() => setQrOpen(true)}
-                aria-label="Enlarge pairing QR code"
-                title="Enlarge QR code"
-              >
-                <QrCodeSvg value={pairUrl} size={92} />
-              </button>
-              <div className="webplay-pair-meta">
-                <div className="webplay-room-code">{formatRoomCode(sharedRoom.roomCode)}</div>
-                <p style={{ margin: 0, fontSize: 11 }}>
-                  {sharedRoom.paired
-                    ? 'Tilt your phone to roll, flick upward to toss.'
-                    : sharedRoom.status === 'unavailable'
-                      ? 'WebSocket relay unavailable on static preview; use Desktop controls below.'
-                      : 'Scan with your phone camera (iOS or Android).'}
-                </p>
-                <div className="webplay-pair-actions">
-                  <button type="button" onClick={() => void handleCopyLink()}>
-                    {copied ? 'Copied!' : 'Copy link'}
-                  </button>
-                  <button type="button" onClick={() => setQrOpen(true)}>
-                    Zoom QR
-                  </button>
-                  <button type="button" onClick={sharedRoom.regenerateRoom}>
-                    New code
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="workspace-section">
-            <div className="marble-session-heading" style={{ marginTop: 0 }}>
-              <p className="spatial-eyebrow">Active session</p>
-              <span>{hud.hitCount} catches · {hud.ballsCount}/5 balls</span>
-            </div>
-            <div className="webplay-tilt-pad-wrap">
-              <div
-                ref={padRef}
-                className="webplay-tilt-pad"
-                role="application"
-                aria-label="Tilt pad — drag to tilt the 3D phone"
-                onPointerDown={(e) => {
-                  soundFeedback.unlock()
-                  draggingPadRef.current = true
-                  e.currentTarget.setPointerCapture(e.pointerId)
-                  updateTiltFromPointer(e.clientX, e.clientY)
-                }}
-                onPointerMove={(e) => {
-                  if (!draggingPadRef.current) return
-                  updateTiltFromPointer(e.clientX, e.clientY)
-                }}
-                onPointerUp={() => {
-                  draggingPadRef.current = false
-                  tiltInputRef.current = { x: 0, y: 0 }
-                  setThumbPos({ x: 0, y: 0 })
-                }}
-                onPointerCancel={() => {
-                  draggingPadRef.current = false
-                  tiltInputRef.current = { x: 0, y: 0 }
-                  setThumbPos({ x: 0, y: 0 })
-                }}
-              >
-                <div
-                  className="webplay-tilt-thumb"
-                  style={{
-                    transform: `translate(calc(-50% + ${thumbPos.x * 48}px), calc(-50% + ${thumbPos.y * 42}px))`,
-                  }}
-                />
-              </div>
-              <div className="webplay-quick-actions">
-                <button
-                  type="button"
-                  className="spatial-primary"
-                  disabled={!driver || !hud.hasActive}
-                  onClick={() => {
-                    soundFeedback.unlock()
-                    driver?.triggerToss(1)
-                  }}
-                >
-                  Toss
-                </button>
-                <button
-                  type="button"
-                  className={hud.canAddBall ? 'spatial-primary' : ''}
-                  disabled={!driver || !hud.canAddBall}
-                  onClick={() => {
-                    soundFeedback.unlock()
-                    driver?.addBall()
-                  }}
-                >
-                  Add ball
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundFeedback.unlock()
-                    driver?.restart(settings)
-                  }}
-                  disabled={!driver}
-                >
-                  Reset
-                </button>
-              </div>
-              <p className="spatial-hint">
-                Drag pad or use Arrow keys to tilt · <strong>Space</strong> to toss · <strong>B</strong> to add ball · <strong>R</strong> to reset.
-              </p>
-            </div>
-          </section>
-
-          <details className="workspace-disclosure" open>
-            <summary>Play settings</summary>
-            <DeviceAppearancePicker appearance={appearance} />
-            <fieldset className="marble-settings">
-              <legend className="visually-hidden">Play settings</legend>
-              <label htmlFor="wp-diameter">
-                <span>Ball size<output htmlFor="wp-diameter">{settings.ballDiameterMm} mm</output></span>
-                <input
-                  id="wp-diameter"
-                  type="range"
-                  {...MARBLE_SETTING_LIMITS.ballDiameterMm}
-                  value={settings.ballDiameterMm}
-                  onChange={(e) => applySetting('ballDiameterMm', Number(e.target.value))}
-                />
-              </label>
-              <label htmlFor="wp-bounce">
-                <span>Bounce<output htmlFor="wp-bounce">{settings.restitution.toFixed(2)}</output></span>
-                <input
-                  id="wp-bounce"
-                  type="range"
-                  {...MARBLE_SETTING_LIMITS.restitution}
-                  value={settings.restitution}
-                  onChange={(e) => applySetting('restitution', Number(e.target.value))}
-                />
-              </label>
-              <label htmlFor="wp-flick">
-                <span>Flick boost<output htmlFor="wp-flick">{Math.round(settings.flickPower * 100)}%</output></span>
-                <input
-                  id="wp-flick"
-                  type="range"
-                  min={0.6}
-                  max={1.5}
-                  step={0.05}
-                  value={settings.flickPower}
-                  onChange={(e) => applySetting('flickPower', Number(e.target.value))}
-                />
-              </label>
-              <div className="marble-settings-foot">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !muted
-                    setMuted(next)
-                    soundFeedback.setMuted(next)
-                  }}
-                >
-                  {muted ? 'Sound: Off' : 'Sound: On'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSettings({ ...DEFAULT_WEB_PLAY_SETTINGS })
-                    driver?.restart(DEFAULT_WEB_PLAY_SETTINGS)
-                  }}
-                >
-                  Defaults ({DEFAULT_MARBLE_SETTINGS.ballDiameterMm} mm)
-                </button>
-              </div>
-            </fieldset>
-          </details>
-        </WorkspaceInspector>
+    <main ref={stageRef} className={'webplay-stage-shell' + (expanded ? ' is-expanded' : '')} aria-label="Online 3D Elastic Tray">
+      <div className="webplay-stage-canvas">
+        {physicsReady && driver ? (
+          <Canvas
+            frameloop={active ? 'always' : 'never'}
+            key={viewRev}
+            dpr={[1, 2]}
+            camera={{ position: [0.21, 0.4, 0.28], fov: 35, near: 0.01, far: 100 }}
+            gl={{ antialias: true, alpha: true }}
+          >
+            <WebPlayScene
+              driver={driver}
+              profile={appearance.profile}
+              finishId={appearance.finishId}
+              sharedRoom={sharedRoom}
+              tiltInputRef={tiltInputRef}
+              onHudUpdate={setHud}
+            />
+          </Canvas>
+        ) : (
+          <div className="webplay-stage-loading">
+            {physicsError ?? 'Loading 120 Hz Rapier physics…'}
+          </div>
+        )}
       </div>
 
-      <NativeDialog open={qrOpen} title="Scan with your phone" onClose={() => setQrOpen(false)}>
-        <p>Open your phone camera and scan this code to control the 3D iPhone and toss marbles live in your browser.</p>
+      {/* Top-left floating live HUD pill */}
+      <div className="webplay-hud-top-left" role="status">
+        <span className={'webplay-status-dot' + (sharedRoom.paired ? ' is-paired' : physicsReady ? ' is-ready' : '')} aria-hidden="true" />
+        <strong>{hud.hitCount} {hud.hitCount === 1 ? 'catch' : 'catches'}</strong>
+        <span className="webplay-hud-sep">·</span>
+        <span>{hud.ballsCount}/5 balls</span>
+        <span className="webplay-hud-sep webplay-hide-narrow">·</span>
+        <span className="webplay-hud-muted webplay-hide-narrow">{statusLabel}</span>
+      </div>
+
+      {/* Top-right floating Pair & Settings actions */}
+      <div className="webplay-hud-top-right">
+        <button
+          type="button"
+          className={'webplay-glass-pill' + (sharedRoom.paired ? ' is-paired' : '')}
+          aria-expanded={qrOpen}
+          onClick={() => setQrOpen(true)}
+        >
+          <span className={'webplay-status-dot' + (sharedRoom.paired ? ' is-paired' : '')} aria-hidden="true" />
+          <span>{sharedRoom.paired ? 'Paired' : 'Pair Phone'}</span>
+          <code className="webplay-code-chip">{formatRoomCode(sharedRoom.roomCode)}</code>
+        </button>
+        <button
+          type="button"
+          className="webplay-glass-pill"
+          aria-expanded={settingsOpen}
+          onClick={() => setSettingsOpen((v) => !v)}
+        >
+          Settings
+        </button>
+      </div>
+
+      {/* Collapsible right-side glassmorphic drawer */}
+      {settingsOpen && (
+        <aside className="webplay-settings-drawer" aria-label="Studio settings">
+          <div className="webplay-drawer-head">
+            <h2>Studio Settings</h2>
+            <button type="button" className="webplay-icon-btn" aria-label="Close settings" onClick={() => setSettingsOpen(false)}>
+              ✕
+            </button>
+          </div>
+
+          <DeviceAppearancePicker compact appearance={appearance} />
+
+          <fieldset className="marble-settings">
+            <legend className="visually-hidden">Physics settings</legend>
+            <label htmlFor="wp-diameter">
+              <span>Ball size<output htmlFor="wp-diameter">{settings.ballDiameterMm} mm</output></span>
+              <input
+                id="wp-diameter"
+                type="range"
+                {...MARBLE_SETTING_LIMITS.ballDiameterMm}
+                value={settings.ballDiameterMm}
+                onChange={(e) => applySetting('ballDiameterMm', Number(e.target.value))}
+              />
+            </label>
+            <label htmlFor="wp-bounce">
+              <span>Bounce<output htmlFor="wp-bounce">{settings.restitution.toFixed(2)}</output></span>
+              <input
+                id="wp-bounce"
+                type="range"
+                {...MARBLE_SETTING_LIMITS.restitution}
+                value={settings.restitution}
+                onChange={(e) => applySetting('restitution', Number(e.target.value))}
+              />
+            </label>
+            <label htmlFor="wp-flick">
+              <span>Flick boost<output htmlFor="wp-flick">{Math.round(settings.flickPower * 100)}%</output></span>
+              <input
+                id="wp-flick"
+                type="range"
+                min={0.6}
+                max={1.5}
+                step={0.05}
+                value={settings.flickPower}
+                onChange={(e) => applySetting('flickPower', Number(e.target.value))}
+              />
+            </label>
+            <div className="marble-settings-foot">
+              <button
+                type="button"
+                onClick={() => {
+                  setSettings({ ...DEFAULT_WEB_PLAY_SETTINGS })
+                  driver?.restart(DEFAULT_WEB_PLAY_SETTINGS)
+                }}
+              >
+                Reset defaults ({DEFAULT_MARBLE_SETTINGS.ballDiameterMm} mm)
+              </button>
+            </div>
+          </fieldset>
+
+          <p className="spatial-hint">
+            Orbit stage by dragging outside the pad · <strong>WASD</strong> / Arrows tilt · <strong>Space</strong> toss · <strong>B</strong> add ball · <strong>R</strong> reset.
+          </p>
+        </aside>
+      )}
+
+      {/* Bottom-center floating glass dock */}
+      <div className="webplay-dock" role="toolbar" aria-label="Playground controls">
+        <div
+          ref={padRef}
+          className="webplay-mini-pad"
+          role="application"
+          aria-label="Tilt pad — drag to tilt the 3D phone"
+          title="Drag to tilt phone"
+          onPointerDown={(e) => {
+            soundFeedback.unlock()
+            draggingPadRef.current = true
+            e.currentTarget.setPointerCapture(e.pointerId)
+            updateTiltFromPointer(e.clientX, e.clientY)
+          }}
+          onPointerMove={(e) => {
+            if (!draggingPadRef.current) return
+            updateTiltFromPointer(e.clientX, e.clientY)
+          }}
+          onPointerUp={() => {
+            draggingPadRef.current = false
+            tiltInputRef.current = { x: 0, y: 0 }
+            setThumbPos({ x: 0, y: 0 })
+          }}
+          onPointerCancel={() => {
+            draggingPadRef.current = false
+            tiltInputRef.current = { x: 0, y: 0 }
+            setThumbPos({ x: 0, y: 0 })
+          }}
+        >
+          <div
+            className="webplay-mini-thumb"
+            style={{
+              transform: `translate(calc(-50% + ${thumbPos.x * 20}px), calc(-50% + ${thumbPos.y * 13}px))`,
+            }}
+          />
+        </div>
+
+        <div className="webplay-dock-group">
+          <button
+            type="button"
+            className="webplay-btn-primary"
+            disabled={!driver || !hud.hasActive}
+            onClick={() => {
+              soundFeedback.unlock()
+              driver?.triggerToss(1)
+            }}
+          >
+            Toss
+          </button>
+          <button
+            type="button"
+            className={hud.canAddBall ? 'webplay-btn-primary' : ''}
+            disabled={!driver || !hud.canAddBall}
+            onClick={() => {
+              soundFeedback.unlock()
+              driver?.addBall()
+            }}
+          >
+            Add ball
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              soundFeedback.unlock()
+              driver?.restart(settings)
+            }}
+            disabled={!driver}
+          >
+            Reset
+          </button>
+        </div>
+
+        <span className="webplay-dock-divider" aria-hidden="true" />
+
+        <div className="webplay-dock-group">
+          <select
+            className="webplay-dock-select"
+            aria-label="Phone model"
+            value={appearance.profileId}
+            onChange={(event) => appearance.setProfileId(event.target.value as PhoneProfileId)}
+          >
+            {DOCK_MODELS.map((id) => (
+              <option key={id} value={id}>
+                {id === 'android-adaptive' && appearance.detectedDevice?.modelHint
+                  ? `Android (${appearance.detectedDevice.modelHint})`
+                  : PHONE_PROFILES[id].name}
+              </option>
+            ))}
+          </select>
+
+          <div className="webplay-dock-swatches" role="group" aria-label="Chassis finish">
+            {PHONE_FINISHES.map((finish) => {
+              const activeSwatch = appearance.finishId === finish.id
+              return (
+                <button
+                  key={finish.id}
+                  type="button"
+                  className={'device-swatch' + (activeSwatch ? ' is-active' : '')}
+                  aria-pressed={activeSwatch}
+                  aria-label={finish.label}
+                  title={finish.label}
+                  style={{ backgroundColor: finish.swatch }}
+                  onClick={() => appearance.setFinishId(finish.id)}
+                />
+              )
+            })}
+          </div>
+        </div>
+
+        <span className="webplay-dock-divider webplay-hide-narrow" aria-hidden="true" />
+
+        <div className="webplay-dock-group webplay-hide-narrow">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !muted
+              setMuted(next)
+              soundFeedback.setMuted(next)
+            }}
+          >
+            {muted ? 'Muted' : 'Sound'}
+          </button>
+          <button type="button" onClick={() => setViewRev((n) => n + 1)}>
+            Reset view
+          </button>
+          <button type="button" aria-pressed={expanded} onClick={() => void toggleFullscreen()}>
+            {expanded ? 'Exit' : 'Expand'}
+          </button>
+        </div>
+      </div>
+
+      <NativeDialog open={qrOpen} title="Pair with your phone" onClose={() => setQrOpen(false)}>
+        <p>Scan with your iPhone or Android camera to drive the 3D phone live and auto-match your hardware shell.</p>
         <div className="webplay-dialog-qr">
-          <QrCodeSvg value={pairUrl} size={210} label="Large QR pairing code" />
+          <QrCodeSvg value={pairUrl} size={200} label="Large QR pairing code" />
           <div className="webplay-room-code">{formatRoomCode(sharedRoom.roomCode)}</div>
         </div>
         <div className="webplay-dialog-actions">
           <button type="button" onClick={() => void handleCopyLink()}>
             {copied ? 'Copied link' : 'Copy URL'}
           </button>
+          <button type="button" onClick={sharedRoom.regenerateRoom}>
+            New code
+          </button>
           <button type="button" autoFocus onClick={() => setQrOpen(false)}>
-            Close
+            Done
           </button>
         </div>
       </NativeDialog>

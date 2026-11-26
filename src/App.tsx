@@ -176,16 +176,22 @@ export function App() {
   return (
     <div className="studio-app">
       <nav className="studio-mode-nav" aria-label="Studio mode">
-        <button aria-pressed={webTab === 'webplay'} onClick={() => setWebTab('webplay')}>
-          Play Online
-        </button>
-        <button aria-pressed={webTab === 'showcase'} onClick={() => setWebTab('showcase')}>
-          3D UI Showcase
-        </button>
-        <button aria-pressed={webTab === 'local'} onClick={() => setWebTab('local')}>
-          Local ARKit (Pro)
-        </button>
-        <label className="appearance-picker">Appearance
+        <div className="studio-brand">
+          <img src="./icon-192.png" alt="" width={22} height={22} />
+          <span>Phone 3D</span>
+        </div>
+        <div className="studio-nav-pills">
+          <button aria-pressed={webTab === 'webplay'} onClick={() => setWebTab('webplay')}>
+            Play Online
+          </button>
+          <button aria-pressed={webTab === 'showcase'} onClick={() => setWebTab('showcase')}>
+            3D UI Showcase
+          </button>
+          <button aria-pressed={webTab === 'local'} onClick={() => setWebTab('local')}>
+            Local ARKit (Pro)
+          </button>
+        </div>
+        <label className="appearance-picker">Theme
           <select value={appearance} onChange={(event) => {
             const value = event.target.value as Appearance
             window.phoneStudioSetAppearance(value)
@@ -193,7 +199,7 @@ export function App() {
             url.searchParams.set('appearance', value)
             history.replaceState(null, '', url)
           }}>
-            <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
+            <option value="dark">Dark</option><option value="light">Light</option><option value="system">System</option>
           </select>
         </label>
       </nav>

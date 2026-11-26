@@ -1,9 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { useLocalAssetAvailability } from '../model/useLocalAssetAvailability'
 import './workspace.css'
 
 export function WorkspaceInspector({ title, description, children }: { title: string; description: string; children: ReactNode }) {
-  const localModel = useLocalAssetAvailability()
   const indicator = useRef<HTMLDivElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
@@ -20,7 +18,6 @@ export function WorkspaceInspector({ title, description, children }: { title: st
   return <aside className="workspace-inspector" aria-label={`${title} controls`}>
     <div className="workspace-inspector-scroll" onScroll={(event) => showIndicator(event.currentTarget)}>
       <header className="workspace-inspector-heading"><h1>{title}</h1><p>{description}</p></header>
-      {localModel === false && <p className="workspace-notice" role="status">Detailed phone model unavailable. Showing the simplified phone.</p>}
       {children}
     </div>
     <div className="workspace-scroll-indicator" ref={indicator} aria-hidden="true" />

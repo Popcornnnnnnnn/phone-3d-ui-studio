@@ -67,9 +67,9 @@ const viewRotations: Record<ReviewView, [number, number, number]> = {
 }
 
 const importedDynamicIsland = {
-  width: millimetersToScene(20.74),
-  height: millimetersToScene(6.07),
-  centerY: millimetersToScene(67.02),
+  width: millimetersToScene(19.2),
+  height: millimetersToScene(5.4),
+  centerY: millimetersToScene(67.2),
 } as const
 
 function SideButton({
@@ -443,12 +443,14 @@ export function IPhone17Model({
     publishRenderDiagnostics()
   })
 
+  const bodyWidth = millimetersToScene(profile.bodyMm.width)
+  const bodyHeight = millimetersToScene(profile.bodyMm.height)
   const bodyDepth = millimetersToScene(profile.bodyMm.depth)
-  const displayWidth = millimetersToScene(profile.displayMm.width)
-  const displayHeight = millimetersToScene(profile.displayMm.height)
-  const screenCornerRadius = Math.min(displayWidth, displayHeight) * 0.105
+  const fittedDisplayWidth = Math.min(millimetersToScene(profile.displayMm.width), bodyWidth * 0.908)
+  const fittedDisplayHeight = Math.min(millimetersToScene(profile.displayMm.height), bodyHeight * 0.952)
+  const screenCornerRadius = Math.min(fittedDisplayWidth, fittedDisplayHeight) * 0.168
   const screenSurfaceZ = bodyDepth / 2 + 0.0008
-  const islandCenterY = displayHeight / 2 - millimetersToScene(5.4)
+  const islandCenterY = fittedDisplayHeight / 2 - millimetersToScene(6.2)
   const islandSurfaceZ = bodyDepth / 2 + 0.0014
   const publicAsset = publicPhoneAssetForProfile(profile.id)
   const useLocalProModel =
@@ -476,8 +478,8 @@ export function IPhone17Model({
           <ScreenSurface
             media={screenMedia}
             orientation={orientation}
-            displayWidth={displayWidth}
-            displayHeight={displayHeight}
+            displayWidth={fittedDisplayWidth}
+            displayHeight={fittedDisplayHeight}
             cornerRadius={screenCornerRadius}
             surfaceZ={screenSurfaceZ}
           />
@@ -514,8 +516,8 @@ export function IPhone17Model({
             <ScreenSurface
               media={screenMedia}
               orientation={orientation}
-              displayWidth={displayWidth}
-              displayHeight={displayHeight}
+              displayWidth={fittedDisplayWidth}
+              displayHeight={fittedDisplayHeight}
               cornerRadius={screenCornerRadius}
               surfaceZ={screenSurfaceZ}
             />
