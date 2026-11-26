@@ -1,0 +1,82 @@
+/* One workspace shell for Marble, Tracking and Screen mirroring. */
+.workspace-shell { --inspector-width: 300px; display: flex; flex: 1; min-width: 0; min-height: 0; color: var(--text-primary); background: var(--app-background); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.workspace-content { display: grid; grid-template-columns: minmax(0, 1fr) var(--inspector-width); flex: 1; min-width: 0; min-height: 0; }
+.workspace-shell .spatial-viewport { height: 100%; min-height: 0; border: 0; border-radius: 0; background: radial-gradient(ellipse at 48% 40%, #fff 0%, #f0f2f5 65%, #e8ebef 100%); }
+:root[data-color-scheme=dark] .workspace-shell .spatial-viewport { background: radial-gradient(ellipse at 48% 40%, #353b44 0%, #252930 55%, #1c1e23 100%); }
+.workspace-inspector { position: relative; min-width: 0; min-height: 0; background: var(--surface); border-left: 1px solid var(--border); }
+.workspace-inspector-scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 22px 20px 20px; scrollbar-width: none; }
+.workspace-inspector-scroll::-webkit-scrollbar { display: none; }
+.workspace-scroll-indicator { pointer-events: none; position: absolute; top: 0; right: 3px; width: 3px; border-radius: 2px; background: var(--border-strong); opacity: 0; transition: opacity 180ms ease; }
+.workspace-inspector-heading { margin-bottom: 22px; }
+.workspace-inspector-heading h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.3px; line-height: 1.3; }
+.workspace-inspector-heading p { margin: 6px 0 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.workspace-inspector h2 { margin: 0 0 12px; font-size: 12px; font-weight: 600; line-height: 1.4; letter-spacing: 0; }
+.workspace-inspector p, .workspace-inspector li { font-size: 12px; line-height: 1.55; color: var(--text-secondary); }
+.workspace-inspector .spatial-hint, .workspace-inspector .source-description { margin: 10px 0 0; font-size: 11px; line-height: 1.5; }
+.workspace-inspector .spatial-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0; }
+.workspace-connection { padding: 14px; border-radius: 8px; background: var(--app-background); }
+.workspace-connection-title { display: flex; align-items: center; gap: 9px; }
+.workspace-connection-title svg { width: 20px; height: 24px; flex: none; color: var(--text-secondary); }
+.workspace-connection-title h2 { margin: 0; font-size: 13px; font-weight: 550; }
+.workspace-connection > p { margin: 10px 0 14px; font-size: 12px; }
+.workspace-connection-footnote { display: block; text-align: center; color: var(--text-tertiary); font-size: 11px; margin-top: 9px; }
+.workspace-section { padding-top: 18px; margin-top: 20px; border-top: 1px solid var(--border); }
+.workspace-session { border: 0; padding-top: 0; }
+.workspace-section > h2 { margin-bottom: 12px; }
+.workspace-steps { padding: 0; margin: 0; list-style: none; counter-reset: steps; display: grid; gap: 18px; }
+.workspace-steps li { counter-increment: steps; position: relative; padding-left: 27px; }
+.workspace-steps li::before { content: counter(steps); position: absolute; top: 1px; left: 0; font-size: 11px; color: var(--text-tertiary); width: 17px; height: 17px; line-height: 17px; text-align: center; border-radius: 50%; background: var(--surface-secondary); }
+.workspace-steps strong { font-size: 12px; color: var(--text-primary); font-weight: 500; }
+.workspace-steps p { margin: 4px 0 0; font-size: 11px; }
+.workspace-disclosure { border: 0; border-top: 1px solid var(--border); margin: 18px 0 0; padding: 5px 0; }
+.workspace-disclosure + .workspace-disclosure { margin-top: 0; }
+.workspace-disclosure > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; margin: 0; border-radius: 5px; font-size: 12px; font-weight: 550; color: var(--text-primary); cursor: pointer; transition: background 120ms ease; }
+.workspace-disclosure > summary::-webkit-details-marker { display: none; }
+.workspace-disclosure > summary::after { content: ''; width: 5px; height: 5px; margin-right: 3px; border-right: 1.5px solid var(--text-tertiary); border-bottom: 1.5px solid var(--text-tertiary); transform: rotate(-45deg); }
+.workspace-disclosure[open] > summary::after { transform: rotate(45deg); }
+.workspace-disclosure > summary:hover { background: var(--surface-hover); }
+.workspace-disclosure > summary:active { background: var(--surface-pressed); }
+.workspace-disclosure > p { font-size: 11px; }
+.workspace-subdetails { border: 0; margin-top: 10px; padding: 0; }
+.workspace-subdetails > summary { color: var(--text-secondary); font-size: 11px; font-weight: 450; }
+.workspace-inspector .chip { position: static; display: inline-flex; font-size: 11px; font-weight: 450; letter-spacing: 0; text-transform: none; padding: 3px 7px; border-radius: 5px; }
+.workspace-shell button, .workspace-shell .file-button { min-height: 30px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-secondary); color: var(--text-primary); font: 500 12px/1.35 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0; text-transform: none; cursor: pointer; transition: background 120ms ease, border-color 120ms ease, color 120ms ease; }
+.workspace-shell button:not(:disabled):hover, .workspace-shell .file-button:hover { background: var(--surface-hover); border-color: var(--border-strong); }
+.workspace-shell button:not(:disabled):active { background: var(--surface-pressed); }
+.workspace-shell button.active, .workspace-shell button[aria-pressed=true] { color: var(--text-primary); background: var(--surface); border-color: var(--border-strong); box-shadow: 0 1px 2px var(--shadow); }
+.workspace-shell button:disabled { opacity: .45; cursor: default; }
+.workspace-shell :is(button, input, select, summary):focus-visible, .workspace-shell .file-button:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+.workspace-shell button.workspace-primary, .workspace-shell button.spatial-primary { width: 100%; min-height: 32px; background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.workspace-shell button.workspace-primary:not(:disabled):hover, .workspace-shell button.spatial-primary:not(:disabled):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.workspace-shell .view-switcher { margin-top: 0; }
+.workspace-shell .view-button { font-size: 11px; min-height: 30px; }
+.workspace-shell .wide-button { margin-top: 12px; font-size: 12px; }
+.workspace-shell .scene-toggle-grid { margin-top: 12px; gap: 3px; }
+.workspace-shell .scene-toggle { padding: 7px 0; border-color: transparent; background: transparent; font-weight: 450; min-height: 32px; }
+.workspace-shell .scene-toggle:not(:disabled):hover { background: var(--surface-hover); border-color: transparent; }
+.workspace-select-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 8px 0; font-size: 12px; color: var(--text-secondary); }
+.workspace-select-row select { min-width: 118px; min-height: 29px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-secondary); color: var(--text-primary); font: inherit; cursor: pointer; }
+.workspace-select-row select:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+.workspace-stage-status { position: absolute; top: 20px; left: 22px; display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-secondary); pointer-events: none; }
+.workspace-stage-status i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-tertiary); }
+.workspace-stage-status.is-live i { background: var(--accent); }
+.workspace-shell .spatial-viewport-toolbar { left: 22px; right: 20px; bottom: 20px; }
+.workspace-shell .spatial-viewport-toolbar button { font-size: 11px; padding: 5px 9px; min-height: 28px; background: var(--surface-floating); }
+.workspace-shell .spatial-navigation-hint { font-size: 11px; }
+.workspace-shell .spatial-paused-label { left: 22px; right: 22px; bottom: 62px; }
+.workspace-shell .spatial-viewport.is-expanded { position: fixed; inset: 0; z-index: 1000; width: 100vw; height: 100dvh; }
+.workspace-shell .spatial-viewport.is-expanded .spatial-viewport-toolbar { top: 18px; bottom: auto; left: auto; }
+.workspace-shell .spatial-viewport.is-expanded .workspace-stage-status { display: none; }
+.workspace-shell .spatial-position { margin-top: 0; border: 0; padding: 4px 0; gap: 8px; }
+.workspace-shell .spatial-position strong { font-size: 20px; }
+.workspace-inspector .workspace-notice { font-size: 11px; padding: 8px 10px; border-radius: 6px; background: var(--surface-secondary); }
+.workspace-inspector .workspace-footnote { margin: 24px 0 0; font-size: 10px; color: var(--text-tertiary); }
+.workspace-shell .metrics dl { display: grid; gap: 12px; margin: 12px 0; padding: 0; background: transparent; }
+.workspace-shell .metrics dl div { display: flex; justify-content: space-between; padding: 0; }
+.workspace-shell .metrics dt, .workspace-shell .metrics dd { margin: 0; font-size: 11px; }
+@media(max-width: 1050px) { .workspace-shell .spatial-navigation-hint { display: none; } }
+@media(max-width: 760px) {
+  :root:not([data-desktop=true]) .workspace-content { grid-template-columns: 1fr; }
+  :root:not([data-desktop=true]) .workspace-shell .spatial-viewport { height: 54vh; min-height: 380px; }
+  :root:not([data-desktop=true]) .workspace-inspector { border-left: 0; border-top: 1px solid var(--border); }
+}

@@ -2,6 +2,8 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { Quaternion, Vector3 } from 'three'
 import { initMarblePhysics, MarbleWorld } from './marble-world.mjs'
 import { MARBLE_GEOMETRY as G, projectMarble, localToWorld } from '../shared/marbleMath.mjs'
+import { PHONE_PROFILES } from '../shared/phoneGeometry.mjs'
+import { DEFAULT_MARBLE_SETTINGS } from '../shared/marbleSettings.mjs'
 const flat = { position: [0, 0.2, 0], quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] }
 const tilt = (angle) => ({ ...flat, quaternion: new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), angle).multiply(new Quaternion(...flat.quaternion)).toArray() })
 let worlds = []
@@ -12,6 +14,18 @@ const pour = (w) => { w.setPhoneTarget(tilt(-0.5)); until(w, () => !w.activeBall
 beforeAll(initMarblePhysics)
 afterEach(() => { worlds.forEach((w) => w.free()); worlds = [] })
 describe('elastic tray authoritative physics and lifecycle', () => {
+  it.each(['iphone-16', 'iphone-16-plus'])('rests on the selected %s screen plane and projects the same center', (id) => {
+    const profile = PHONE_PROFILES[id]
+    const w = new MarbleWorld(flat, DEFAULT_MARBLE_SETTINGS, profile); worlds.push(w)
+    step(w, 600)
+    const snapshot = w.snapshot(), ball = snapshot.balls[0]
+    expect(w.geometry.width).toBe(profile.displayMm.width / 1000)
+    expect(w.geometry.height).toBe(profile.displayMm.height / 1000)
+    expect(ball.position[1]).toBeCloseTo(0.2 + w.geometry.screenZ, 3)
+    expect(w.region).toBe('tray'); expect(w.hitCount).toBe(0)
+    const projection = projectMarble(ball, snapshot.phone, w.geometry)
+    expect(projection.u).toBeCloseTo(0.5, 3); expect(projection.v).toBeCloseTo(0.5, 3)
+  })
   it('uses selected ball sizes for the real collider, shallow floor and replacement balls', () => {
     for (const diameter of [10, 20]) {
       const w = new MarbleWorld(flat, { movementScale: 0.5, ballDiameterMm: diameter, restitution: 0.2 }); worlds.push(w)

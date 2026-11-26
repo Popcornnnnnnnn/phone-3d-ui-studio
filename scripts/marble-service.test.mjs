@@ -2,6 +2,7 @@ import { beforeAll, afterEach, describe, expect, it } from 'vitest'
 import { MarbleService } from './marble-service.mjs'
 import { initMarblePhysics } from './marble-world.mjs'
 import { parseWorldSnapshot } from '../shared/worldProtocol.mjs'
+import { PHONE_PROFILES, selectPhoneProfile } from '../shared/phoneGeometry.mjs'
 let services = []
 class Socket { readyState = 1; bufferedAmount = 0; messages = []; send(s) { this.messages.push(JSON.parse(s)) } close() { this.readyState = 3 } }
 beforeAll(initMarblePhysics)
@@ -29,6 +30,28 @@ function setup(capable = true) {
   return { s, phone, browser, other, pose, command, ack, advance: (ms) => { now += ms; s.tick() } }
 }
 describe('world control, freshness and bounded snapshots', () => {
+  it('replaces a differently sized phone without reusing the previous tray or calibration', () => {
+    const { s, browser, command, pose } = setup(); command(browser, 'start')
+    const oldCore = s.core, oldEpoch = s.epoch
+    const replacement = new Socket(); s.addPeer(replacement, 'phone')
+    s.setPhone({ socket: replacement, sessionId: 'plus-session', connectionId: 'plus-connection', deviceProfile: selectPhoneProfile('iPhone17,4') })
+    expect(s.epoch).toBeGreaterThan(oldEpoch)
+    expect(s.core).toBeNull(); expect(s.calibration).toBeNull()
+    expect(s.snapshot().phone).toBeNull(); expect(s.snapshot().balls).toEqual([])
+    expect(s.snapshot().canStart).toBe(false)
+    expect(s.snapshot().geometry.width).toBe(PHONE_PROFILES['iphone-16-plus'].displayMm.width / 1000)
+    s.handle(replacement, { type: 'world-hello', protocolVersion: 2 }); pose()
+    expect(command(browser, 'start').ok).toBe(true)
+    expect(s.core).not.toBe(oldCore)
+    const snapshot = s.snapshot()
+    expect(snapshot.deviceProfile).toMatchObject({ profileId: 'iphone-16-plus', physicalValidation: 'pending' })
+    expect(snapshot.geometry).toEqual(s.core.geometry)
+    expect(snapshot.phone).toEqual(s.core.phone)
+    expect(parseWorldSnapshot(snapshot)).not.toBeNull()
+    expect(parseWorldSnapshot({ ...snapshot, deviceProfile: selectPhoneProfile('iPhone18,3') })).toBeNull()
+    const { deviceProfile: _deviceProfile, ...legacy } = snapshot
+    expect(parseWorldSnapshot(legacy)).not.toBeNull()
+  })
   it('applies all settings atomically on restart and prevents observer/phone changes', () => {
     const { s, browser, phone, other, command } = setup(); command(browser, 'start')
     const original = s.core, id = s.core.activeBallId, epoch = s.epoch

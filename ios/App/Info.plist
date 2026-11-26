@@ -18,6 +18,17 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.phone3dui.studio.pairing</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>phone3dstudio</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LiveBridgeURL</key>
@@ -28,7 +39,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Tracks your phone position in space. Camera images stay on this device and are not streamed or saved.</string>
+	<string>Scans the Mac pairing code and tracks your phone position in space. Camera images stay on this device and are not streamed or saved.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Connects directly to your Mac to stream the live screen and device pose.</string>
 	<key>NSMotionUsageDescription</key>

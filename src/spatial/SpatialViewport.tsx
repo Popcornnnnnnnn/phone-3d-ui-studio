@@ -9,6 +9,7 @@ interface Props {
 
 /** Expands the existing canvas in place, preserving its camera and live connection. */
 export function SpatialViewport({ label, children, onReset, controls }: Props) {
+  const desktop = document.documentElement.dataset.desktop === 'true'
   const element = useRef<HTMLElement>(null)
   const nativeFullscreen = useRef(false)
   const [expanded, setExpanded] = useState(false)
@@ -47,8 +48,10 @@ export function SpatialViewport({ label, children, onReset, controls }: Props) {
       setExpanded(false)
     } else {
       setExpanded(true)
-      // Embedded browsers may disallow native fullscreen; keep a full-window canvas.
-      if (document.fullscreenEnabled && element.current?.requestFullscreen) {
+      // WKWebView's separate fullscreen window emits a temporary hidden event
+      // on exit, which correctly pauses a live world. Expand in the existing
+      // Mac window instead so presentation does not interrupt play.
+      if (!desktop && document.fullscreenEnabled && element.current?.requestFullscreen) {
         try { await element.current.requestFullscreen() } catch { /* Full-window fallback. */ }
       }
     }
@@ -56,12 +59,12 @@ export function SpatialViewport({ label, children, onReset, controls }: Props) {
   return <section ref={element} className={'spatial-viewport' + (expanded ? ' is-expanded' : '')} aria-label={label}>
     {children}
     <div className="spatial-viewport-toolbar">
-      <span className="spatial-navigation-hint">Shift + drag to pan · scroll to zoom</span>
+      <span className="spatial-navigation-hint">Drag to orbit · scroll to zoom</span>
       <button onClick={onReset}>Reset view</button>
       <button aria-pressed={expanded} onClick={() => void toggleFullscreen()} title={expanded ? 'Exit full screen (Esc)' : 'Expand the 3D workspace'}>
-        {expanded ? 'Exit full screen' : 'Full screen'}
+        {desktop ? expanded ? 'Restore view' : 'Expand view' : expanded ? 'Exit full screen' : 'Full screen'}
       </button>
     </div>
-    {expanded && <div className="spatial-fullscreen-controls" aria-label="Fullscreen controls">{controls}<span className="spatial-fullscreen-exit-hint">Esc to exit</span></div>}
+    {expanded && controls && <div className="spatial-fullscreen-controls" aria-label="Fullscreen controls">{controls}<span className="spatial-fullscreen-exit-hint">Esc to exit</span></div>}
   </section>
 }

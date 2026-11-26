@@ -23,7 +23,7 @@ import {
 
 const port = Number.parseInt(process.env.PHONE_BRIDGE_PORT ?? '4319', 10)
 const framePort = Number.parseInt(
-  process.env.PHONE_BRIDGE_FRAME_PORT ?? String(port + 1),
+  process.env.PHONE_BRIDGE_FRAME_PORT ?? String(port === 0 ? 0 : port + 1),
   10,
 )
 // Bind dual-stack so forge.local can use the iPhone USB link's scoped IPv6
@@ -3719,17 +3719,48 @@ function shutdown() {
 }
 
 if (isDirectExecution) {
-  server.listen(port, host, () => {
-    console.log(`Phone bridge listening on ws://127.0.0.1:${port}/?role=browser`)
-    for (const address of localAddresses()) {
-      console.log(`iPhone endpoint: ws://${address}:${port}/?role=phone`)
+  // ws forwards its HTTP listener's bind error. The listener below handles
+  // startup failure; consume this duplicate so a busy saved port can fall back.
+  sockets.on('error', () => {})
+  // The desktop host asks the OS for an unused bridge port. Keep the raw
+  // video port adjacent because existing iPhone clients derive it as +1.
+  const failed = (error) => {
+    console.error(`Bridge startup failed: ${error.message}`)
+    process.send?.({ type: 'bridge-error', message: error.message })
+    shutdown()
+    if (process.connected) process.disconnect()
+    process.exitCode = 1
+  }
+  const listen = (target, selectedPort) => new Promise((resolve, reject) => {
+    const error = (value) => { target.off('listening', ready); reject(value) }
+    const ready = () => { target.off('error', error); resolve(target.address().port) }
+    target.once('error', error); target.once('listening', ready)
+    target.listen(selectedPort, host)
+  })
+  const start = async () => {
+    // An ephemeral port does not reserve its adjacent port. A real startup
+    // collision reproduced this; retry only OS-selected pairs, never a user's
+    // explicitly configured ports or another process's listener.
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const boundPort = await listen(server, port)
+      let boundFramePort
+      try { boundFramePort = await listen(rawFrameServer, framePort || boundPort + 1) }
+      catch (error) {
+        await new Promise((resolve) => server.close(resolve))
+        if (port === 0 && framePort === 0 && error.code === 'EADDRINUSE' && attempt < 7) continue
+        throw error
+      }
+      console.log(`Phone bridge listening on ws://127.0.0.1:${boundPort}/?role=browser`)
+      for (const address of localAddresses()) console.log(`iPhone endpoint: ws://${address}:${boundPort}/?role=phone`)
+      console.log(`Low-latency iPhone frame endpoint: tcp://[${host}]:${boundFramePort}`)
+      process.send?.({ type: 'bridge-ready', bridgePort: boundPort, framePort: boundFramePort })
+      server.on('error', failed); rawFrameServer.on('error', failed)
+      return
     }
-  })
-
-  rawFrameServer.listen(framePort, host, () => {
-    console.log(`Low-latency iPhone frame endpoint: tcp://[${host}]:${framePort}`)
-  })
+  }
+  start().catch(failed)
 
   process.on('SIGINT', shutdown)
   process.on('SIGTERM', shutdown)
+  if (process.send) process.on('disconnect', shutdown)
 }

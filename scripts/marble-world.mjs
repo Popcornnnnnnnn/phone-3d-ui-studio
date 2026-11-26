@@ -17,9 +17,9 @@ const material = (collider, restitution, collisionGroups) => collider.setRestitu
   .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Min).setCollisionGroups(collisionGroups)
 
 export class MarbleWorld {
-  constructor(phone, settings = DEFAULT_MARBLE_SETTINGS) {
+  constructor(phone, settings = DEFAULT_MARBLE_SETTINGS, profile) {
     this.settings = { ...settings }
-    const G = this.geometry = marbleGeometry(settings)
+    const G = this.geometry = marbleGeometry(settings, profile)
     this.world = new RAPIER.World({ x: 0, y: -G.gravity, z: 0 })
     // Rapier scales contact tolerances from a typical dynamic object's size.
     // The default 1 m scale produces centimeter-wide predictive contacts here.
@@ -125,7 +125,7 @@ export class MarbleWorld {
           ball.body.setLinearDamping(5); ball.body.setAngularDamping(5)
         } else {
           const local = worldToLocal(p, this.phone), depth = local[2] - G.screenZ
-          const frontContact = depth >= -0.002 && depth <= G.radius && insideScreen(local[0], local[1]) && this.contact(ball.collider, this.surface)
+          const frontContact = depth >= -0.002 && depth <= G.radius && insideScreen(local[0], local[1], G) && this.contact(ball.collider, this.surface)
           if (frontContact) {
             if (ball.armed) {
               this.hitCount++; this.lastImpact = { sequence: this.hitCount, ballId: ball.id, atMs }
@@ -135,7 +135,7 @@ export class MarbleWorld {
           } else {
             // Sub-millimeter gaps from contact tolerances and sensor noise are
             // still resting contact, not a new toss/haptic cycle.
-            if (depth > 0.002 || !insideScreen(local[0], local[1]) || ball.airTime > 0) ball.airTime += PHYSICS_DT
+            if (depth > 0.002 || !insideScreen(local[0], local[1], G) || ball.airTime > 0) ball.airTime += PHYSICS_DT
             if (ball.airTime >= 0.04) ball.armed = true
             this.region = 'air'
           }

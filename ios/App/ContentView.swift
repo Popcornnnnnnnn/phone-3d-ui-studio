@@ -6,47 +6,66 @@ struct ContentView: View {
     @State private var inputMode: StudioInputMode = .spatial
     @State private var switchingMode = false
     @State private var modeError: String?
+    @State private var pairedEndpoint = BridgeEndpointStore.current
+    @State private var addressDraft = ""
+    @State private var showAddressEditor = false
+    @State private var showPairingScanner = false
+    @State private var pairingMessage: String?
+    @State private var pairingFailed = false
     @Environment(\.scenePhase) private var scenePhase
-
-    private let bridgeURL = Bundle.main.object(
-        forInfoDictionaryKey: "LiveBridgeURL"
-    ) as? String ?? "Bridge URL missing"
+    @AppStorage("studioAppearance") private var appearance = "system"
+    @State private var showSettings = false
+    @State private var showConnectionControls = false
 
     var body: some View {
         ZStack {
             NavigationStack {
                 ScrollView {
-                    VStack(spacing: 18) {
+                    VStack(alignment: .leading, spacing: 24) {
                         Picker("Input mode", selection: Binding(
                             get: { inputMode },
                             set: { switchMode(to: $0) }
                         )) {
-                            ForEach(StudioInputMode.allCases) { mode in
-                                Text(mode.rawValue).tag(mode)
-                            }
-                        }.pickerStyle(.segmented).disabled(switchingMode)
-                        if let modeError { Text(modeError).foregroundStyle(.red) }
+                            Text("Tracking").tag(StudioInputMode.spatial)
+                            Text("Screen mirroring").tag(StudioInputMode.mirroring)
+                        }
+                        .pickerStyle(.segmented)
+                        .disabled(switchingMode)
+
+                        pairingCard
+                        if let modeError {
+                            Text(modeError).font(.footnote).foregroundStyle(.red)
+                        }
                         if inputMode == .spatial {
                             SpatialTrackingView(controller: spatial).disabled(switchingMode)
                         } else {
-                        heroCard
-                        captureCard
-                        connectionCard
-
-                        if capture.captureState == .streaming {
-                            benchmarkCard
-                        }
-
-                        privacyNote
+                            StudioPageHeading(title: "Screen mirroring",
+                                subtitle: "Your screen and motion, together on your Mac.")
+                            captureCard
+                            mirroringDetails
+                            privacyNote
                         }
                     }
+                    .frame(maxWidth: 560)
                     .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 32)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: .infinity)
                 }
                 .background(Color(uiColor: .systemGroupedBackground))
                 .navigationTitle("Phone 3D Studio")
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showSettings = true } label: {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 18, weight: .regular))
+                                .frame(width: 32, height: 32)
+                        }
+                        .foregroundStyle(.primary)
+                        .accessibilityLabel("Appearance settings")
+                    }
+                }
             }
 
             if let benchmarkRun = capture.benchmarkStimulusRun {
@@ -84,6 +103,9 @@ struct ContentView: View {
                 .zIndex(2)
             }
         }
+        .preferredColorScheme(appearance == "light" ? .light : appearance == "dark" ? .dark : nil)
+        .tint(StudioColors.accent)
+        .sheet(isPresented: $showSettings) { appearanceSettings }
         .animation(
             .easeInOut(duration: 0.2),
             value: capture.benchmarkStimulusRun?.id
@@ -97,9 +119,182 @@ struct ContentView: View {
             capture.updateAppForeground(phase == .active && inputMode == .mirroring)
             spatial.updateForeground(phase == .active && inputMode == .spatial)
         }
-        .fullScreenCover(isPresented: Binding(get: { spatial.marblePresented }, set: { if !$0 { spatial.exitMarble() } })) {
-            MarblePortraitHost(controller: spatial).ignoresSafeArea().interactiveDismissDisabled()
+        .onOpenURL { url in
+            showAddressEditor = false
+            showPairingScanner = false
+            receivePairingLink(url.absoluteString)
         }
+        .sheet(isPresented: $showAddressEditor) { addressEditor }
+        .sheet(isPresented: $showPairingScanner) {
+            PairingScannerView { result in
+                showPairingScanner = false
+                switch result {
+                case .success(let value): receivePairingLink(value)
+                case .failure(let error): reportPairing(error.localizedDescription, failed: true)
+                }
+            }
+        }
+        .fullScreenCover(isPresented: Binding(get: { spatial.marblePresented }, set: { if !$0 { spatial.exitMarble() } })) {
+            MarblePortraitHost(controller: spatial).interactiveDismissDisabled()
+        }
+    }
+
+    @ViewBuilder private var pairingCard: some View {
+        DisclosureGroup(isExpanded: $showConnectionControls) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("On your Mac, click Connect iPhone. Keep both devices on the same Wi-Fi network.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                Button { prepareScanner() } label: {
+                    StudioActionLabel("Scan QR code", systemImage: "qrcode.viewfinder")
+                }.buttonStyle(StudioActionStyle(prominent: true))
+                Button("Enter address manually") {
+                    addressDraft = pairedEndpoint?.url.absoluteString ?? ""
+                    showAddressEditor = true
+                }.buttonStyle(StudioActionStyle())
+            }
+            .padding(.top, 16)
+            .disabled(switchingMode)
+        } label: {
+            HStack(spacing: 12) {
+                StudioSymbol(name: "laptopcomputer")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Mac connection").font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(macConnected ? "Connected to Mac" : pairedEndpoint.map { endpoint in
+                        let host = endpoint.url.host ?? "Mac"
+                        return "Saved address · " + host + (endpoint.url.port.map { ":\($0)" } ?? "")
+                    } ?? "Scan a code to pair")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.middle)
+                }
+                Spacer(minLength: 0)
+                if macConnected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(StudioColors.accent)
+                        .accessibilityLabel("Connected")
+                }
+            }
+        }
+        .tint(.secondary)
+        .studioCard()
+        if switchingMode {
+            ProgressView("Stopping the current session…").font(.footnote)
+        }
+        if let pairingMessage {
+            Text(pairingMessage).font(.footnote)
+                .foregroundStyle(pairingFailed ? Color.red : Color.secondary)
+        }
+    }
+
+    private var macConnected: Bool {
+        inputMode == .spatial ? spatial.connection == "Connected" : capture.poseSocketState == .connected
+    }
+
+    private var appearanceSettings: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Appearance", selection: $appearance) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    }.pickerStyle(.segmented)
+                } header: { Text("Appearance") } footer: {
+                    Text("System follows your iPhone. Your choice is saved for next time.")
+                }
+            }
+            .navigationTitle("Appearance")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showSettings = false }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .preferredColorScheme(appearance == "light" ? .light : appearance == "dark" ? .dark : nil)
+        .tint(StudioColors.accent)
+    }
+
+    private var addressEditor: some View {
+        NavigationStack {
+            Form {
+                Section("Mac address") {
+                    TextField("ws://192.168.1.10:4319/", text: $addressDraft)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    Text("Copy the address shown in the Mac app. Saving stops the current session; tap Start tracking or Start sharing when ready to connect.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    if let error = addressValidationError {
+                        Text(error).font(.caption).foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Connect to Mac")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showAddressEditor = false } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard let endpoint = try? BridgeEndpoint(addressDraft) else { return }
+                        showAddressEditor = false
+                        saveEndpoint(endpoint)
+                    }.disabled(addressValidationError != nil || addressDraft.isEmpty || switchingMode)
+                }
+            }
+        }.presentationDetents([.medium, .large])
+            .tint(StudioColors.accent)
+    }
+
+    private var addressValidationError: String? {
+        guard !addressDraft.isEmpty else { return nil }
+        do { _ = try BridgeEndpoint(addressDraft); return nil }
+        catch { return error.localizedDescription }
+    }
+
+    private func receivePairingLink(_ value: String) {
+        do { saveEndpoint(try BridgeEndpoint.pairingLink(value)) }
+        catch { reportPairing(error.localizedDescription, failed: true) }
+    }
+
+    private func saveEndpoint(_ endpoint: BridgeEndpoint) {
+        stopForPairing {
+            BridgeEndpointStore.save(endpoint)
+            pairedEndpoint = endpoint
+            showConnectionControls = false
+            reportPairing(inputMode == .spatial
+                ? "Mac saved. Tap Start tracking to connect."
+                : "Mac saved. Tap Start sharing to connect.", failed: false)
+        }
+    }
+
+    private func prepareScanner() {
+        stopForPairing { showPairingScanner = true }
+    }
+
+    private func stopForPairing(_ completed: @escaping () -> Void) {
+        guard !switchingMode else {
+            reportPairing("A session is still stopping. Try pairing again in a moment.", failed: true)
+            return
+        }
+        switchingMode = true
+        pairingMessage = nil
+        spatial.stop()
+        capture.setInputEnabled(false)
+        capture.stop { success in
+            switchingMode = false
+            capture.setInputEnabled(inputMode == .mirroring)
+            guard success else {
+                reportPairing("Could not stop screen capture. Stop it before changing the Mac address.", failed: true)
+                return
+            }
+            completed()
+        }
+    }
+
+    private func reportPairing(_ message: String, failed: Bool) {
+        pairingMessage = message
+        pairingFailed = failed
     }
 
     private func switchMode(to next: StudioInputMode) {
@@ -120,106 +315,33 @@ struct ContentView: View {
         }
     }
 
-    private var heroCard: some View {
+    private var captureCard: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 14) {
-                Image("BrandMark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 58, height: 58)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Live iPhone input")
-                        .font(.title2.bold())
-                    Text("Drive the Mac model with your screen and physical pose.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
+            StudioStatus(title: overallStatusTitle, color: overallStatusColor)
+            Text(captureCardDetail)
+                .font(.subheadline).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if case .failed = capture.captureState {
+                Text(overallStatusDetail).font(.footnote).foregroundStyle(.red)
             }
-
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(overallStatusColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: overallStatusColor.opacity(0.4), radius: 5)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(overallStatusTitle)
-                        .font(.subheadline.weight(.semibold))
-                    Text(overallStatusDetail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
+            if capture.captureState.isActive {
+                Button { capture.stop() } label: {
+                    StudioActionLabel("Stop sharing", systemImage: "stop.fill")
+                }.buttonStyle(StudioActionStyle())
+            } else {
+                Button { capture.chooseFullDisplay() } label: {
+                    StudioActionLabel("Start sharing", systemImage: "play.fill")
+                }.buttonStyle(StudioActionStyle(prominent: true))
             }
-            .padding(14)
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .padding(20)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(uiColor: .systemBackground),
-                    Color.green.opacity(0.07)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.green.opacity(0.12), lineWidth: 1)
-        }
+        .studioCard()
+        .disabled(switchingMode)
     }
 
-    private var captureCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionHeading(
-                eyebrow: captureCardEyebrow,
-                title: captureCardTitle
-            )
-
-            Text(captureCardDetail)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if capture.captureState.isActive {
-                Button(role: .destructive) {
-                    capture.stop()
-                } label: {
-                    Label("Stop live capture", systemImage: "stop.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.bordered)
-            } else {
-                Button {
-                    capture.chooseFullDisplay()
-                } label: {
-                    Label(
-                        "Start ScreenCaptureKit",
-                        systemImage: "rectangle.on.rectangle.angled"
-                    )
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-            }
-
+    private var mirroringDetails: some View {
+        VStack(alignment: .leading, spacing: 0) {
             DisclosureGroup {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 16) {
                     Picker("Stream codec", selection: $capture.streamCodec) {
                         ForEach(ScreenCodec.allCases) { codec in
                             Text(codec.rawValue).tag(codec)
@@ -227,146 +349,60 @@ struct ContentView: View {
                     }
                     .pickerStyle(.segmented)
                     .disabled(capture.captureState.isActive)
-
-                    Text(codecDescription)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Divider()
-
-                    Text("Legacy ReplayKit fallback")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    BroadcastPickerButton()
-
-                    Text("ScreenCaptureKit is the measured low-latency path. ReplayKit remains available only as a compatibility fallback and is not used by performance benchmarks.")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.top, 10)
-            } label: {
-                Label("Capture settings and fallback", systemImage: "slider.horizontal.3")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .tint(.primary)
+                    Text(codecDescription).font(.footnote).foregroundStyle(.secondary)
+                }.padding(.top, 16)
+            } label: { Text("Capture settings").font(.subheadline.weight(.semibold)).foregroundStyle(.primary) }
+            .padding(.vertical, 16)
+            Divider()
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 16) {
+                    StudioValueRow(title: "Motion", value: capture.poseSocketState.rawValue.capitalized)
+                    if capture.streamCodec == .h264 {
+                        StudioValueRow(title: "Video", value: capture.videoRouteDescription)
+                    }
+                    if capture.streamCodec == .webrtc {
+                        StudioValueRow(title: "Video", value: capture.webRTCState.rawValue.capitalized)
+                    }
+                    if capture.captureState == .streaming {
+                        Divider()
+                        Text("15-second benchmark").font(.subheadline.weight(.semibold))
+                        Text("Generates motion to measure streaming performance.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                        Button { capture.startBenchmark() } label: {
+                            StudioActionLabel("Run benchmark", systemImage: "waveform.path.ecg")
+                        }
+                        .buttonStyle(StudioActionStyle())
+                        .disabled(!capture.videoTransportConnected || capture.benchmarkStimulusRun != nil)
+                    }
+                }.padding(.top, 16)
+            } label: { Text("Diagnostics").font(.subheadline.weight(.semibold)).foregroundStyle(.primary) }
+            .padding(.vertical, 16)
         }
-        .cardStyle()
-    }
-
-    private var connectionCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            sectionHeading(eyebrow: "LOCAL CONNECTION", title: "Mac bridge")
-
-            Text(bridgeURL)
-                .font(.system(.caption, design: .monospaced))
-                .textSelection(.enabled)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(Color(uiColor: .secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            statusRow(
-                title: "Control & motion",
-                value: capture.poseSocketState.rawValue,
-                color: capture.poseSocketState == .connected ? .green : .secondary
-            )
-
-            if capture.streamCodec == .h264 {
-                statusRow(title: "Video route", value: capture.videoRouteDescription,
-                    color: socketColor)
-            }
-
-            if capture.streamCodec == .webrtc {
-                Divider()
-                statusRow(
-                    title: "Live video",
-                    value: capture.webRTCState.rawValue,
-                    color: webRTCColor
-                )
-            }
-        }
-        .cardStyle()
-    }
-
-    private var benchmarkCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeading(eyebrow: "DIAGNOSTICS", title: "15-second benchmark")
-
-            Text("The app generates motion automatically, so you do not need to keep scrolling.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Button {
-                capture.startBenchmark()
-            } label: {
-                Label("Run benchmark", systemImage: "gauge.with.dots.needle.67percent")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.indigo)
-            .disabled(
-                !capture.videoTransportConnected ||
-                    capture.benchmarkStimulusRun != nil
-            )
-        }
-        .cardStyle()
+        .tint(.secondary)
     }
 
     private var privacyNote: some View {
-        Label {
-            Text("Use on a trusted local network. Protected video may be omitted by iOS.")
-        } icon: {
-            Image(systemName: "lock.shield")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 6)
-    }
-
-    private func sectionHeading(eyebrow: String, title: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(eyebrow)
-                .font(.caption2.weight(.bold))
-                .tracking(1.2)
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.title3.bold())
-        }
-    }
-
-    private func statusRow(title: String, value: String, color: Color) -> some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(color)
-                .frame(width: 9, height: 9)
-            Text(title)
-                .font(.subheadline)
-            Spacer()
-            Text(value.capitalized)
-                .font(.caption.monospaced().weight(.medium))
-                .foregroundStyle(.secondary)
-        }
+        Text("Your display is sent directly to your Mac. This app does not save a recording. Protected video may be hidden by iOS.")
+            .font(.footnote).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var overallStatusTitle: String {
         if case .failed = capture.captureState {
             return "Needs attention"
         }
+        if pairedEndpoint == nil { return "Pair with Mac" }
         if capture.captureState == .streaming,
            capture.videoTransportConnected {
             return "Live on your Mac"
         }
         if capture.captureState.isActive {
-            return "Starting live input"
+            return "Starting screen sharing"
         }
         if capture.socketState == .connected {
-            return "Mac bridge connected"
+            return "Mac connected"
         }
-        return "Ready to connect"
+        return "Ready to share"
     }
 
     private var overallStatusDetail: String {
@@ -390,68 +426,17 @@ struct ContentView: View {
         return .secondary
     }
 
-    private var captureCardEyebrow: String {
-        switch capture.captureState {
-        case .idle, .failed:
-            return "START CAPTURE"
-        case .choosing:
-            return "SELECT DISPLAY"
-        case .starting:
-            return "CAPTURE STARTING"
-        case .streaming:
-            return "CAPTURE ACTIVE"
-        }
-    }
-
-    private var captureCardTitle: String {
-        switch capture.captureState {
-        case .idle, .failed:
-            return "Share your display"
-        case .choosing:
-            return "Choose Full Display"
-        case .starting:
-            return "Starting screen capture"
-        case .streaming:
-            return "Your display is live"
-        }
-    }
-
     private var captureCardDetail: String {
+        if pairedEndpoint == nil { return "On your Mac, click Connect iPhone and scan its code here before starting screen sharing." }
         switch capture.captureState {
         case .idle, .failed:
-            return "Tap Start ScreenCaptureKit, then choose Full Display in the system sheet. Nothing is stored by this app."
+            return "Choose Full Display in the next screen to mirror your iPhone on your Mac."
         case .choosing:
             return "The stream has not started yet. Select Full Display in the system sheet to continue."
         case .starting:
             return "The selected display is opening. Video will appear on the Mac when the first frame arrives."
         case .streaming:
             return "You can leave this app and use your phone normally."
-        }
-    }
-
-    private var socketColor: Color {
-        switch capture.socketState {
-        case .connected:
-            return .green
-        case .connecting:
-            return .orange
-        case .failed:
-            return .red
-        case .idle:
-            return .secondary
-        }
-    }
-
-    private var webRTCColor: Color {
-        switch capture.webRTCState {
-        case .connected:
-            return .green
-        case .signaling, .connecting:
-            return .orange
-        case .failed:
-            return .red
-        case .idle:
-            return .secondary
         }
     }
 
@@ -464,18 +449,6 @@ struct ContentView: View {
         case .jpeg:
             return "Independent JPEG frames with stale-frame dropping."
         }
-    }
-}
-
-private extension View {
-    func cardStyle() -> some View {
-        padding(18)
-            .background(Color(uiColor: .systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.primary.opacity(0.06), lineWidth: 1)
-            }
     }
 }
 
