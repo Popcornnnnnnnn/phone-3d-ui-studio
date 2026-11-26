@@ -1,8 +1,34 @@
 import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import type { Plugin } from 'vite'
+import { createWebPlayRoomRelay } from './scripts/webplay-room-relay.mjs'
+
+function webplayRoomRelayPlugin(): Plugin {
+  return {
+    name: 'webplay-room-relay',
+    configureServer(server) {
+      if (!server.httpServer) return
+      const relay = createWebPlayRoomRelay()
+      const detach = relay.attach(server.httpServer)
+      server.httpServer.once('close', () => {
+        detach()
+        relay.close()
+      })
+    },
+    configurePreviewServer(server) {
+      if (!server.httpServer) return
+      const relay = createWebPlayRoomRelay()
+      const detach = relay.attach(server.httpServer)
+      server.httpServer.once('close', () => {
+        detach()
+        relay.close()
+      })
+    },
+  }
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), webplayRoomRelayPlugin()],
   test: {
     exclude: [...configDefaults.exclude, 'build/**', 'captures/**'],
   },

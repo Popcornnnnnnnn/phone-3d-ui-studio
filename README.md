@@ -2,7 +2,32 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-A real iPhone becomes a tray in a shared Web 3D world. Gently toss a ball, move to catch it, and tap **Add ball** on your phone after a miss.
+**Interactive 3D iPhone UI showcase and browser-playable Elastic Tray physics playground — plus a local Mac + ARKit 6DoF spatial Pro mode.**
+
+## Zero-install Online Web Playground
+
+Visitors can play directly in the browser with no Xcode or app install required:
+
+- **Desktop Online Playground (`Play Online`):** Drag the interactive **Tilt Pad** (or press Arrow/`WASD` + `Space` to toss, `B` to add a ball, `R` to reset) powered by **120 Hz Rapier WASM physics** (`shared/marbleWorld.mjs`) running entirely client-side.
+- **QR Phone Pairing (`?pair=<CODE>`):** Scan the on-screen QR code with any iPhone or Android browser to drive the desktop 3D iPhone via **3DoF gyroscope orientation** and **flick-to-toss acceleration** over **WebRTC DataChannel** (with automatic WebSocket relay fallback via `/api/room/:code`).
+- **Phone-Only Solo Mode:** Mobile visitors opening the site directly get an immediate full-screen **Elastic Tray** playground with handheld gyro calibration, touch-drag fallback, Web Audio catch/drop feedback, and a **Pair Desktop** modal.
+- **Interactive 3D UI Showcase (`3D UI Showcase`):** Switch between 3 built-in real-time Canvas2D demo screens (**Audio Deck**, **Weather Card**, **Stack Cards** — controllable remotely from a paired phone) or drop in your own **Local MP4**.
+
+### Run & Deploy the Web Playground
+
+```sh
+npm ci
+npm run dev -- --host 0.0.0.0   # Local Vite server + /api/room/:code WebSocket relay
+npm run build:public            # Builds dist/ and strips private public/local-assets/
+```
+
+Cloudflare deployment uses single-origin **Workers Static Assets + Durable Object (`RoomRelay`)** configured in [`worker/wrangler.toml`](worker/wrangler.toml) and [`worker/src/index.ts`](worker/src/index.ts) (targeted at `https://phone3d.popcornnn.xyz`), with [`public/.assetsignore`](public/.assetsignore) excluding `local-assets/`.
+
+---
+
+## Local ARKit 6DoF (Pro) & Native Mac Preview
+
+A real iPhone becomes a 6DoF tray in a shared Web 3D world over LAN. Gently toss a ball, move to catch it, and tap **Add ball** on your phone after a miss.
 
 **Developer preview.** A native Mac host now bundles the desktop workspace, with a QR connection panel and an embedded Web 3D renderer. The locally built Mac app is ad-hoc signed; public signing/notarization and independent-machine acceptance remain open. Playing still requires Xcode 27, your own iPhone signing and a physical iPhone on iOS 27. No TestFlight invitation is included. Wireless physical acceptance remains open.
 

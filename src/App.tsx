@@ -5,6 +5,12 @@ import { WorkspaceConnection, WorkspaceInspector, WorkspaceStatus } from './work
 import { SpatialViewport } from './spatial/SpatialViewport'
 import { SpatialWorkspace } from './spatial/SpatialWorkspace'
 import { MarbleWorkspace } from './marble/MarbleWorkspace'
+import { WebPlayWorkspace } from './webplay/WebPlayWorkspace'
+import { MobilePlayView } from './webplay/MobilePlayView'
+import { useSharedRoom, type SharedRoomController } from './webplay/useSharedRoom'
+import { normalizeRoomCode } from '../shared/webPlayProtocol.mjs'
+import { DEMO_SCREENS } from './studio/demoScreens'
+import { useDemoScreen } from './studio/useDemoScreen'
 import {
   IPHONE_17_MM,
   type ReviewView,
@@ -24,7 +30,8 @@ import { studioRenderConfigurationFromSearch } from './studio/renderConfiguratio
 import { useLivePhoneSource } from './studio/useLivePhoneSource'
 import { useLocalVideoSource } from './studio/useLocalVideoSource'
 
-type ScreenSourceMode = 'local' | 'live'
+type ScreenSourceMode = 'demo' | 'local' | 'live'
+type WebWorkspaceTab = 'webplay' | 'showcase' | 'local'
 
 function formatLatency(value: number | null) {
   return value === null ? '—' : `${Math.round(value)} ms`
@@ -85,10 +92,34 @@ function formatPoseVerdict(value: PoseAccuracySnapshot['verdict']) {
   return labels[value]
 }
 
+function detectMobileBrowser(): boolean {
+  if (typeof window === 'undefined') return false
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false
+  return coarse && window.innerWidth <= 900
+}
+
 export function App() {
-  const [mode, setMode] = useState(() => new URLSearchParams(location.search).get('mode') === 'mirroring' ? 'mirroring' : 'spatial')
-  const [experience, setExperience] = useState<'tracking' | 'marble'>(() => new URLSearchParams(location.search).get('experience') === 'tracking' ? 'tracking' : 'marble')
   const desktop = document.documentElement.dataset.desktop === 'true'
+  const initialParams = useMemo(() => new URLSearchParams(location.search), [])
+  const initialPairCode = useMemo(() => normalizeRoomCode(initialParams.get('pair') ?? ''), [initialParams])
+  const hasExplicitLocalParam = useMemo(
+    () => initialParams.has('bridge') || initialParams.get('mode') === 'local',
+    [initialParams],
+  )
+  const [forceDesktopWeb, setForceDesktopWeb] = useState(() => initialParams.get('view') === 'desktop')
+  const [mobileScreen] = useState(detectMobileBrowser)
+
+  const [mode, setMode] = useState(() => initialParams.get('mode') === 'mirroring' ? 'mirroring' : 'spatial')
+  const [experience, setExperience] = useState<'tracking' | 'marble'>(() => initialParams.get('experience') === 'tracking' ? 'tracking' : 'marble')
+  const [webTab, setWebTab] = useState<WebWorkspaceTab>(() => {
+    if (hasExplicitLocalParam) return 'local'
+    if (initialParams.get('mode') === 'mirroring' || initialParams.get('tab') === 'showcase') return 'showcase'
+    return 'webplay'
+  })
+
+  const showMobileController = !desktop && (initialPairCode !== null || (mobileScreen && !forceDesktopWeb && !hasExplicitLocalParam))
+  const sharedRoom = useSharedRoom(!desktop && !showMobileController)
+
   const activeWorkspace = mode === 'mirroring' ? 'mirroring' : experience
   const [visited, setVisited] = useState(() => new Set([activeWorkspace]))
   const { appearance } = useAppearance()
@@ -109,10 +140,49 @@ export function App() {
     }
     return () => { delete window.phoneStudioSetWorkspace }
   }, [navigate])
-  return <div className="studio-app">
-    {!desktop && <nav className="studio-mode-nav" aria-label="Studio mode">
-        {(['spatial', 'mirroring'] as const).map((value) =>
-          <button key={value} aria-pressed={mode === value} onClick={() => navigate(value)}>{value === 'spatial' ? 'Spatial tracking' : 'Screen mirroring'}</button>)}
+
+  if (showMobileController) {
+    return (
+      <MobilePlayView
+        initialRoomCode={initialPairCode}
+        onSwitchToDesktop={() => {
+          setForceDesktopWeb(true)
+          const url = new URL(location.href)
+          url.searchParams.set('view', 'desktop')
+          history.replaceState(null, '', url)
+        }}
+      />
+    )
+  }
+
+  if (desktop) {
+    return (
+      <div className="studio-app">
+        <div className="studio-panels">
+          {(['marble', 'tracking', 'mirroring'] as const).map((workspace) => visited.has(workspace) &&
+            <div key={workspace} className={'studio-panel' + (workspace === activeWorkspace ? ' is-active' : '')}
+              aria-hidden={workspace !== activeWorkspace} inert={workspace !== activeWorkspace}>
+              {workspace === 'marble' ? <MarbleWorkspace active={workspace === activeWorkspace} />
+                : workspace === 'tracking' ? <SpatialWorkspace active={workspace === activeWorkspace} />
+                  : <MirroringApp active={workspace === activeWorkspace} />}
+            </div>)}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="studio-app">
+      <nav className="studio-mode-nav" aria-label="Studio mode">
+        <button aria-pressed={webTab === 'webplay'} onClick={() => setWebTab('webplay')}>
+          Play Online
+        </button>
+        <button aria-pressed={webTab === 'showcase'} onClick={() => setWebTab('showcase')}>
+          3D UI Showcase
+        </button>
+        <button aria-pressed={webTab === 'local'} onClick={() => setWebTab('local')}>
+          Local ARKit (Pro)
+        </button>
         <label className="appearance-picker">Appearance
           <select value={appearance} onChange={(event) => {
             const value = event.target.value as Appearance
@@ -124,20 +194,33 @@ export function App() {
             <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
           </select>
         </label>
-    </nav>}
-    {desktop ? <div className="studio-panels">
-      {(['marble', 'tracking', 'mirroring'] as const).map((workspace) => visited.has(workspace) &&
-        <div key={workspace} className={'studio-panel' + (workspace === activeWorkspace ? ' is-active' : '')}
-          aria-hidden={workspace !== activeWorkspace} inert={workspace !== activeWorkspace}>
-          {workspace === 'marble' ? <MarbleWorkspace active={workspace === activeWorkspace} />
-            : workspace === 'tracking' ? <SpatialWorkspace active={workspace === activeWorkspace} />
-              : <MirroringApp active={workspace === activeWorkspace} />}
-        </div>)}
-    </div> : mode === 'spatial' ? <SpatialExperience experience={experience} onExperienceChange={(value) => navigate('spatial', value)} showNavigation /> : <MirroringApp />}
-  </div>
+      </nav>
+      {webTab === 'webplay' ? (
+        <WebPlayWorkspace active sharedRoom={sharedRoom} />
+      ) : webTab === 'showcase' ? (
+        <MirroringApp active defaultSourceMode="demo" sharedRoom={sharedRoom} />
+      ) : (
+        <>
+          <div className="spatial-experience-nav" role="group" aria-label="Local Mac bridge workspace">
+            <button aria-pressed={mode === 'spatial'} onClick={() => navigate('spatial', 'marble')}>Local Elastic Tray</button>
+            <button aria-pressed={mode === 'mirroring'} onClick={() => navigate('mirroring')}>Local Mirroring</button>
+          </div>
+          {mode === 'spatial' ? <SpatialExperience experience={experience} onExperienceChange={(value) => navigate('spatial', value)} showNavigation /> : <MirroringApp />}
+        </>
+      )}
+    </div>
+  )
 }
 
-function MirroringApp({ active = true }: { active?: boolean }) {
+function MirroringApp({
+  active = true,
+  defaultSourceMode = 'live',
+  sharedRoom,
+}: {
+  active?: boolean
+  defaultSourceMode?: ScreenSourceMode
+  sharedRoom?: SharedRoomController
+}) {
   const [presetId, setPresetId] = useState('studio')
   const [animate, setAnimate] = useState(true)
   const [ambientMotion, setAmbientMotion] = useState(true)
@@ -146,7 +229,7 @@ function MirroringApp({ active = true }: { active?: boolean }) {
   const [view, setView] = useState<ReviewView>('hero')
   const [cameraResetRevision, setCameraResetRevision] = useState(0)
   const [orientation, setOrientation] = useState<ScreenOrientation>('portrait')
-  const [sourceMode, setSourceMode] = useState<ScreenSourceMode>('live')
+  const [sourceMode, setSourceMode] = useState<ScreenSourceMode>(defaultSourceMode)
   const [renderedPose, setRenderedPose] = useState<QuaternionTuple | null>(null)
   const [renderConfiguration] = useState(() =>
     studioRenderConfigurationFromSearch(
@@ -161,22 +244,26 @@ function MirroringApp({ active = true }: { active?: boolean }) {
     ),
   )
   const preset = useMemo(() => findStudioPreset(presetId), [presetId])
-  const localVideo = useLocalVideoSource(active)
-  const livePhone = useLivePhoneSource(renderConfiguration, liveRenderScheduler, active)
-  const screenMedia = sourceMode === 'live' ? livePhone.media : localVideo.media
+  const demoScreen = useDemoScreen(active && sourceMode === 'demo', sharedRoom)
+  const localVideo = useLocalVideoSource(active && sourceMode === 'local')
+  const livePhone = useLivePhoneSource(renderConfiguration, liveRenderScheduler, active && sourceMode === 'live')
+  const screenMedia = sourceMode === 'demo' ? demoScreen.media : sourceMode === 'live' ? livePhone.media : localVideo.media
   const sourceReady = screenMedia !== null
   const sourceStatus =
-    sourceMode === 'live' && livePhone.screenStale
-      ? 'stale'
-      : sourceMode === 'live'
-        ? livePhone.status
-        : localVideo.status
+    sourceMode === 'demo'
+      ? sharedRoom?.paired ? 'Paired phone tilt active' : 'Interactive demo'
+      : sourceMode === 'live' && livePhone.screenStale
+        ? 'stale'
+        : sourceMode === 'live'
+          ? livePhone.status
+          : localVideo.status
   const sourceError =
-    sourceMode === 'live' ? livePhone.error : localVideo.error
+    sourceMode === 'live' ? livePhone.error : sourceMode === 'local' ? localVideo.error : null
   const activeOrientation =
-    sourceMode === 'live' ? livePhone.orientation : orientation
+    sourceMode === 'live' ? livePhone.orientation : sourceMode === 'demo' ? 'portrait' : orientation
+  const demoPairedPose = sourceMode === 'demo' && sharedRoom?.paired
   const poseAccuracy =
-    livePhone.poseDiagnostics && renderedPose
+    sourceMode === 'live' && livePhone.poseDiagnostics && renderedPose
       ? buildPoseAccuracySnapshot(
           livePhone.poseDiagnostics.latestSensorRelative,
           livePhone.poseDiagnostics.targetQuaternion,
@@ -191,7 +278,7 @@ function MirroringApp({ active = true }: { active?: boolean }) {
           <StudioScene
             active={active}
             preset={preset}
-            animate={sourceMode === 'local' && animate}
+            animate={sourceMode !== 'live' && !demoPairedPose && animate}
             ambientMotion={ambientMotion}
             showGrid={showGrid}
             showAxes={showAxes}
@@ -199,9 +286,11 @@ function MirroringApp({ active = true }: { active?: boolean }) {
             orientation={activeOrientation}
             screenMedia={screenMedia}
             livePoseRef={
-              sourceMode === 'live' && livePhone.poseReady
-                ? livePhone.poseRef
-                : undefined
+              demoPairedPose
+                ? demoScreen.poseRef
+                : sourceMode === 'live' && livePhone.poseReady
+                  ? livePhone.poseRef
+                  : undefined
             }
             livePoseKinematicsRef={
               sourceMode === 'live' && livePhone.poseReady
@@ -209,7 +298,9 @@ function MirroringApp({ active = true }: { active?: boolean }) {
                 : undefined
             }
             livePoseSmoothingRate={
-              POSE_SMOOTHING_RATE[livePhone.posePresentationMode]
+              sourceMode === 'live'
+                ? POSE_SMOOTHING_RATE[livePhone.posePresentationMode]
+                : 24
             }
             onRenderedPoseChange={
               sourceMode === 'live' ? setRenderedPose : undefined
@@ -233,17 +324,23 @@ function MirroringApp({ active = true }: { active?: boolean }) {
             cameraResetRevision={cameraResetRevision}
             liveRenderScheduler={liveRenderScheduler}
             renderConfiguration={renderConfiguration}
-            useTabletopStandard={sourceMode === 'live'}
+            useTabletopStandard={sourceMode === 'live' || demoPairedPose}
           />
-          <WorkspaceStatus live={sourceReady && !livePhone.screenStale}>{sourceMode === 'local' ? sourceReady ? 'Local video' : 'Preview' : livePhone.screenStale ? 'Screen paused' : sourceReady ? 'Live screen' : 'Preview'}</WorkspaceStatus>
+          <WorkspaceStatus live={sourceMode === 'demo' || (sourceReady && !livePhone.screenStale)}>
+            {sourceMode === 'demo' ? demoPairedPose ? 'Phone Paired · Demo' : 'Interactive Demo' : sourceMode === 'local' ? sourceReady ? 'Local video' : 'Preview' : livePhone.screenStale ? 'Screen paused' : sourceReady ? 'Live screen' : 'Preview'}
+          </WorkspaceStatus>
         </SpatialViewport>
-        <WorkspaceInspector title="Screen mirroring" description="Your screen and motion, together.">
+        <WorkspaceInspector title="3D UI Showcase" description="Preview interactive UI screens or your own recording on a 3D iPhone.">
           {sourceMode === 'live' && !livePhone.stats.phones && <WorkspaceConnection description="Pair your iPhone, then start screen sharing in the iPhone app." />}
           <section className="workspace-section">
             <h2>Screen source</h2>
             {sourceReady && <p className="workspace-notice">{sourceStatus}</p>}
-            <div className="view-switcher two-column" role="group" aria-label="Screen source mode">
-              {(['local', 'live'] as const).map((item) => (
+            <div className="view-switcher three-column" role="group" aria-label="Screen source mode" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+              {([
+                ['demo', 'Demo UI'],
+                ['local', 'Local MP4'],
+                ['live', 'Local iPhone'],
+              ] as const).map(([item, label]) => (
                 <button
                   className={item === sourceMode ? 'view-button active' : 'view-button'}
                   key={item}
@@ -251,10 +348,62 @@ function MirroringApp({ active = true }: { active?: boolean }) {
                   aria-pressed={item === sourceMode}
                   onClick={() => setSourceMode(item)}
                 >
-                  {item === 'local' ? 'Local MP4' : 'Live iPhone'}
+                  {label}
                 </button>
               ))}
             </div>
+            {sourceMode === 'demo' && (
+              <>
+                <div className="webplay-demo-grid" role="group" aria-label="Demo screen presets">
+                  {DEMO_SCREENS.map((scr) => (
+                    <button
+                      key={scr.id}
+                      type="button"
+                      className={demoScreen.demoState.screenId === scr.id ? 'view-button active' : 'view-button'}
+                      aria-pressed={demoScreen.demoState.screenId === scr.id}
+                      onClick={() => demoScreen.dispatchControl('select-screen', scr.id)}
+                    >
+                      {scr.label}
+                    </button>
+                  ))}
+                </div>
+                {demoScreen.demoState.screenId === 'audio' && (
+                  <div className="webplay-demo-controls">
+                    <button type="button" onClick={() => demoScreen.dispatchControl('prev-track')}>Prev</button>
+                    <button type="button" className="spatial-primary" style={{ flex: 2 }} onClick={() => demoScreen.dispatchControl('toggle-play')}>
+                      {demoScreen.demoState.playing ? 'Pause' : 'Play'}
+                    </button>
+                    <button type="button" onClick={() => demoScreen.dispatchControl('next-track')}>Next</button>
+                  </div>
+                )}
+                {demoScreen.demoState.screenId === 'weather' && (
+                  <div className="webplay-demo-controls">
+                    {(['aurora', 'sunny', 'rain'] as const).map((cond) => (
+                      <button
+                        key={cond}
+                        type="button"
+                        className={demoScreen.demoState.weather === cond ? 'view-button active' : 'view-button'}
+                        onClick={() => demoScreen.dispatchControl('set-weather', cond)}
+                      >
+                        {cond}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {demoScreen.demoState.screenId === 'notifications' && (
+                  <div className="webplay-demo-controls">
+                    <button type="button" className="spatial-primary" onClick={() => demoScreen.dispatchControl('cycle-notification')}>
+                      Focus Next Card
+                    </button>
+                  </div>
+                )}
+                <p className="source-description">
+                  {sharedRoom?.paired
+                    ? 'Paired phone is tilting this 3D iPhone and can control this UI remotely.'
+                    : 'Pair your phone in Play Online to tilt this screen with your hand, or drag to orbit.'}
+                </p>
+              </>
+            )}
             {sourceMode === 'local' ? (
               <label className="wide-button file-button">
                 <span>{sourceReady ? 'Replace local video' : 'Choose local video'}</span>
