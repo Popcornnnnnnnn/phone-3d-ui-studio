@@ -1,3 +1,4 @@
+import { Environment, Lightformer } from '@react-three/drei'
 import { WorkspaceLighting } from '../workspace/WorkspaceLighting'
 import { Grid, Line, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -626,18 +627,55 @@ export function StudioEnvironment(props: StudioEnvironmentProps) {
 
   return (
     <>
-      {props.preset.id === 'studio' ? <WorkspaceLighting /> : <>
-      <SeamlessBackdrop
-        preset={props.preset}
-        interactingRef={props.interactingRef}
-        motionStateRef={motionStateRef}
-      />
-      <ObservatoryStarfield
-        preset={props.preset}
-        interactingRef={props.interactingRef}
-        motionStateRef={motionStateRef}
-      />
-      </>}
+      {props.preset.id === 'studio' ? (
+        <WorkspaceLighting />
+      ) : (
+        <>
+          <Environment resolution={128}>
+            <Lightformer
+              form="rect"
+              intensity={props.preset.daylight ? 2.6 : 2.1}
+              color={props.preset.keyColor}
+              position={[0, 3.2, 1.2]}
+              rotation={[Math.PI / 2, 0, 0]}
+              scale={[4.5, 5, 1]}
+            />
+            <Lightformer
+              form="rect"
+              intensity={1.9}
+              color={props.preset.fillColor}
+              position={[-3.4, 1.0, 1.2]}
+              rotation={[0, Math.PI / 2, 0]}
+              scale={[2.2, 4.4, 1]}
+            />
+            <Lightformer
+              form="rect"
+              intensity={1.8}
+              color={props.preset.rimColor}
+              position={[3.4, 0.8, -2.2]}
+              rotation={[0, -Math.PI / 2, 0]}
+              scale={[2.4, 4.2, 1]}
+            />
+            <Lightformer
+              form="rect"
+              intensity={1.5}
+              color={props.preset.rimColor}
+              position={[-1.4, 2.2, -3.2]}
+              scale={[2.0, 4.6, 1]}
+            />
+          </Environment>
+          <SeamlessBackdrop
+            preset={props.preset}
+            interactingRef={props.interactingRef}
+            motionStateRef={motionStateRef}
+          />
+          <ObservatoryStarfield
+            preset={props.preset}
+            interactingRef={props.interactingRef}
+            motionStateRef={motionStateRef}
+          />
+        </>
+      )}
       {props.showShadows && <StudioFootprint preset={props.preset} />}
       <SpatialGuides showGrid={props.showGrid} showAxes={props.showAxes} />
     </>

@@ -13,18 +13,26 @@ import {
 } from 'three'
 import { initMarblePhysics } from '../../shared/marbleWorld.mjs'
 import { MARBLE_GEOMETRY as G } from '../../shared/marbleMath.mjs'
-import { DEFAULT_PHONE_PROFILE } from '../../shared/phoneGeometry.mjs'
+import {
+  type PhoneFinishId,
+  type PhoneProfile,
+  type PhoneProfileId,
+} from '../../shared/phoneGeometry.mjs'
 import { WORLD_VERSION, type WorldSnapshot } from '../../shared/worldProtocol.mjs'
 import {
   normalizeRoomCode,
   formatRoomCode,
+  type WebDeviceMessage,
   type WebPlayMode,
   type WebWorldSnapshot,
 } from '../../shared/webPlayProtocol.mjs'
 import { drawMarbleScreen } from '../marble/drawMarbleScreen'
+import { usePhoneAppearance } from '../model/usePhoneAppearance'
 import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
 import { DEMO_SCREENS, type DemoScreenId } from '../studio/demoScreens'
 import { WorkspaceLighting } from '../workspace/WorkspaceLighting'
+import { DeviceAppearancePicker } from './DeviceAppearancePicker'
+import { detectLocalDeviceInfo, type DetectedDeviceInfo } from './deviceDetect'
 import { NativeDialog } from './NativeDialog'
 import {
   applyHandheldNeutral,
@@ -68,12 +76,16 @@ function clippedMaterial(color: string, inverse: Matrix4, slotGeometry: Vector2,
 
 function SoloMobileScene({
   driver,
+  profile,
+  finishId,
   gyroQuatRef,
   dragTiltRef,
   motionActive,
   onHud,
 }: {
   driver: WebTrayDriver
+  profile: PhoneProfile
+  finishId: PhoneFinishId
   gyroQuatRef: React.RefObject<[number, number, number, number] | null>
   dragTiltRef: React.RefObject<{ x: number; y: number }>
   motionActive: boolean
@@ -82,7 +94,6 @@ function SoloMobileScene({
   const phone = useRef<Group>(null)
   const balls = useRef<Array<Group | null>>([])
   const inverse = useMemo(() => new Matrix4(), [])
-  const profile = DEFAULT_PHONE_PROFILE
   const g = driver.getGeometry()
   const slotGeometry = useMemo(() => new Vector2(g.radius, g.screenZ), [g.radius, g.screenZ])
   const screenBounds = useMemo(
@@ -91,8 +102,8 @@ function SoloMobileScene({
   )
   const surface = useMemo(() => {
     const canvas = document.createElement('canvas')
-    canvas.width = profile.displayPixels.width / 3
-    canvas.height = profile.displayPixels.height / 3
+    canvas.width = Math.max(240, Math.round(profile.displayPixels.width / 3))
+    canvas.height = Math.max(480, Math.round(profile.displayPixels.height / 3))
     const texture = new CanvasTexture(canvas)
     texture.colorSpace = SRGBColorSpace
     return {
@@ -100,7 +111,7 @@ function SoloMobileScene({
       context: canvas.getContext('2d')!,
       media: { kind: 'texture' as const, name: 'Solo Tray', width: canvas.width, height: canvas.height, texture },
     }
-  }, [profile])
+  }, [profile.displayPixels.height, profile.displayPixels.width])
 
   const material = useMemo(() => clippedMaterial('#a4df83', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
   const marker = useMemo(() => clippedMaterial('#264b39', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
@@ -128,6 +139,9 @@ function SoloMobileScene({
       driver.setTiltInput(dragTiltRef.current.x, dragTiltRef.current.y)
     }
     const snap = driver.stepFrame(delta)
+    const curG = driver.getGeometry()
+    slotGeometry.set(curG.radius, curG.screenZ)
+    screenBounds.set(curG.width / 2 - curG.cornerRadius, curG.height / 2 - curG.cornerRadius, curG.cornerRadius)
     phone.current?.position.set(...snap.phone.position)
     phone.current?.quaternion.set(...snap.phone.quaternion)
     inverse
@@ -186,7 +200,7 @@ function SoloMobileScene({
       <WorkspaceLighting />
       <ContactShadows frames={1} position={[0, 0.02, 0]} opacity={0.24} scale={0.7} blur={2.2} far={0.35} resolution={256} color="#303747" />
       <group ref={phone}>
-        <SpatialPhoneModel profile={profile} media={surface.media} />
+        <SpatialPhoneModel profile={profile} finishId={finishId} media={surface.media} />
       </group>
       {Array.from({ length: 5 }, (_, index) => (
         <group key={index} ref={(group) => { balls.current[index] = group }} visible={false}>
@@ -211,6 +225,11 @@ export function MobilePlayView({
   initialRoomCode: string | null
   onSwitchToDesktop: () => void
 }) {
+  const appearance = usePhoneAppearance()
+  const { applyDetectedDevice } = appearance
+  const localDeviceRef = useRef<DetectedDeviceInfo | null>(null)
+  const [deviceDialogOpen, setDeviceDialogOpen] = useState(false)
+
   const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode)
   const isPairedMode = roomCode !== null
 
@@ -221,6 +240,7 @@ export function MobilePlayView({
 
   // Solo physics state
   const [driver, setDriver] = useState<WebTrayDriver | null>(null)
+  const initialProfileRef = useRef(appearance.profile)
   const [soloHud, setSoloHud] = useState({ hitCount: 0, canAddBall: false, hasActive: true })
 
   // Paired room state
@@ -248,16 +268,55 @@ export function MobilePlayView({
   const dragTiltRef = useRef({ x: 0, y: 0 })
   const dragOriginRef = useRef<{ x: number; y: number } | null>(null)
 
+  const sendLocalDeviceInfo = useCallback(
+    (overrideProfileId?: PhoneProfileId) => {
+      const info = localDeviceRef.current
+      if (!info || !connRef.current) return
+      const payload: WebDeviceMessage = {
+        type: 'web-device',
+        platform: info.platform,
+        screenWidth: info.screenWidth,
+        screenHeight: info.screenHeight,
+        dpr: info.dpr,
+        ...(info.modelHint ? { modelHint: info.modelHint } : {}),
+        ...(overrideProfileId ? { preferredProfileId: overrideProfileId } : !appearance.autoMatch ? { preferredProfileId: appearance.profileId } : {}),
+        preferredFinishId: appearance.finishId,
+      }
+      connRef.current.send(payload)
+    },
+    [appearance.autoMatch, appearance.finishId, appearance.profileId],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void detectLocalDeviceInfo().then((info) => {
+      if (cancelled) return
+      localDeviceRef.current = info
+      applyDetectedDevice(info)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [applyDetectedDevice])
+
+  useEffect(() => {
+    driver?.setProfile(appearance.profile)
+  }, [appearance.profile, driver])
+
   useEffect(() => {
     if (isPairedMode) return
     let cancelled = false
     void initMarblePhysics().then(() => {
       if (cancelled) return
-      const instance = new WebTrayDriver(DEFAULT_WEB_PLAY_SETTINGS, {
-        onCatch: () => soundFeedback.playCatch(),
-        onDrop: () => soundFeedback.playDrop(),
-        onSpawn: () => soundFeedback.playSpawn(),
-      })
+      const instance = new WebTrayDriver(
+        DEFAULT_WEB_PLAY_SETTINGS,
+        {
+          onCatch: () => soundFeedback.playCatch(),
+          onDrop: () => soundFeedback.playDrop(),
+          onSpawn: () => soundFeedback.playSpawn(),
+        },
+        initialProfileRef.current,
+      )
       setDriver(instance)
     })
     return () => {
@@ -300,6 +359,12 @@ export function MobilePlayView({
       if (connRef.current === conn) connRef.current = null
     }
   }, [roomCode])
+
+  useEffect(() => {
+    if (roomStatus === 'paired-relay' || roomStatus === 'paired-p2p') {
+      sendLocalDeviceInfo()
+    }
+  }, [roomStatus, sendLocalDeviceInfo])
 
   useEffect(() => {
     const canvas = pairedCanvasRef.current
@@ -445,6 +510,9 @@ export function MobilePlayView({
           <span>{isPairedMode ? pairedLabel : motionActive ? 'Tilt to roll · Flick up to toss' : 'Drag screen to tilt'}</span>
         </div>
         <div className="mobile-play-header-actions">
+          <button type="button" onClick={() => setDeviceDialogOpen(true)}>
+            Device
+          </button>
           {!isPairedMode && (
             <button type="button" onClick={onSwitchToDesktop}>
               Desktop
@@ -557,6 +625,8 @@ export function MobilePlayView({
               >
                 <SoloMobileScene
                   driver={driver}
+                  profile={appearance.profile}
+                  finishId={appearance.finishId}
                   gyroQuatRef={gyroQuatRef}
                   dragTiltRef={dragTiltRef}
                   motionActive={motionActive}
@@ -670,6 +740,21 @@ export function MobilePlayView({
           {muted ? 'Muted' : 'Sound'}
         </button>
       </footer>
+
+      <NativeDialog open={deviceDialogOpen} title="Device Appearance" onClose={() => setDeviceDialogOpen(false)}>
+        <DeviceAppearancePicker
+          compact
+          appearance={appearance}
+          onUserChange={(profileId) => {
+            if (isPairedMode) sendLocalDeviceInfo(profileId)
+          }}
+        />
+        <div className="webplay-dialog-actions">
+          <button type="button" autoFocus onClick={() => setDeviceDialogOpen(false)}>
+            Done
+          </button>
+        </div>
+      </NativeDialog>
 
       <NativeDialog open={pairDialogOpen} title="Pair with Desktop" onClose={() => setPairDialogOpen(false)}>
         <p>Open Phone 3D UI Studio on your computer and enter its 6-character room code.</p>

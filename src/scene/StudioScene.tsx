@@ -10,6 +10,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { OrthographicCamera as ThreeOrthographicCamera, Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import type { PhoneFinishId, PhoneProfile } from '../../shared/phoneGeometry.mjs'
 import {
   TABLETOP_PHONE_CENTER_Y,
   TABLETOP_PHONE_MOTION_CENTER_Y,
@@ -50,6 +51,8 @@ interface StudioSceneProps {
   view: ReviewView
   orientation: ScreenOrientation
   screenMedia: ScreenMedia | null
+  profile?: PhoneProfile
+  finishId?: PhoneFinishId
   livePoseRef?: RefObject<PoseSample | null>
   livePoseKinematicsRef?: RefObject<LivePoseKinematics | null>
   livePoseSmoothingRate?: number
@@ -387,6 +390,8 @@ export function StudioScene({
   view,
   orientation,
   screenMedia,
+  profile,
+  finishId,
   livePoseRef,
   livePoseKinematicsRef,
   livePoseSmoothingRate,
@@ -528,6 +533,8 @@ export function StudioScene({
         view={view}
         orientation={orientation}
         screenMedia={screenMedia}
+        profile={profile}
+        finishId={finishId}
         livePoseRef={livePoseRef}
         livePoseKinematicsRef={livePoseKinematicsRef}
         livePoseSmoothingRate={livePoseSmoothingRate}

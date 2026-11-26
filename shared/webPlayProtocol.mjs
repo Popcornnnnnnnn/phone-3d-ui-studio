@@ -1,3 +1,5 @@
+import { PHONE_FINISHES, PHONE_PROFILES } from './phoneGeometry.mjs'
+
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 export function generateRoomCode() {
@@ -61,6 +63,29 @@ export function parseWebPlayMessage(value) {
         control: v.control,
         ...(v.value !== undefined ? { value: v.value } : {}),
       }
+    case 'web-device': {
+      if (!['ios', 'android', 'other'].includes(v.platform)) return null
+      if (!Number.isFinite(v.screenWidth) || v.screenWidth < 100 || v.screenWidth > 4000) return null
+      if (!Number.isFinite(v.screenHeight) || v.screenHeight < 100 || v.screenHeight > 4000) return null
+      if (!Number.isFinite(v.dpr) || v.dpr < 0.5 || v.dpr > 6) return null
+      const out = {
+        type: 'web-device',
+        platform: v.platform,
+        screenWidth: Math.round(v.screenWidth),
+        screenHeight: Math.round(v.screenHeight),
+        dpr: Math.round(v.dpr * 1000) / 1000,
+      }
+      if (typeof v.modelHint === 'string' && v.modelHint.trim()) {
+        out.modelHint = v.modelHint.trim().slice(0, 64)
+      }
+      if (typeof v.preferredProfileId === 'string' && Object.hasOwn(PHONE_PROFILES, v.preferredProfileId)) {
+        out.preferredProfileId = v.preferredProfileId
+      }
+      if (typeof v.preferredFinishId === 'string' && PHONE_FINISHES.some((f) => f.id === v.preferredFinishId)) {
+        out.preferredFinishId = v.preferredFinishId
+      }
+      return out
+    }
     case 'web-world':
       if (!Number.isSafeInteger(v.seq) || v.seq < 0 || !isTransform(v.phone) || !Array.isArray(v.balls) || v.balls.length > 5) return null
       if (typeof v.canAddBall !== 'boolean' || !Number.isSafeInteger(v.hitCount) || v.hitCount < 0) return null

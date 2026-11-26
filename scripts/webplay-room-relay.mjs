@@ -8,6 +8,7 @@ const RELAYED_TYPES = new Set([
   'web-pose',
   'web-action',
   'web-ui-event',
+  'web-device',
   'web-world',
 ])
 

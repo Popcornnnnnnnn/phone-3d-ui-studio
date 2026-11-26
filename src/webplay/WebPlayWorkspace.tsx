@@ -14,16 +14,18 @@ import {
 import { initMarblePhysics } from '../../shared/marbleWorld.mjs'
 import { MARBLE_GEOMETRY as G } from '../../shared/marbleMath.mjs'
 import { DEFAULT_MARBLE_SETTINGS, MARBLE_SETTING_LIMITS } from '../../shared/marbleSettings.mjs'
-import { DEFAULT_PHONE_PROFILE } from '../../shared/phoneGeometry.mjs'
+import { type PhoneFinishId, type PhoneProfile } from '../../shared/phoneGeometry.mjs'
 import { SPATIAL_START } from '../../shared/spatialMath.mjs'
 import { WORLD_VERSION, type WorldSnapshot } from '../../shared/worldProtocol.mjs'
 import { formatRoomCode } from '../../shared/webPlayProtocol.mjs'
 import { drawMarbleScreen } from '../marble/drawMarbleScreen'
+import { usePhoneAppearance } from '../model/usePhoneAppearance'
 import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
 import { SpatialViewport } from '../spatial/SpatialViewport'
 import { WorkspaceGrid } from '../spatial/WorkspaceGrid'
 import { WorkspaceLighting } from '../workspace/WorkspaceLighting'
 import { WorkspaceInspector, WorkspaceStatus } from '../workspace/WorkspaceUI'
+import { DeviceAppearancePicker } from './DeviceAppearancePicker'
 import { NativeDialog } from './NativeDialog'
 import { QrCodeSvg } from './QrCodeSvg'
 import { soundFeedback } from './soundFeedback'
@@ -67,11 +69,15 @@ interface HudState {
 
 function WebPlayScene({
   driver,
+  profile,
+  finishId,
   sharedRoom,
   tiltInputRef,
   onHudUpdate,
 }: {
   driver: WebTrayDriver
+  profile: PhoneProfile
+  finishId: PhoneFinishId
   sharedRoom: SharedRoomController
   tiltInputRef: React.RefObject<{ x: number; y: number }>
   onHudUpdate: (hud: HudState) => void
@@ -79,7 +85,6 @@ function WebPlayScene({
   const phone = useRef<Group>(null)
   const balls = useRef<Array<Group | null>>([])
   const inverse = useMemo(() => new Matrix4(), [])
-  const profile = DEFAULT_PHONE_PROFILE
   const g = driver.getGeometry()
   const slotGeometry = useMemo(() => new Vector2(g.radius, g.screenZ), [g.radius, g.screenZ])
   const screenBounds = useMemo(
@@ -88,8 +93,8 @@ function WebPlayScene({
   )
   const surface = useMemo(() => {
     const canvas = document.createElement('canvas')
-    canvas.width = profile.displayPixels.width / 3
-    canvas.height = profile.displayPixels.height / 3
+    canvas.width = Math.max(240, Math.round(profile.displayPixels.width / 3))
+    canvas.height = Math.max(480, Math.round(profile.displayPixels.height / 3))
     const texture = new CanvasTexture(canvas)
     texture.colorSpace = SRGBColorSpace
     return {
@@ -97,7 +102,7 @@ function WebPlayScene({
       context: canvas.getContext('2d')!,
       media: { kind: 'texture' as const, name: 'Online Elastic Tray', width: canvas.width, height: canvas.height, texture },
     }
-  }, [profile])
+  }, [profile.displayPixels.height, profile.displayPixels.width])
 
   const material = useMemo(() => clippedMaterial('#a4df83', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
   const marker = useMemo(() => clippedMaterial('#264b39', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
@@ -211,7 +216,7 @@ function WebPlayScene({
       <WorkspaceGrid />
       <ContactShadows frames={1} position={[0, 0.001, 0]} opacity={0.22} scale={1.2} blur={2.4} far={0.4} resolution={256} color="#303747" />
       <group ref={phone}>
-        <SpatialPhoneModel profile={profile} media={surface.media} />
+        <SpatialPhoneModel profile={profile} finishId={finishId} media={surface.media} />
       </group>
       {Array.from({ length: 5 }, (_, index) => (
         <group key={index} ref={(group) => { balls.current[index] = group }} visible={false}>
@@ -237,9 +242,11 @@ export function WebPlayWorkspace({
   active?: boolean
   sharedRoom: SharedRoomController
 }) {
+  const appearance = usePhoneAppearance()
   const [physicsReady, setPhysicsReady] = useState(false)
   const [physicsError, setPhysicsError] = useState<string | null>(null)
   const [driver, setDriver] = useState<WebTrayDriver | null>(null)
+  const initialProfileRef = useRef(appearance.profile)
   const [settings, setSettings] = useState<WebPlaySettings>({ ...DEFAULT_WEB_PLAY_SETTINGS })
   const [muted, setMuted] = useState(false)
   const [viewRev, setViewRev] = useState(0)
@@ -264,11 +271,15 @@ export function WebPlayWorkspace({
     void initMarblePhysics()
       .then(() => {
         if (cancelled) return
-        const instance = new WebTrayDriver(DEFAULT_WEB_PLAY_SETTINGS, {
-          onCatch: () => soundFeedback.playCatch(),
-          onDrop: () => soundFeedback.playDrop(),
-          onSpawn: () => soundFeedback.playSpawn(),
-        })
+        const instance = new WebTrayDriver(
+          DEFAULT_WEB_PLAY_SETTINGS,
+          {
+            onCatch: () => soundFeedback.playCatch(),
+            onDrop: () => soundFeedback.playDrop(),
+            onSpawn: () => soundFeedback.playSpawn(),
+          },
+          initialProfileRef.current,
+        )
         setDriver(instance)
         setPhysicsReady(true)
       })
@@ -286,6 +297,15 @@ export function WebPlayWorkspace({
       driver?.free()
     }
   }, [driver])
+
+  const { applyRemoteDevice } = appearance
+  useEffect(() => {
+    applyRemoteDevice(sharedRoom.peerDevice)
+  }, [applyRemoteDevice, sharedRoom.peerDevice])
+
+  useEffect(() => {
+    driver?.setProfile(appearance.profile)
+  }, [appearance.profile, driver])
 
   useEffect(() => {
     if (!driver || !active) return
@@ -435,6 +455,8 @@ export function WebPlayWorkspace({
             >
               <WebPlayScene
                 driver={driver}
+                profile={appearance.profile}
+                finishId={appearance.finishId}
                 sharedRoom={sharedRoom}
                 tiltInputRef={tiltInputRef}
                 onHudUpdate={setHud}
@@ -569,6 +591,7 @@ export function WebPlayWorkspace({
 
           <details className="workspace-disclosure" open>
             <summary>Play settings</summary>
+            <DeviceAppearancePicker appearance={appearance} />
             <fieldset className="marble-settings">
               <legend className="visually-hidden">Play settings</legend>
               <label htmlFor="wp-diameter">
