@@ -826,7 +826,7 @@ final class H264Encoder {
 
         // The low-latency encoder is optional even on OS releases that expose
         // its VideoToolbox key. Fall back once, in the same admission attempt,
-        // rather than retrying a failing session on every ReplayKit callback.
+        // rather than retrying a failing session on every captured frame.
         // `selectedProfile` remains the requested value while `activeProfile`
         // reports the encoder that actually produced the stream.
         retainLowLatencyFallbackDiagnostics()

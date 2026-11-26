@@ -1,3 +1,4 @@
+import { useAppearance, workspaceColors } from '../appearance'
 import { Grid } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
@@ -6,6 +7,8 @@ import { DoubleSide, type Mesh, type ShaderMaterial } from 'three'
 /** World-anchored lines with camera-following coverage, rather than a finite board. */
 export function WorkspaceGrid() {
   const grid = useRef<Mesh>(null)
+  const { colorScheme } = useAppearance()
+  const colors = workspaceColors[colorScheme]
   useFrame(({ camera, controls }) => {
     if (!grid.current) return
     const distance = controls && 'getDistance' in controls ? (controls.getDistance as () => number)() : camera.position.length()
@@ -19,6 +22,6 @@ export function WorkspaceGrid() {
     if (Math.abs(camera.far - far) > 1) { camera.far = far; camera.updateProjectionMatrix() }
   })
   return <Grid ref={grid} position={[0, 0.0001, 0]} args={[4, 4]} infiniteGrid followCamera
-    cellSize={0.1} sectionSize={1} cellColor="#c2cdbd" sectionColor="#9ba99e"
+    cellSize={0.1} sectionSize={1} cellColor={colors.grid} sectionColor={colors.gridSection}
     cellThickness={0.6} sectionThickness={0.9} fadeDistance={10} fadeStrength={1.5} side={DoubleSide} />
 }

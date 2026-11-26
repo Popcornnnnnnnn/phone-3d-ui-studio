@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { parseSpatialMessage } from '../shared/spatialProtocol.mjs'
 import { MarbleService } from './marble-service.mjs'
+import { selectPhoneProfile } from '../shared/phoneGeometry.mjs'
 
 export function createSpatialRelay(now = Date.now) {
   let phone = null
@@ -18,6 +19,7 @@ export function createSpatialRelay(now = Date.now) {
   const link = () => ({
     type: 'spatial-link', connected: phone !== null,
     sessionId: phone?.sessionId ?? null, connectionId: phone?.connectionId ?? null,
+    deviceProfile: phone?.deviceProfile ?? null,
   })
   function broadcast(message) {
     for (const browser of browsers) send(browser, message)
@@ -44,7 +46,8 @@ export function createSpatialRelay(now = Date.now) {
       return true
     }
     const previous = phone
-    const source = { socket, sessionId, connectionId: randomUUID(), sequence: -1 }
+    const source = { socket, sessionId, connectionId: randomUUID(), sequence: -1,
+      deviceProfile: selectPhoneProfile(url.searchParams.get('deviceModel')) }
     phone = source
     marble.addPeer(socket, 'phone')
     marble.setPhone(source)

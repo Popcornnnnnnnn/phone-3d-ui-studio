@@ -1,6 +1,6 @@
-import { RoundedBox } from '@react-three/drei'
+import { Html, RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import type { RefObject } from 'react'
 import { Color, DoubleSide, Quaternion, type Group } from 'three'
 import {
@@ -12,7 +12,7 @@ import {
   type ScreenOrientation,
 } from '../model/iphone17'
 import { createRoundedRectangleGeometry } from '../model/roundedRectangle'
-import { isLocalModelResponse } from '../model/localAssetAvailability'
+import { useLocalAssetAvailability } from '../model/useLocalAssetAvailability'
 import type { PoseSample } from '../studio/contracts'
 import type { QuaternionTuple } from '../studio/liveProtocol'
 import type { PoseRenderMeasurementSample } from '../studio/liveMeasurement'
@@ -27,10 +27,7 @@ import type {
   PoseRenderDiagnostics,
 } from '../studio/useLivePhoneSource'
 import { AppleMark } from './AppleMark'
-import {
-  LOCAL_IPHONE_17_ASSET_URL,
-  LocalIPhone17Asset,
-} from './LocalIPhone17Asset'
+import { LocalIPhone17Asset } from './LocalIPhone17Asset'
 import { PhoneShell } from './PhoneShell'
 import { RearCameraSystem } from './RearCameraSystem'
 import { ScreenSurface } from './ScreenSurface'
@@ -93,25 +90,6 @@ function SideButton({
   )
 }
 
-function useLocalAssetAvailability() {
-  const [available, setAvailable] = useState(false)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    void fetch(LOCAL_IPHONE_17_ASSET_URL, {
-      method: 'HEAD',
-      signal: controller.signal,
-    })
-      .then((response) => setAvailable(isLocalModelResponse(response)))
-      .catch(() => setAvailable(false))
-
-    return () => controller.abort()
-  }, [])
-
-  return available
-}
-
 function ProceduralIPhone17Shell() {
   const { height } = IPHONE_17_SCENE
 
@@ -137,6 +115,14 @@ function ProceduralIPhone17Shell() {
         <meshBasicMaterial color="#030407" />
       </RoundedBox>
     </>
+  )
+}
+
+function PhoneLoadingPlaceholder() {
+  return (
+    <Html center role="status" style={{ color: 'var(--text-secondary)', fontSize: 12, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+      Loading phone…
+    </Html>
   )
 }
 
@@ -317,7 +303,7 @@ export function IPhone17Model({
   const targetQuaternion = useRef(new Quaternion())
   const lastPosePublishAt = useRef(-Infinity)
   const renderDiagnostics = useRef({ elapsedSeconds: 0, frames: 0 })
-  const hasLocalAsset = useLocalAssetAvailability()
+  const localAssetAvailability = useLocalAssetAvailability()
 
   useFrame((state, delta) => {
     if (!group.current || externallyDriven) return
@@ -456,22 +442,26 @@ export function IPhone17Model({
       ]}
       position={externallyDriven ? [0, 0, 0] : [0, useTabletopStandard ? TABLETOP_PHONE_CENTER_Y : 0.1, 0]}
     >
-      {hasLocalAsset ? (
-        <Suspense fallback={<ProceduralIPhone17Shell />}>
+      {localAssetAvailability === undefined ? (
+        <PhoneLoadingPlaceholder />
+      ) : localAssetAvailability ? (
+        <Suspense fallback={<PhoneLoadingPlaceholder />}>
           <LocalIPhone17Asset />
           <ImportedBottomFace />
+          <ScreenSurface
+            media={screenMedia}
+            orientation={orientation}
+            useImportedGeometry
+          />
+          <DynamicIslandSurface />
         </Suspense>
       ) : (
-        <ProceduralIPhone17Shell />
+        <>
+          <ProceduralIPhone17Shell />
+          <ScreenSurface media={screenMedia} orientation={orientation} />
+          <DynamicIslandSurface />
+        </>
       )}
-
-      <ScreenSurface
-        media={screenMedia}
-        orientation={orientation}
-        useImportedGeometry={hasLocalAsset}
-      />
-      <DynamicIslandSurface />
-
     </group>
   )
 }

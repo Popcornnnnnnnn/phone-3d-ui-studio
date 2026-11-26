@@ -9,8 +9,11 @@ private final class BenchmarkDisplayClock: NSObject, ObservableObject {
     private var displayLink: CADisplayLink?
 
     init(targetFramesPerSecond: Int) {
+        let screen = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first(where: { $0.activationState == .foregroundActive })?.screen
         self.targetFramesPerSecond = min(
-            UIScreen.main.maximumFramesPerSecond,
+            screen?.maximumFramesPerSecond ?? 60,
             max(15, targetFramesPerSecond)
         )
         super.init()

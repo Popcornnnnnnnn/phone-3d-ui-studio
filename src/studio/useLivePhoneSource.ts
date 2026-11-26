@@ -838,9 +838,12 @@ function getBrowserClientId() {
   return cachedBrowserClientId
 }
 
-function browserBridgeUrl(role: string) {
-  const query = new URLSearchParams({ role, clientId: getBrowserClientId() })
-  return `ws://${window.location.hostname}:4319/?${query}`
+export function browserBridgeUrl(role: string, pageHref = window.location.href, clientId = getBrowserClientId()) {
+  const page = new URL(pageHref)
+  const url = new URL(page.searchParams.get('bridge') ?? `ws://${page.hostname}:4319/`)
+  url.searchParams.set('role', role)
+  url.searchParams.set('clientId', clientId)
+  return url.href
 }
 
 export function getDefaultBridgeUrl() {
@@ -858,6 +861,7 @@ export function getWebRTCBridgeUrl() {
 export function useLivePhoneSource(
   renderConfiguration: StudioRenderConfiguration,
   liveRenderScheduler: LiveRenderScheduler,
+  active = true,
 ) {
   const socketRef = useRef<WebSocket | null>(null)
   const poseSocketRef = useRef<WebSocket | null>(null)
@@ -2946,7 +2950,7 @@ export function useLivePhoneSource(
     socket.addEventListener('error', () => {
       if (socketRef.current !== socket) return
       commitStatus('error')
-      commitError('Cannot reach the local phone bridge on port 4319.')
+      commitError('Cannot reach this session’s local phone bridge.')
     })
 
     socket.addEventListener('close', () => {
@@ -2995,14 +2999,16 @@ export function useLivePhoneSource(
   }, [sendH264OutputFormat])
 
   useEffect(() => {
+    if (!active) return
     const autoConnectTimer = window.setTimeout(() => connectRef.current(), 0)
     return () => {
       window.clearTimeout(autoConnectTimer)
       disconnect()
     }
-  }, [disconnect])
+  }, [active, disconnect])
 
   useEffect(() => {
+    if (!active) return
     const timer = window.setInterval(() => {
       const now = highResolutionEpochNowMs()
       const lastFrame = lastFrameReceivedRef.current
@@ -3043,7 +3049,7 @@ export function useLivePhoneSource(
     }, 250)
 
     return () => window.clearInterval(timer)
-  }, [commitScreenStale])
+  }, [active, commitScreenStale])
 
   return {
     calibratePose,

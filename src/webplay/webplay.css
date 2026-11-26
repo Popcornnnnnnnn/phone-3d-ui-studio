@@ -1,0 +1,189 @@
+.webplay-pair-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--app-background);
+}
+
+.webplay-pair-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.webplay-pair-header h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.webplay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+}
+
+.webplay-badge.is-paired {
+  background: var(--selection);
+  color: var(--selection-text);
+}
+
+.webplay-qr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.webplay-qr-button {
+  padding: 6px !important;
+  background: #ffffff !important;
+  border-radius: 10px !important;
+  flex: none;
+}
+
+.webplay-pair-meta {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.webplay-room-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+.webplay-pair-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.webplay-pair-actions button {
+  font-size: 11px;
+  padding: 5px 9px;
+}
+
+.webplay-tilt-pad-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.webplay-tilt-pad {
+  position: relative;
+  height: 124px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(to right, transparent 49.5%, var(--border) 50%, transparent 50.5%),
+    linear-gradient(to bottom, transparent 49.5%, var(--border) 50%, transparent 50.5%),
+    var(--app-background);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.webplay-tilt-pad:active {
+  cursor: grabbing;
+}
+
+.webplay-tilt-thumb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 8px var(--shadow);
+  pointer-events: none;
+  transition: transform 60ms linear;
+}
+
+.webplay-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.webplay-dialog {
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: 0 18px 48px var(--shadow);
+}
+
+.webplay-dialog:modal {
+  overscroll-behavior: contain;
+}
+
+.webplay-dialog::backdrop {
+  background: rgb(15 23 42 / 48%);
+  backdrop-filter: blur(4px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.webplay-dialog h1 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.webplay-dialog p {
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.webplay-dialog-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  background: var(--app-background);
+}
+
+.webplay-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.webplay-demo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.webplay-demo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.webplay-demo-controls button {
+  flex: 1 1 auto;
+}

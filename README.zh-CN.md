@@ -2,8 +2,8 @@
   <img src="public/icon-192.png" alt="Phone 3D UI Studio 图标" width="88" />
   <h1>Phone 3D UI Studio</h1>
   <p>
-    <strong>可交互的 3D iPhone UI 展示工作室与空间物理交互原型（Elastic Tray）。</strong><br />
-    直接在浏览器中调整 3D 灯光预设并预览任意录屏视频，或连接真机体验手机与桌面共享三维世界中的抛球与接球。
+    <strong>零安装在线 3D iPhone UI 展台与 Elastic Tray 物理游乐场 —— 同时保留本地 Mac + ARKit 6DoF 空间交互（Pro）。</strong><br />
+    手机打开即玩单机模式，桌面扫码即可用手机陀螺仪通过 WebRTC 实时操控，也可直接在浏览器中预览交互式 3D UI。
   </p>
 
   <p>
@@ -11,25 +11,46 @@
   </p>
 
   <p>
-    <a href="https://popcornnnnnnnn.github.io/phone-3d-ui-studio/"><img src="https://img.shields.io/badge/在线_3D_演示-立即打开-0D96F6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="打开在线 3D 演示" /></a>
+    <a href="https://phone3d.popcornnn.xyz"><img src="https://img.shields.io/badge/在线游玩-phone3d.popcornnn.xyz-0D96F6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="在线游玩 phone3d.popcornnn.xyz" /></a>
     <a href="https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Popcornnnnnnnn/phone-3d-ui-studio/ci.yml?style=for-the-badge&label=CI" alt="CI 状态" /></a>
     <a href="https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1"><img src="https://img.shields.io/badge/开发者预览-v0.2.1--alpha.1-FF9F0A?style=for-the-badge" alt="预览版本" /></a>
   </p>
 
   <p>
-    <a href="https://popcornnnnnnnn.github.io/phone-3d-ui-studio/">在线 3D 工作室</a> ·
+    <a href="https://phone3d.popcornnn.xyz">在线游玩</a> ·
+    <a href="#零安装在线游乐场web-playground">在线游乐场</a> ·
     <a href="#空间交互演示">空间演示</a> ·
-    <a href="#浏览器在线体验">在线体验</a> ·
-    <a href="#本地运行mac--iphone-空间预览">本地运行</a> ·
-    <a href="#手感参数">手感参数</a>
+    <a href="#本地-arkit-6dofpro与原生-mac-预览">本地 Pro 模式</a> ·
+    <a href="#开发与验证">开发与验证</a>
   </p>
 </div>
 
 ---
 
+## 零安装在线游乐场（Web Playground）
+
+直接打开 **[phone3d.popcornnn.xyz](https://phone3d.popcornnn.xyz)**，无需 Xcode 或安装任何 App：
+
+- **桌面在线游玩（Play Online）：** 拖动 **Tilt Pad**（或使用方向键/`WASD` 倾斜、`Space` 抛球、`B` 补球、`R` 重置），由浏览器端 **120 Hz Rapier WASM 物理引擎**（`shared/marbleWorld.mjs`）实时驱动。
+- **手机扫码配对（`?pair=<CODE>`）：** 用 iPhone 或 Android 手机浏览器扫描页面上的二维码，通过 **3DoF 陀螺仪姿态**与**上甩加速度抛球**，经 **WebRTC DataChannel**（并支持 `/api/room/:code` WebSocket 中继自动回退）实时控制桌面 3D iPhone。
+- **手机端单机模式（Solo Mode）：** 手机直接打开网页即可进入全屏 **Elastic Tray** 游玩界面，内置手持姿态校准、触控拖拽回退、Web Audio 音效反馈，并可随时输入 6 位房间码与桌面配对。
+- **交互式 3D UI 展台（3D UI Showcase）：** 内置 3 套实时 Canvas2D 交互屏幕（**Audio Deck**、**Weather Card**、**Stack Cards**，配对后可由手机远程控制与倾斜），同时保留 **Local MP4** 本地录屏预览。
+
+### 本地运行与 Cloudflare 部署
+
+```sh
+npm ci
+npm run dev -- --host 0.0.0.0   # 启动 Vite 开发服务器及 /api/room/:code 房间中继
+npm run build:public            # 构建 dist/（base /）并移除私有 public/local-assets/
+```
+
+线上部署采用单域名 **Cloudflare Workers Static Assets + Durable Object（`RoomRelay`）**，配置见 [`worker/wrangler.toml`](worker/wrangler.toml) 与 [`worker/src/index.ts`](worker/src/index.ts)，并通过 [`public/.assetsignore`](public/.assetsignore) 排除 `local-assets/`。
+
+---
+
 ## 空间交互演示
 
-下面是 **S2.1 Elastic Tray** 体验：真实 iPhone 会成为共享 Web 三维世界中的一个物理托盘——轻轻抬起手机抛起小球、移动去接住它；没接住时，在手机上点击 **Add ball** 继续。
+下面展示 **S2.1 Elastic Tray** 体验：轻抬托盘抛起小球，移动或倾斜接住它；没接住时点击 **Add ball** 继续。
 
 ![S2.1 脚本演示：轻抬托盘抛起小球，小球通过物理碰撞重新落回托盘。](docs/media/toss-and-catch.gif)
 
@@ -44,63 +65,25 @@
 </tr>
 </table>
 
-### 调到合适的手感
-
-可以调整移动比例、小球直径和弹性。下面的每个预设都会像应用中的 **Apply & restart** 一样开始新一轮游戏。
-
-![移动比例、小球直径和弹性的三种回合预设脚本对比。](docs/media/play-settings.gif)
-
-> **渲染说明：** 这些动图是基于项目程序化手机模型和 Rapier 物理引擎的**脚本渲染**，用于展示交互设计，并非真机实拍或无线可靠性证明（详见[媒体说明与限制](docs/media/README.md)）。
+> **渲染说明：** 上述动图为基于程序化手机模型和 Rapier 物理引擎的**脚本渲染**，用于展示交互设计，并非真机实拍或无线可靠性证明（详见[媒体说明与限制](docs/media/README.md)）。
 
 ---
 
-## 浏览器在线体验
+## 本地 ARKit 6DoF（Pro）与原生 Mac 预览
 
-直接打开 **[在线 3D 工作室](https://popcornnnnnnnn.github.io/phone-3d-ui-studio/)**，无需 Xcode 或真机即可体验：
+如需局域网真机 6DoF 空间位移与原生 ScreenCaptureKit 投屏：
 
-- 切换 **Daylight**、**Obsidian**、**Pearl** 等工作室灯光与背景预设。
-- 自由旋转、缩放，查看程序化 3D iPhone 17 参考模型的正面、背面与校准视角。
-- 选择本地录屏视频（**Local video**），即时在 3D 手机屏幕上预览你的界面演示。
-
-*(实时的 6DoF 空间抛球与低延迟真机投屏需要运行下方的本地 Mac 桥接服务并连接 iPhone。)*
-
----
-
-## 本地运行（Mac + iPhone 空间预览）
-
-> **开发者预览状态：** 完整的真机空间联动需要 Mac（**Node.js 24+**、**Xcode 27**）、个人 iOS 签名团队以及运行 **iOS 27** 的真机。当前不含 App Store 或 TestFlight 安装包，无线稳定性与实体验收仍在推进中。
-
-```sh
-npm ci
-npm start
-```
-
-打开终端打印的 **Studio ready** 地址（通常为 <http://127.0.0.1:4317/?experience=marble>）。该命令会同时启动桥接服务与 Web 前端；按 **Ctrl+C** 同时停止。
-
-- [预览版本 (`v0.2.1-alpha.1`)](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1) · [空间交互 PR #21](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/pull/21)
-- [中文首次安装指南](docs/QUICKSTART.zh-CN.md) · [iPhone 构建说明](ios/README.md) · [发布就绪状态](docs/RELEASE_READINESS.md)
-
----
-
-## 手感参数
-
-在 **Marble → Play settings** 中可调节：
-
-| 参数 | 默认值 | 范围 |
-| --- | --- | --- |
-| Movement scale | 50%：真实移动 20 cm → 虚拟 10 cm | 25–100% |
-| Ball diameter | 15 mm | 10–20 mm |
-| Bounce | 0.35 | 0–0.8 |
-
-本地桥接以 120 Hz 运行 Rapier 物理（演示重力 `1.5 m/s²`），最多同时保留 5 个小球轨迹。
-
----
+- **原生 Mac 应用（Apple Silicon）：** `npm run app:build && open "build/macos/Phone 3D Studio.app"`（本地 ad-hoc 签名，参见 [Mac 安装、配对与验证边界](docs/MAC_APP.zh-CN.md)）。
+- **本地 Node 桥接 + Vite：** `npm start`（iOS ARKit 6DoF 伴侣构建需 **Node.js 24+**、**Xcode 27** 与 **iOS 27** 个人签名）。
+- **文档与架构：** [中文首次安装指南](docs/QUICKSTART.zh-CN.md) · [iPhone 构建说明](ios/README.md) · [产品目标](docs/PRODUCT_GOAL.md) · [空间架构](docs/ARCHITECTURE.md) · [S2.1 验收记录](docs/ELASTIC_TRAY.md)
 
 ## 开发与验证
 
 ```sh
 npm run check
+npx tsc -p worker/tsconfig.json --noEmit
 swift test --package-path ios
 ```
 
-- [产品目标](docs/PRODUCT_GOAL.md) · [系统架构](docs/ARCHITECTURE.md) · [路线图](ROADMAP.md) · [Issues](https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/issues)
+- GitHub 仓库：<https://github.com/Popcornnnnnnnn/phone-3d-ui-studio>
+- 交付看板：<https://github.com/users/Popcornnnnnnnn/projects/3>

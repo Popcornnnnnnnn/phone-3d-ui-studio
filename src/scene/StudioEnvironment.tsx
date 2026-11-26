@@ -1,3 +1,4 @@
+import { WorkspaceLighting } from '../workspace/WorkspaceLighting'
 import { Grid, Line, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -625,6 +626,7 @@ export function StudioEnvironment(props: StudioEnvironmentProps) {
 
   return (
     <>
+      {props.preset.id === 'studio' ? <WorkspaceLighting /> : <>
       <SeamlessBackdrop
         preset={props.preset}
         interactingRef={props.interactingRef}
@@ -635,6 +637,7 @@ export function StudioEnvironment(props: StudioEnvironmentProps) {
         interactingRef={props.interactingRef}
         motionStateRef={motionStateRef}
       />
+      </>}
       {props.showShadows && <StudioFootprint preset={props.preset} />}
       <SpatialGuides showGrid={props.showGrid} showAxes={props.showAxes} />
     </>

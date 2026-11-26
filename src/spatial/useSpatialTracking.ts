@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { isHostedStaticDemo } from '../studio/hostedDemo'
 import { SpatialTracker } from './spatialTracking'
 
-export function useSpatialTracking() {
+export function useSpatialTracking(active = true) {
   const [tracker] = useState(() => new SpatialTracker())
   const [, refresh] = useState(0)
   useEffect(() => {
+    if (!active) return
     let stopped = false
     let socket: WebSocket | null = null
     let retry: ReturnType<typeof setTimeout> | undefined
@@ -47,6 +48,6 @@ export function useSpatialTracking() {
       socket?.close()
       tracker.disconnect()
     }
-  }, [tracker])
+  }, [active, tracker])
   return tracker
 }

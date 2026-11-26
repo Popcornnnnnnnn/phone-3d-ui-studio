@@ -1,0 +1,16 @@
+name = "phone-3d-ui-studio"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "../dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[durable_objects.bindings]]
+name = "ROOM_RELAY"
+class_name = "RoomRelay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomRelay"]

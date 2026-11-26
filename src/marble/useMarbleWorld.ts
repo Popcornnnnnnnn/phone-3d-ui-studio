@@ -3,10 +3,11 @@ import { isHostedStaticDemo } from '../studio/hostedDemo'
 import { WorldClient } from './WorldClient'
 import { WORLD_VERSION } from '../../shared/worldProtocol.mjs'
 
-export function useMarbleWorld() {
+export function useMarbleWorld(active = true) {
   const [client] = useState(() => new WorldClient())
   const [, update] = useState(0)
   useEffect(() => {
+    if (!active) return
     let stopped = false, attempt = 0
     let socket: WebSocket | null = null, retry: ReturnType<typeof setTimeout> | undefined
     function connect() {
@@ -35,8 +36,8 @@ export function useMarbleWorld() {
     return () => {
       if (client.isOwner && client.latest?.active) client.command('stop')
       stopped = true; clearTimeout(retry); clearInterval(interval); socket?.close()
-      client.send = () => {}; document.removeEventListener('visibilitychange', hidden)
+      client.disconnect(); client.send = () => {}; document.removeEventListener('visibilitychange', hidden)
     }
-  }, [client])
+  }, [active, client])
   return client
 }

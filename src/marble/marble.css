@@ -1,16 +1,17 @@
-.spatial-experience-nav{display:flex;gap:5px;padding:8px 24px 0;background:#f5f6f1}
-.spatial-experience-nav button{border:0;border-radius:6px;padding:7px 13px;background:transparent;color:#637966;font:500 12px system-ui;cursor:pointer}
-.spatial-experience-nav button[aria-pressed=true]{background:#e1eadc;color:#264e3c}
-.marble-actions{display:flex;flex-wrap:wrap;gap:7px;margin:20px 0}
-.marble-instructions{padding-left:18px;font-size:12px;color:#587060;line-height:1.75}
-.marble-instructions li{padding:3px 0}
-.marble-catches{display:flex;align-items:baseline;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid #d9e0d1}
-.marble-catches strong{font-size:34px;font-weight:500;color:#28583d}.marble-catches span{font-size:11px;color:#758670}
-.marble-settings{margin:18px 0 10px;padding:14px;border:1px solid #d9e0d1;border-radius:12px;min-width:0}
-.marble-settings legend{padding:0 5px;font-size:12px;font-weight:600;color:#385a43}
-.marble-settings label{display:block;margin:6px 0 16px;font-size:12px;color:#526d57}
-.marble-settings label span{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px}
-.marble-settings output{font-variant-numeric:tabular-nums;color:#284e38}
-.marble-settings input{width:100%;accent-color:#42744e;cursor:pointer}
-.marble-settings:disabled{opacity:.55}.marble-settings:disabled input{cursor:default}
-.marble-settings button{font-size:11px}
+.marble-session-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 22px; }
+.marble-session-heading > span { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.marble-round-actions { display: flex; gap: 8px; }
+.marble-round-actions .spatial-primary { flex: 1; }
+.marble-instructions { padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.65; }
+.marble-instructions li { padding: 3px 0; }
+.marble-settings { margin: 12px 0 0; padding: 0; border: 0; min-width: 0; }
+.marble-settings label { display: block; margin: 0 0 20px; font-size: 12px; color: var(--text-secondary); }
+.marble-settings label span { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.marble-settings output { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.marble-settings input { display: block; width: 100%; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.marble-settings input:not(:disabled):hover { filter: brightness(1.12); }
+.marble-settings:disabled { opacity: .45; }
+.marble-settings:disabled input { cursor: default; filter: none; }
+.marble-settings-foot { display: flex; justify-content: space-between; align-items: center; color: var(--text-tertiary); font-size: 11px; }
+.marble-settings-foot button { padding: 3px 8px; font-size: 11px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
