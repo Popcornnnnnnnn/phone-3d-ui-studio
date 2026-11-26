@@ -1,6 +1,7 @@
 import type { Transform } from './spatialMath.mjs'
 import type { Quat } from './spatialProtocol.mjs'
 import type { MarbleGeometry } from './marbleMath.mjs'
+import type { PhoneFinishId, PhoneProfileId } from './phoneGeometry.mjs'
 import type { WorldBall } from './worldProtocol.mjs'
 
 export type WebPlayRole = 'desktop' | 'phone'
@@ -27,6 +28,17 @@ export interface WebUiEventMessage {
   value?: string | number | boolean
 }
 
+export interface WebDeviceMessage {
+  type: 'web-device'
+  platform: 'ios' | 'android' | 'other'
+  screenWidth: number
+  screenHeight: number
+  dpr: number
+  modelHint?: string
+  preferredProfileId?: PhoneProfileId
+  preferredFinishId?: PhoneFinishId
+}
+
 export interface WebWorldSnapshot {
   type: 'web-world'
   seq: number
@@ -46,6 +58,7 @@ export type WebPlayGameMessage =
   | WebPoseMessage
   | WebActionMessage
   | WebUiEventMessage
+  | WebDeviceMessage
   | WebWorldSnapshot
 
 export type WebPlaySignalMessage =

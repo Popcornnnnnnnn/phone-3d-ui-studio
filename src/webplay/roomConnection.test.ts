@@ -38,7 +38,7 @@ describe('webPlayProtocol and RoomConnection', () => {
     expect(normalizeRoomCode('O0I1L!')).toBeNull()
   })
 
-  it('validates web-pose, web-action, and web-ui-event packets', () => {
+  it('validates web-pose, web-action, web-ui-event, and web-device packets', () => {
     expect(parseWebPlayMessage({ type: 'web-action', action: 'toss', strength: 1.1 })).toEqual({
       type: 'web-action',
       action: 'toss',
@@ -46,6 +46,26 @@ describe('webPlayProtocol and RoomConnection', () => {
     })
     expect(parseWebPlayMessage({ type: 'web-pose', seq: 1, sentAtMs: 100, quaternion: [0, 0, 0, 1] })).not.toBeNull()
     expect(parseWebPlayMessage({ type: 'web-pose', seq: -1, sentAtMs: 100, quaternion: [0, 0, 0, 1] })).toBeNull()
+    expect(parseWebPlayMessage({
+      type: 'web-device',
+      platform: 'android',
+      screenWidth: 412,
+      screenHeight: 915,
+      dpr: 2.625,
+      modelHint: 'Pixel 9 Pro',
+      preferredProfileId: 'android-adaptive',
+      preferredFinishId: 'deep-blue',
+    })).toEqual({
+      type: 'web-device',
+      platform: 'android',
+      screenWidth: 412,
+      screenHeight: 915,
+      dpr: 2.625,
+      modelHint: 'Pixel 9 Pro',
+      preferredProfileId: 'android-adaptive',
+      preferredFinishId: 'deep-blue',
+    })
+    expect(parseWebPlayMessage({ type: 'web-device', platform: 'ios', screenWidth: 50, screenHeight: 800, dpr: 3 })).toBeNull()
   })
 
   it('transitions waiting-peer -> paired-relay -> paired-p2p and routes messages over DataChannel once open', async () => {

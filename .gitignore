@@ -37,3 +37,4 @@ exports/
 
 # Locally licensed 3D assets (never redistribute)
 public/local-assets/
+assets-raw/

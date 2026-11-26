@@ -32,7 +32,8 @@
 直接打开 **[phone3d.popcornnn.xyz](https://phone3d.popcornnn.xyz)**，无需 Xcode 或安装任何 App：
 
 - **桌面在线游玩（Play Online）：** 拖动 **Tilt Pad**（或使用方向键/`WASD` 倾斜、`Space` 抛球、`B` 补球、`R` 重置），由浏览器端 **120 Hz Rapier WASM 物理引擎**（`shared/marbleWorld.mjs`）实时驱动。
-- **手机扫码配对（`?pair=<CODE>`）：** 用 iPhone 或 Android 手机浏览器扫描页面上的二维码，通过 **3DoF 陀螺仪姿态**与**上甩加速度抛球**，经 **WebRTC DataChannel**（并支持 `/api/room/:code` WebSocket 中继自动回退）实时控制桌面 3D iPhone。
+- **手机扫码配对（`?pair=<CODE>`）：** 用 iPhone 或 Android 手机浏览器扫描页面上的二维码，通过 **3DoF 陀螺仪姿态**与**上甩加速度抛球**，经 **WebRTC DataChannel**（并支持 `/api/room/:code` WebSocket 中继自动回退）实时控制桌面 3D 手机。
+- **精细开源 3D 模型与连接自适应：** 内置轻量 Draco 压缩的 **CC-BY 4.0** 开源硬件模型（**iPhone 17 Pro / Pro Max**、**iPhone 17 / 16 / 16 Plus**、**iPhone 16 Pro / Pro Max**）及参数化 **Android（自适应比例）**旗舰机模型。手机连接时会发送屏幕规格与 Android `userAgentData` 信息（`web-device`），自动切换最接近的 3D 机型和物理尺寸，并支持一键切换 **机型与质感配色**（Obsidian / Silver / Natural / Deep Blue / Sage / Cosmic Orange）。详见 [3D 资产与致谢](docs/ASSETS.md)。
 - **手机端单机模式（Solo Mode）：** 手机直接打开网页即可进入全屏 **Elastic Tray** 游玩界面，内置手持姿态校准、触控拖拽回退、Web Audio 音效反馈，并可随时输入 6 位房间码与桌面配对。
 - **交互式 3D UI 展台（3D UI Showcase）：** 内置 3 套实时 Canvas2D 交互屏幕（**Audio Deck**、**Weather Card**、**Stack Cards**，配对后可由手机远程控制与倾斜），同时保留 **Local MP4** 本地录屏预览。
 
@@ -44,7 +45,11 @@ npm run dev -- --host 0.0.0.0   # 启动 Vite 开发服务器及 /api/room/:code
 npm run build:public            # 构建 dist/（base /）并移除私有 public/local-assets/
 ```
 
-线上部署采用单域名 **Cloudflare Workers Static Assets + Durable Object（`RoomRelay`）**，配置见 [`worker/wrangler.toml`](worker/wrangler.toml) 与 [`worker/src/index.ts`](worker/src/index.ts)，并通过 [`public/.assetsignore`](public/.assetsignore) 排除 `local-assets/`。
+线上部署采用单域名 **Cloudflare Workers Static Assets + Durable Object（`RoomRelay`）**，配置见 [`worker/wrangler.toml`](worker/wrangler.toml) 与 [`worker/src/index.ts`](worker/src/index.ts)，并通过 [`public/.assetsignore`](public/.assetsignore) 排除 `local-assets/`。公开轻量化 GLB 位于 `public/models/`，Draco 解码器自托管于 `public/draco/`。
+
+### 3D 模型开源致谢（CC-BY 4.0）
+
+在线版 iPhone 3D 外壳改制自 Sketchfab 创作者 **Ranguel**、**Zvoni10** 与 **MajdyModels** 的 [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) 模型。完整署名链接与改制说明见 [`docs/ASSETS.md`](docs/ASSETS.md)。本项目与 Apple Inc. 无关联。
 
 ---
 

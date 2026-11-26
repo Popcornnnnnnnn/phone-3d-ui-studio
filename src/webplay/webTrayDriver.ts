@@ -1,6 +1,7 @@
 import { Euler, Quaternion } from 'three'
 import { MarbleWorld, PHYSICS_DT, type MarbleWorldSnapshot } from '../../shared/marbleWorld.mjs'
 import { DEFAULT_MARBLE_SETTINGS, type MarbleSettings } from '../../shared/marbleSettings.mjs'
+import { DEFAULT_PHONE_PROFILE, type PhoneProfile } from '../../shared/phoneGeometry.mjs'
 import { SPATIAL_START } from '../../shared/spatialMath.mjs'
 import type { Quat } from '../../shared/spatialProtocol.mjs'
 
@@ -33,6 +34,7 @@ export interface WebTrayCallbacks {
 export class WebTrayDriver {
   private world: MarbleWorld
   private settings: WebPlaySettings
+  private profile: PhoneProfile
   private currentQuat = new Quaternion(...FLAT_PHONE_QUAT)
   private targetQuat = new Quaternion(...FLAT_PHONE_QUAT)
   private accumulatorSec = 0
@@ -42,9 +44,14 @@ export class WebTrayDriver {
   private hadActiveBall = true
   private callbacks: WebTrayCallbacks
 
-  constructor(settings: Partial<WebPlaySettings> = {}, callbacks: WebTrayCallbacks = {}) {
+  constructor(
+    settings: Partial<WebPlaySettings> = {},
+    callbacks: WebTrayCallbacks = {},
+    profile: PhoneProfile = DEFAULT_PHONE_PROFILE,
+  ) {
     this.settings = { ...DEFAULT_WEB_PLAY_SETTINGS, ...settings }
     this.callbacks = callbacks
+    this.profile = profile
     this.world = new MarbleWorld(
       { position: [...SPATIAL_START], quaternion: [...FLAT_PHONE_QUAT] },
       {
@@ -52,6 +59,7 @@ export class WebTrayDriver {
         ballDiameterMm: this.settings.ballDiameterMm,
         restitution: this.settings.restitution,
       },
+      this.profile,
     )
     this.hadActiveBall = this.world.activeBallId !== null
   }
@@ -60,8 +68,28 @@ export class WebTrayDriver {
     return this.world.geometry
   }
 
+  getProfile(): PhoneProfile {
+    return this.profile
+  }
+
   getSettings(): WebPlaySettings {
     return { ...this.settings }
+  }
+
+  setProfile(nextProfile: PhoneProfile) {
+    const prev = this.profile
+    if (
+      prev.id === nextProfile.id &&
+      prev.bodyMm.width === nextProfile.bodyMm.width &&
+      prev.bodyMm.height === nextProfile.bodyMm.height &&
+      prev.bodyMm.depth === nextProfile.bodyMm.depth &&
+      prev.displayMm.width === nextProfile.displayMm.width &&
+      prev.displayMm.height === nextProfile.displayMm.height
+    ) {
+      return
+    }
+    this.profile = nextProfile
+    this.restart()
   }
 
   setTargetQuaternion(q: Quat) {
@@ -113,6 +141,7 @@ export class WebTrayDriver {
         ballDiameterMm: this.settings.ballDiameterMm,
         restitution: this.settings.restitution,
       },
+      this.profile,
     )
     this.hadActiveBall = this.world.activeBallId !== null
   }

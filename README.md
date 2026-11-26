@@ -39,7 +39,8 @@
 Open **[phone3d.popcornnn.xyz](https://phone3d.popcornnn.xyz)** directly in any modern browser — no Xcode or app install required:
 
 - **Desktop Online Playground (`Play Online`):** Drag the interactive **Tilt Pad** (or use Arrow/`WASD` + `Space` to toss, `B` to add a ball, `R` to reset) powered by **120 Hz Rapier WASM physics** (`shared/marbleWorld.mjs`) running entirely client-side.
-- **QR Phone Pairing (`?pair=<CODE>`):** Scan the on-screen QR code with any iPhone or Android browser to drive the desktop 3D iPhone via **3DoF gyroscope orientation** and **flick-to-toss acceleration** over **WebRTC DataChannel** (with automatic WebSocket relay fallback via `/api/room/:code`).
+- **QR Phone Pairing (`?pair=<CODE>`):** Scan the on-screen QR code with any iPhone or Android browser to drive the desktop 3D phone via **3DoF gyroscope orientation** and **flick-to-toss acceleration** over **WebRTC DataChannel** (with automatic WebSocket relay fallback via `/api/room/:code`).
+- **Realistic Open-Source 3D Models & Auto Device Adaptation:** Includes compressed **CC-BY 4.0** 3D hardware silhouettes (**iPhone 17 Pro / Pro Max**, **iPhone 17 / 16 / 16 Plus**, **iPhone 16 Pro / Pro Max**) plus a parametric **Android (Adaptive)** flagship shell. Paired phones report screen geometry and Android `userAgentData` hints via `web-device` to auto-match the 3D shell and physics dimensions, with a 1-click **Phone Model & Finish** switcher (**Obsidian**, **Silver**, **Natural**, **Deep Blue**, **Sage**, **Cosmic Orange**). See [3D Assets & Credits](docs/ASSETS.md).
 - **Phone-Only Solo Mode:** Mobile visitors opening the site directly get an immediate full-screen **Elastic Tray** playground with handheld gyro calibration, touch-drag fallback, Web Audio catch/drop feedback, and a **Pair Desktop** modal.
 - **Interactive 3D UI Showcase (`3D UI Showcase`):** Switch between 3 built-in real-time Canvas2D demo screens (**Audio Deck**, **Weather Card**, **Stack Cards** — controllable remotely from a paired phone) or drop in your own **Local MP4**.
 
@@ -51,7 +52,11 @@ npm run dev -- --host 0.0.0.0   # Local Vite server + /api/room/:code WebSocket 
 npm run build:public            # Builds dist/ (base /) and strips private public/local-assets/
 ```
 
-Cloudflare deployment uses single-origin **Workers Static Assets + Durable Object (`RoomRelay`)** configured in [`worker/wrangler.toml`](worker/wrangler.toml) and [`worker/src/index.ts`](worker/src/index.ts), with [`public/.assetsignore`](public/.assetsignore) excluding `local-assets/`.
+Cloudflare deployment uses single-origin **Workers Static Assets + Durable Object (`RoomRelay`)** configured in [`worker/wrangler.toml`](worker/wrangler.toml) and [`worker/src/index.ts`](worker/src/index.ts), with [`public/.assetsignore`](public/.assetsignore) excluding `local-assets/`. Processed public GLBs live in `public/models/` alongside self-hosted Three.js Draco decoders in `public/draco/`.
+
+### 3D Model Credits (CC-BY 4.0)
+
+Bundled iPhone silhouettes are adapted under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) from Sketchfab creators **Ranguel**, **Zvoni10**, and **MajdyModels**. Full source links and modifications are documented in [`docs/ASSETS.md`](docs/ASSETS.md). Not affiliated with Apple Inc.
 
 ---
 

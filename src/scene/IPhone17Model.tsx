@@ -26,9 +26,18 @@ import type {
   LivePoseKinematics,
   PoseRenderDiagnostics,
 } from '../studio/useLivePhoneSource'
+import {
+  DEFAULT_PHONE_FINISH_ID,
+  DEFAULT_PHONE_PROFILE,
+  type PhoneFinishId,
+  type PhoneProfile,
+} from '../../shared/phoneGeometry.mjs'
+import { publicPhoneAssetForProfile } from '../model/publicPhoneAssets'
 import { AppleMark } from './AppleMark'
+import { AdaptiveAndroidShell } from './AdaptiveAndroidShell'
 import { LocalIPhone17Asset } from './LocalIPhone17Asset'
 import { PhoneShell } from './PhoneShell'
+import { PhoneGlbErrorBoundary, PublicPhoneGlbAsset } from './PublicPhoneGlbAsset'
 import { RearCameraSystem } from './RearCameraSystem'
 import { ScreenSurface } from './ScreenSurface'
 
@@ -38,6 +47,8 @@ interface IPhone17ModelProps {
   view: ReviewView
   orientation: ScreenOrientation
   screenMedia: ScreenMedia | null
+  profile?: PhoneProfile
+  finishId?: PhoneFinishId
   livePoseRef?: RefObject<PoseSample | null>
   livePoseKinematicsRef?: RefObject<LivePoseKinematics | null>
   livePoseSmoothingRate?: number
@@ -126,7 +137,13 @@ function PhoneLoadingPlaceholder() {
   )
 }
 
-function DynamicIslandSurface() {
+function DynamicIslandSurface({
+  centerY = importedDynamicIsland.centerY,
+  surfaceZ = IPHONE_17_SCENE.depth / 2 + 0.0014,
+}: {
+  centerY?: number
+  surfaceZ?: number
+}) {
   const geometry = useMemo(
     () =>
       createRoundedRectangleGeometry(
@@ -144,11 +161,7 @@ function DynamicIslandSurface() {
     <mesh
       geometry={geometry}
       name="dynamic-island"
-      position={[
-        0,
-        importedDynamicIsland.centerY,
-        IPHONE_17_SCENE.depth / 2 + 0.0012,
-      ]}
+      position={[0, centerY, surfaceZ]}
     >
       <meshBasicMaterial color="#020305" toneMapped={false} />
     </mesh>
@@ -291,6 +304,8 @@ export function IPhone17Model({
   view,
   orientation,
   screenMedia,
+  profile = DEFAULT_PHONE_PROFILE,
+  finishId = DEFAULT_PHONE_FINISH_ID,
   livePoseRef,
   livePoseKinematicsRef,
   livePoseSmoothingRate = 20,
@@ -428,6 +443,19 @@ export function IPhone17Model({
     publishRenderDiagnostics()
   })
 
+  const bodyDepth = millimetersToScene(profile.bodyMm.depth)
+  const displayWidth = millimetersToScene(profile.displayMm.width)
+  const displayHeight = millimetersToScene(profile.displayMm.height)
+  const screenCornerRadius = Math.min(displayWidth, displayHeight) * 0.105
+  const screenSurfaceZ = bodyDepth / 2 + 0.0008
+  const islandCenterY = displayHeight / 2 - millimetersToScene(5.4)
+  const islandSurfaceZ = bodyDepth / 2 + 0.0014
+  const publicAsset = publicPhoneAssetForProfile(profile.id)
+  const useLocalProModel =
+    profile.id === 'iphone-17' && finishId === 'obsidian' && localAssetAvailability === true
+  const awaitingLocalCheck =
+    profile.id === 'iphone-17' && finishId === 'obsidian' && localAssetAvailability === undefined
+
   return (
     <group
       name="iphone-17-root"
@@ -442,9 +470,21 @@ export function IPhone17Model({
       ]}
       position={externallyDriven ? [0, 0, 0] : [0, useTabletopStandard ? TABLETOP_PHONE_CENTER_Y : 0.1, 0]}
     >
-      {localAssetAvailability === undefined ? (
+      {profile.id === 'android-adaptive' ? (
+        <>
+          <AdaptiveAndroidShell profile={profile} finishId={finishId} />
+          <ScreenSurface
+            media={screenMedia}
+            orientation={orientation}
+            displayWidth={displayWidth}
+            displayHeight={displayHeight}
+            cornerRadius={screenCornerRadius}
+            surfaceZ={screenSurfaceZ}
+          />
+        </>
+      ) : awaitingLocalCheck ? (
         <PhoneLoadingPlaceholder />
-      ) : localAssetAvailability ? (
+      ) : useLocalProModel ? (
         <Suspense fallback={<PhoneLoadingPlaceholder />}>
           <LocalIPhone17Asset />
           <ImportedBottomFace />
@@ -455,6 +495,36 @@ export function IPhone17Model({
           />
           <DynamicIslandSurface />
         </Suspense>
+      ) : publicAsset ? (
+        <PhoneGlbErrorBoundary
+          fallback={
+            <>
+              <ProceduralIPhone17Shell />
+              <ScreenSurface media={screenMedia} orientation={orientation} />
+              <DynamicIslandSurface />
+            </>
+          }
+        >
+          <Suspense fallback={<ProceduralIPhone17Shell />}>
+            <PublicPhoneGlbAsset
+              asset={publicAsset}
+              profile={profile}
+              finishId={finishId}
+            />
+            <ScreenSurface
+              media={screenMedia}
+              orientation={orientation}
+              displayWidth={displayWidth}
+              displayHeight={displayHeight}
+              cornerRadius={screenCornerRadius}
+              surfaceZ={screenSurfaceZ}
+            />
+            <DynamicIslandSurface
+              centerY={islandCenterY}
+              surfaceZ={islandSurfaceZ}
+            />
+          </Suspense>
+        </PhoneGlbErrorBoundary>
       ) : (
         <>
           <ProceduralIPhone17Shell />

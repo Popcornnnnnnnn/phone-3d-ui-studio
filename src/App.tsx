@@ -7,10 +7,12 @@ import { SpatialWorkspace } from './spatial/SpatialWorkspace'
 import { MarbleWorkspace } from './marble/MarbleWorkspace'
 import { WebPlayWorkspace } from './webplay/WebPlayWorkspace'
 import { MobilePlayView } from './webplay/MobilePlayView'
+import { DeviceAppearancePicker } from './webplay/DeviceAppearancePicker'
 import { useSharedRoom, type SharedRoomController } from './webplay/useSharedRoom'
 import { normalizeRoomCode } from '../shared/webPlayProtocol.mjs'
 import { DEMO_SCREENS } from './studio/demoScreens'
 import { useDemoScreen } from './studio/useDemoScreen'
+import { usePhoneAppearance } from './model/usePhoneAppearance'
 import {
   IPHONE_17_MM,
   type ReviewView,
@@ -244,6 +246,12 @@ function MirroringApp({
     ),
   )
   const preset = useMemo(() => findStudioPreset(presetId), [presetId])
+  const appearance = usePhoneAppearance()
+  const { applyRemoteDevice } = appearance
+  const peerDevice = sharedRoom?.peerDevice ?? null
+  useEffect(() => {
+    if (peerDevice) applyRemoteDevice(peerDevice)
+  }, [applyRemoteDevice, peerDevice])
   const demoScreen = useDemoScreen(active && sourceMode === 'demo', sharedRoom)
   const localVideo = useLocalVideoSource(active && sourceMode === 'local')
   const livePhone = useLivePhoneSource(renderConfiguration, liveRenderScheduler, active && sourceMode === 'live')
@@ -285,6 +293,8 @@ function MirroringApp({
             view={view}
             orientation={activeOrientation}
             screenMedia={screenMedia}
+            profile={appearance.profile}
+            finishId={appearance.finishId}
             livePoseRef={
               demoPairedPose
                 ? demoScreen.poseRef
@@ -515,6 +525,8 @@ function MirroringApp({
               Side uses an orthographic camera and horizontal grid so a physical 45° lift appears as a true 45° profile.
             </p>}
           </section>
+
+          <DeviceAppearancePicker appearance={appearance} />
 
           <details className="workspace-disclosure">
             <summary>Scene</summary>

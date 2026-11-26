@@ -14,6 +14,10 @@ interface ScreenSurfaceProps {
   media: ScreenMedia | null
   orientation: ScreenOrientation
   useImportedGeometry?: boolean
+  displayWidth?: number
+  displayHeight?: number
+  cornerRadius?: number
+  surfaceZ?: number
 }
 
 function ScreenGlass({ geometry }: { geometry: BufferGeometry }) {
@@ -40,21 +44,28 @@ function ScreenGlass({ geometry }: { geometry: BufferGeometry }) {
   )
 }
 
-function ProceduralScreenSurface({ media, orientation }: ScreenSurfaceProps) {
+function ProceduralScreenSurface({
+  media,
+  orientation,
+  displayWidth = IPHONE_17_SCENE.displayWidth,
+  displayHeight = IPHONE_17_SCENE.displayHeight,
+  cornerRadius = 0.135,
+  surfaceZ = IPHONE_17_SCENE.depth / 2 + 0.0008,
+}: ScreenSurfaceProps) {
   const geometry = useMemo(
     () =>
       createRoundedRectangleGeometry(
-        IPHONE_17_SCENE.displayWidth,
-        IPHONE_17_SCENE.displayHeight,
-        0.135,
+        displayWidth,
+        displayHeight,
+        cornerRadius,
       ),
-    [],
+    [cornerRadius, displayHeight, displayWidth],
   )
 
   useEffect(() => () => geometry.dispose(), [geometry])
 
   return (
-    <group position={[0, 0, IPHONE_17_SCENE.depth / 2 + 0.0008]}>
+    <group position={[0, 0, surfaceZ]}>
       <mesh geometry={geometry} name="screen-mesh">
         <ScreenSurfaceMaterial media={media} orientation={orientation} />
       </mesh>
@@ -103,9 +114,22 @@ export function ScreenSurface({
   media,
   orientation,
   useImportedGeometry = false,
+  displayWidth,
+  displayHeight,
+  cornerRadius,
+  surfaceZ,
 }: ScreenSurfaceProps) {
   if (!useImportedGeometry) {
-    return <ProceduralScreenSurface media={media} orientation={orientation} />
+    return (
+      <ProceduralScreenSurface
+        media={media}
+        orientation={orientation}
+        displayWidth={displayWidth}
+        displayHeight={displayHeight}
+        cornerRadius={cornerRadius}
+        surfaceZ={surfaceZ}
+      />
+    )
   }
 
   return <ImportedScreenSurface media={media} orientation={orientation} />
