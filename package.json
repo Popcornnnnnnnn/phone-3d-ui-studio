@@ -12,7 +12,7 @@
     "benchmark:sweep": "node scripts/benchmark-sweep.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:public": "tsc -b && vite build && rm -rf dist/local-assets",
+    "build:public": "VITE_BASE_PATH=/ npm run build && rm -rf dist/local-assets",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",

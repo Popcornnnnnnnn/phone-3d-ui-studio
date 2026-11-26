@@ -1,12 +1,35 @@
-# Phone 3D UI Studio
+<div align="center">
+  <img src="public/icon-192.png" alt="Phone 3D UI Studio 图标" width="88" />
+  <h1>Phone 3D UI Studio</h1>
+  <p>
+    <strong>零安装在线 3D iPhone UI 展台与 Elastic Tray 物理游乐场 —— 同时保留本地 Mac + ARKit 6DoF 空间交互（Pro）。</strong><br />
+    手机打开即玩单机模式，桌面扫码即可用手机陀螺仪通过 WebRTC 实时操控，也可直接在浏览器中预览交互式 3D UI。
+  </p>
 
-[English](README.md) · **简体中文**
+  <p>
+    <a href="README.md">English</a> · <strong>简体中文</strong>
+  </p>
 
-**零安装浏览器在线游乐场（手机陀螺仪 / 桌面摇杆）+ 内置交互式 3D UI 演示 + 本地 Mac 与 iPhone ARKit 6DoF 空间交互（Pro）。**
+  <p>
+    <a href="https://phone3d.popcornnn.xyz"><img src="https://img.shields.io/badge/在线游玩-phone3d.popcornnn.xyz-0D96F6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="在线游玩 phone3d.popcornnn.xyz" /></a>
+    <a href="https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Popcornnnnnnnn/phone-3d-ui-studio/ci.yml?style=for-the-badge&label=CI" alt="CI 状态" /></a>
+    <a href="https://github.com/Popcornnnnnnnn/phone-3d-ui-studio/releases/tag/v0.2.1-alpha.1"><img src="https://img.shields.io/badge/开发者预览-v0.2.1--alpha.1-FF9F0A?style=for-the-badge" alt="预览版本" /></a>
+  </p>
+
+  <p>
+    <a href="https://phone3d.popcornnn.xyz">在线游玩</a> ·
+    <a href="#零安装在线游乐场web-playground">在线游乐场</a> ·
+    <a href="#空间交互演示">空间演示</a> ·
+    <a href="#本地-arkit-6dofpro与原生-mac-预览">本地 Pro 模式</a> ·
+    <a href="#开发与验证">开发与验证</a>
+  </p>
+</div>
+
+---
 
 ## 零安装在线游乐场（Web Playground）
 
-访客无需 Xcode 或安装 App，打开网页即可直接体验：
+直接打开 **[phone3d.popcornnn.xyz](https://phone3d.popcornnn.xyz)**，无需 Xcode 或安装任何 App：
 
 - **桌面在线游玩（Play Online）：** 拖动 **Tilt Pad**（或使用方向键/`WASD` 倾斜、`Space` 抛球、`B` 补球、`R` 重置），由浏览器端 **120 Hz Rapier WASM 物理引擎**（`shared/marbleWorld.mjs`）实时驱动。
 - **手机扫码配对（`?pair=<CODE>`）：** 用 iPhone 或 Android 手机浏览器扫描页面上的二维码，通过 **3DoF 陀螺仪姿态**与**上甩加速度抛球**，经 **WebRTC DataChannel**（并支持 `/api/room/:code` WebSocket 中继自动回退）实时控制桌面 3D iPhone。
@@ -18,24 +41,16 @@
 ```sh
 npm ci
 npm run dev -- --host 0.0.0.0   # 启动 Vite 开发服务器及 /api/room/:code 房间中继
-npm run build:public            # 构建 dist/ 并移除私有 public/local-assets/
+npm run build:public            # 构建 dist/（base /）并移除私有 public/local-assets/
 ```
 
-线上部署采用单域名 **Cloudflare Workers Static Assets + Durable Object（`RoomRelay`）**，配置见 [`worker/wrangler.toml`](worker/wrangler.toml) 与 [`worker/src/index.ts`](worker/src/index.ts)（目标域名 `https://phone3d.popcornnn.xyz`），并通过 [`public/.assetsignore`](public/.assetsignore) 排除 `local-assets/`。
+线上部署采用单域名 **Cloudflare Workers Static Assets + Durable Object（`RoomRelay`）**，配置见 [`worker/wrangler.toml`](worker/wrangler.toml) 与 [`worker/src/index.ts`](worker/src/index.ts)，并通过 [`public/.assetsignore`](public/.assetsignore) 排除 `local-assets/`。
 
 ---
 
-## 本地 ARKit 6DoF（Pro）与原生 Mac 预览
+## 空间交互演示
 
-在局域网下，真机 iPhone 可作为共享三维空间中的 6DoF 托盘：轻抬抛起小球、移动接住，并在落地后于手机端点击 **Add ball** 补球。
-
-**开发者预览边界：** 原生 Mac 应用内嵌本地桥接与扫码面板，使用本地 ad-hoc 签名；跨机器公开分发、App Store 公证以及真机 5 分钟无线连续性验收仍待完成。iOS 原生 ARKit 6DoF 伴侣构建仍需 Xcode 27 与个人开发签名。
-
-- [Mac 安装、配对与验证边界](docs/MAC_APP.zh-CN.md)
-- [中文首次安装指南](docs/QUICKSTART.zh-CN.md) · [iPhone 构建说明](ios/README.md) · [发布准备度](docs/RELEASE_READINESS.md)
-- [S2.1 体验与验收记录](docs/ELASTIC_TRAY.md) · [产品目标](docs/PRODUCT_GOAL.md) · [空间架构](docs/ARCHITECTURE.md)
-
-### 空间交互脚本演示
+下面展示 **S2.1 Elastic Tray** 体验：轻抬托盘抛起小球，移动或倾斜接住它；没接住时点击 **Add ball** 继续。
 
 ![S2.1 脚本演示：轻抬托盘抛起小球，小球通过物理碰撞重新落回托盘。](docs/media/toss-and-catch.gif)
 
@@ -50,7 +65,17 @@ npm run build:public            # 构建 dist/ 并移除私有 public/local-asse
 </tr>
 </table>
 
-> 媒体说明：上述 GIF 为脚本渲染演示，不作为实机无线可靠性证据（见 [docs/media/README.md](docs/media/README.md)）。
+> **渲染说明：** 上述动图为基于程序化手机模型和 Rapier 物理引擎的**脚本渲染**，用于展示交互设计，并非真机实拍或无线可靠性证明（详见[媒体说明与限制](docs/media/README.md)）。
+
+---
+
+## 本地 ARKit 6DoF（Pro）与原生 Mac 预览
+
+如需局域网真机 6DoF 空间位移与原生 ScreenCaptureKit 投屏：
+
+- **原生 Mac 应用（Apple Silicon）：** `npm run app:build && open "build/macos/Phone 3D Studio.app"`（本地 ad-hoc 签名，参见 [Mac 安装、配对与验证边界](docs/MAC_APP.zh-CN.md)）。
+- **本地 Node 桥接 + Vite：** `npm start`（iOS ARKit 6DoF 伴侣构建需 **Node.js 24+**、**Xcode 27** 与 **iOS 27** 个人签名）。
+- **文档与架构：** [中文首次安装指南](docs/QUICKSTART.zh-CN.md) · [iPhone 构建说明](ios/README.md) · [产品目标](docs/PRODUCT_GOAL.md) · [空间架构](docs/ARCHITECTURE.md) · [S2.1 验收记录](docs/ELASTIC_TRAY.md)
 
 ## 开发与验证
 

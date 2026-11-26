@@ -38,7 +38,7 @@ interface EnvironmentMotionState {
   lowWindows: number
 }
 
-const DAYLIGHT_SKY_URL = '/daylight-sky-natural-v2.png'
+const DAYLIGHT_SKY_URL = `${import.meta.env.BASE_URL}daylight-sky-natural-v2.png`
 const DAYLIGHT_SKY_ASPECT = 1672 / 941
 
 const backdropVertexShader = /* glsl */ `

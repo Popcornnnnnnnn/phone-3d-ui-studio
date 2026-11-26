@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { isHostedStaticDemo } from '../studio/hostedDemo'
 import { SpatialTracker } from './spatialTracking'
 
 export function useSpatialTracking(active = true) {
@@ -12,6 +13,12 @@ export function useSpatialTracking(active = true) {
     let attempt = 0
     const connect = () => {
       if (stopped) return
+      if (isHostedStaticDemo()) {
+        tracker.disconnect(
+          'Live iPhone spatial mode requires the local Mac bridge (npm start). Switch to Screen mirroring to explore the 3D studio in your browser.',
+        )
+        return
+      }
       const override = new URLSearchParams(location.search).get('bridge')
       const url = new URL(override ?? 'ws://127.0.0.1:4319')
       url.searchParams.set('role', 'browser-spatial')

@@ -11,7 +11,7 @@ import {
 import { IPHONE_17_MM, MODEL_HEIGHT } from '../model/iphone17'
 
 export const LOCAL_IPHONE_17_ASSET_URL =
-  '/local-assets/iphone-17/iphone-17-black.glb'
+  `${import.meta.env.BASE_URL}local-assets/iphone-17/iphone-17-black.glb`
 
 export const LOCAL_IPHONE_17_MODEL_SCALE =
   MODEL_HEIGHT / (IPHONE_17_MM.height / 1000)

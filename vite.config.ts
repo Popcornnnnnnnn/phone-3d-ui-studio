@@ -27,7 +27,12 @@ function webplayRoomRelayPlugin(): Plugin {
   }
 }
 
+const basePath =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process?.env?.VITE_BASE_PATH ?? './'
+
 export default defineConfig({
+  base: basePath,
   plugins: [react(), webplayRoomRelayPlugin()],
   test: {
     exclude: [...configDefaults.exclude, 'build/**', 'captures/**'],
