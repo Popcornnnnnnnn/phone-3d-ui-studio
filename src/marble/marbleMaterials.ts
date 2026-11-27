@@ -8,11 +8,11 @@ export function createClippedMarbleMaterial(
 ) {
   const material = new MeshPhysicalMaterial({
     color,
-    roughness: 0.14,
-    metalness: 0.12,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.06,
-    envMapIntensity: 1.55,
+    roughness: 0.16,
+    metalness: 0.08,
+    clearcoat: 0.9,
+    clearcoatRoughness: 0.08,
+    envMapIntensity: 1.2,
   })
   material.onBeforeCompile = (shader) => {
     shader.uniforms.inversePhone = { value: inverse }

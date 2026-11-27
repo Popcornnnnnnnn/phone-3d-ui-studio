@@ -2,7 +2,7 @@ import { Html, RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import type { RefObject } from 'react'
-import { Color, DoubleSide, Quaternion, type Group } from 'three'
+import { Color, DoubleSide, ExtrudeGeometry, Quaternion, type Group } from 'three'
 import {
   IPHONE_17_SCENE,
   TABLETOP_PHONE_CENTER_Y,
@@ -11,7 +11,7 @@ import {
   type ReviewView,
   type ScreenOrientation,
 } from '../model/iphone17'
-import { createRoundedRectangleGeometry } from '../model/roundedRectangle'
+import { createRoundedRectangleGeometry, createRoundedRectangleShape } from '../model/roundedRectangle'
 import { useLocalAssetAvailability } from '../model/useLocalAssetAvailability'
 import type { PoseSample } from '../studio/contracts'
 import type { QuaternionTuple } from '../studio/liveProtocol'
@@ -32,7 +32,10 @@ import {
   type PhoneFinishId,
   type PhoneProfile,
 } from '../../shared/phoneGeometry.mjs'
-import { publicPhoneAssetForProfile } from '../model/publicPhoneAssets'
+import {
+  fittedPhoneDisplayMetrics,
+  publicPhoneAssetForProfile,
+} from '../model/publicPhoneAssets'
 import { AppleMark } from './AppleMark'
 import { AdaptiveAndroidShell } from './AdaptiveAndroidShell'
 import { LocalIPhone17Asset } from './LocalIPhone17Asset'
@@ -67,8 +70,8 @@ const viewRotations: Record<ReviewView, [number, number, number]> = {
 }
 
 const importedDynamicIsland = {
-  width: millimetersToScene(19.2),
-  height: millimetersToScene(5.4),
+  width: millimetersToScene(18.2),
+  height: millimetersToScene(5.1),
   centerY: millimetersToScene(67.2),
 } as const
 
@@ -158,12 +161,83 @@ function DynamicIslandSurface({
   useEffect(() => () => geometry.dispose(), [geometry])
 
   return (
-    <mesh
-      geometry={geometry}
-      name="dynamic-island"
-      position={[0, centerY, surfaceZ]}
-    >
-      <meshBasicMaterial color="#020305" toneMapped={false} />
+    <group name="dynamic-island" position={[0, centerY, surfaceZ]}>
+      <mesh geometry={geometry}>
+        <meshBasicMaterial color="#020305" toneMapped={false} />
+      </mesh>
+      <mesh position={[importedDynamicIsland.width * 0.27, 0, 0.00025]}>
+        <circleGeometry args={[importedDynamicIsland.height * 0.28, 24]} />
+        <meshBasicMaterial
+          color="#0c1322"
+          toneMapped={false}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
+        />
+      </mesh>
+      <mesh position={[importedDynamicIsland.width * 0.27, 0, 0.0005]}>
+        <circleGeometry args={[importedDynamicIsland.height * 0.14, 20]} />
+        <meshBasicMaterial
+          color="#050810"
+          toneMapped={false}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+/**
+ * Watertight Ceramic Shield black glass bezel nestled flush against the GLB metal lip
+ * and extending slightly into the chassis cavity to eliminate side-angle gaps or recessed trenches.
+ */
+function FrontGlassBezel({
+  width,
+  height,
+  cornerRadius,
+  surfaceZ,
+}: {
+  width: number
+  height: number
+  cornerRadius: number
+  surfaceZ: number
+}) {
+  const geometry = useMemo(() => {
+    const bevel = 0.0022
+    const extrudeDepth = 0.014
+    const innerWidth = Math.max(0.1, width - bevel * 2)
+    const innerHeight = Math.max(0.1, height - bevel * 2)
+    const innerRadius = Math.max(0.01, cornerRadius - bevel)
+    const shape = createRoundedRectangleShape(innerWidth, innerHeight, innerRadius)
+    const extruded = new ExtrudeGeometry(shape, {
+      depth: extrudeDepth,
+      bevelEnabled: true,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 3,
+      curveSegments: 28,
+      steps: 1,
+    })
+    extruded.translate(0, 0, -(extrudeDepth + bevel))
+    return extruded
+  }, [cornerRadius, height, width])
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+
+  return (
+    <mesh geometry={geometry} name="front-glass-bezel" position={[0, 0, surfaceZ]}>
+      <meshPhysicalMaterial
+        color="#050608"
+        metalness={0.04}
+        roughness={0.14}
+        clearcoat={0.65}
+        clearcoatRoughness={0.08}
+        envMapIntensity={0.35}
+      />
     </mesh>
   )
 }
@@ -443,14 +517,20 @@ export function IPhone17Model({
     publishRenderDiagnostics()
   })
 
-  const bodyWidth = millimetersToScene(profile.bodyMm.width)
-  const bodyHeight = millimetersToScene(profile.bodyMm.height)
-  const bodyDepth = millimetersToScene(profile.bodyMm.depth)
-  const fittedDisplayWidth = Math.min(millimetersToScene(profile.displayMm.width), bodyWidth * 0.908)
-  const fittedDisplayHeight = Math.min(millimetersToScene(profile.displayMm.height), bodyHeight * 0.952)
-  const screenCornerRadius = Math.min(fittedDisplayWidth, fittedDisplayHeight) * 0.168
+  const displayMetrics = useMemo(() => fittedPhoneDisplayMetrics(profile), [profile])
+  const {
+    bodyDepth,
+    bezelWidth,
+    bezelHeight,
+    bezelCornerRadius,
+    displayWidth: fittedDisplayWidth,
+    displayHeight: fittedDisplayHeight,
+    displayCornerRadius: screenCornerRadius,
+    islandOffsetFromTop,
+  } = displayMetrics
+  const bezelSurfaceZ = bodyDepth / 2 + 0.00035
   const screenSurfaceZ = bodyDepth / 2 + 0.0008
-  const islandCenterY = fittedDisplayHeight / 2 - millimetersToScene(6.2)
+  const islandCenterY = fittedDisplayHeight / 2 - islandOffsetFromTop
   const islandSurfaceZ = bodyDepth / 2 + 0.0014
   const publicAsset = publicPhoneAssetForProfile(profile.id)
   const useLocalProModel =
@@ -512,6 +592,12 @@ export function IPhone17Model({
               asset={publicAsset}
               profile={profile}
               finishId={finishId}
+            />
+            <FrontGlassBezel
+              width={bezelWidth}
+              height={bezelHeight}
+              cornerRadius={bezelCornerRadius}
+              surfaceZ={bezelSurfaceZ}
             />
             <ScreenSurface
               media={screenMedia}

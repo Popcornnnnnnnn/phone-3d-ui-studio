@@ -4,7 +4,8 @@ import type { WorldSnapshot } from '../../shared/worldProtocol.mjs'
 export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, height: number, s: WorldSnapshot | null) {
   const g = s?.geometry ?? G
   const scale = width / g.width
-  const outerRadius = Math.min(width, height) * 0.168
+  const cornerRatio = Math.min(0.22, Math.max(0.08, g.cornerRadius / Math.min(g.width, g.height)))
+  const outerRadius = Math.max(12, Math.min(width, height) * cornerRatio)
 
   c.clearRect(0, 0, width, height)
   c.save()
@@ -12,11 +13,11 @@ export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, hei
   c.roundRect(0, 0, width, height, outerRadius)
   c.clip()
 
-  // Deep OLED studio gradient backdrop
+  // Deep OLED studio gradient backdrop with subtle edge separation against black bezel
   const bg = c.createLinearGradient(0, 0, width * 0.35, height)
-  bg.addColorStop(0, '#090d14')
-  bg.addColorStop(0.55, '#06080d')
-  bg.addColorStop(1, '#040508')
+  bg.addColorStop(0, '#0d131d')
+  bg.addColorStop(0.55, '#080c13')
+  bg.addColorStop(1, '#05070c')
   c.fillStyle = bg
   c.fillRect(0, 0, width, height)
 
@@ -28,9 +29,17 @@ export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, hei
   c.fillStyle = glow
   c.fillRect(0, 0, width, height)
 
+  // Hairline outer OLED perimeter reflection so the active screen separates cleanly from the 1.1mm bezel
+  c.strokeStyle = 'rgba(165, 198, 240, 0.09)'
+  c.lineWidth = 1
+  c.beginPath()
+  c.roundRect(0.5, 0.5, width - 1, height - 1, Math.max(1, outerRadius - 0.5))
+  c.stroke()
+
   // Precision concentric reticle & fine crosshairs
   const cx = width / 2
   const cy = height / 2
+  const inset = Math.max(3, width * 0.008)
   c.strokeStyle = 'rgba(255, 255, 255, 0.06)'
   c.lineWidth = 1
   c.beginPath()
@@ -46,13 +55,12 @@ export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, hei
   c.moveTo(cx, cy - width * 0.38)
   c.lineTo(cx, cy + width * 0.38)
   c.moveTo(cx - width * 0.38, cy)
-  c.lineTo(width - 10, cy)
+  c.lineTo(width - inset - 18, cy)
   c.stroke()
   c.setLineDash([])
 
-  // Rounded inner tray rail with open right exit gate
-  const inset = Math.max(8, width * 0.025)
-  const innerRadius = Math.max(12, outerRadius - inset * 0.9)
+  // Rounded inner tray rail hugging the OLED perimeter with open right exit gate
+  const innerRadius = Math.max(8, outerRadius - inset)
   const gap = (g.exitHalfWidth / g.height) * height
 
   c.save()
@@ -62,8 +70,8 @@ export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, hei
   c.rect(0, cy - gap, width - inset * 2, gap * 2)
   c.clip()
 
-  c.strokeStyle = 'rgba(255, 255, 255, 0.18)'
-  c.lineWidth = 1.75
+  c.strokeStyle = 'rgba(255, 255, 255, 0.14)'
+  c.lineWidth = 1.4
   c.beginPath()
   c.roundRect(inset, inset, width - inset * 2, height - inset * 2, innerRadius)
   c.stroke()
@@ -100,7 +108,7 @@ export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, hei
     : s?.region === 'air'
       ? 'AIRBORNE'
       : 'READY'
-  const hudY = Math.round(height * 0.115)
+  const hudY = Math.round(height * 0.122)
   c.textAlign = 'center'
   c.fillStyle = 'rgba(244, 245, 248, 0.92)'
   c.font = `600 ${Math.round(width * 0.082)}px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif`

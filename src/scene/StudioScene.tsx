@@ -180,27 +180,27 @@ interface CameraSetup {
 
 const uprightCameraSetups: Record<ReviewView, CameraSetup> = {
   calibration: {
-    position: [0, 0.1, 5.4],
+    position: [0, 0.1, 6.0],
     target: [0, 0.05, 0],
     up: [0, 1, 0],
   },
   hero: {
-    position: [2.8, 1.5, 5.2],
+    position: [2.9, 1.45, 5.75],
     target: [0, 0.05, 0],
     up: [0, 1, 0],
   },
   side: {
-    position: [5.4, 0.1, 0],
+    position: [5.8, 0.1, 0],
     target: [0, 0.05, 0],
     up: [0, 1, 0],
   },
   front: {
-    position: [0, 0.1, 5.4],
+    position: [0, 0.1, 6.0],
     target: [0, 0.05, 0],
     up: [0, 1, 0],
   },
   back: {
-    position: [0, 0.1, -5.4],
+    position: [0, 0.1, -6.0],
     target: [0, 0.05, 0],
     up: [0, 1, 0],
   },

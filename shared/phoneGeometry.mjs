@@ -150,10 +150,10 @@ export const PHONE_FINISHES = Object.freeze([
   Object.freeze({
     id: 'obsidian',
     label: 'Obsidian',
-    swatch: '#272a30',
-    frameHex: '#3c4048',
-    backHex: '#1f2228',
-    buttonHex: '#4b505a',
+    swatch: '#23262d',
+    frameHex: '#282c34',
+    backHex: '#181b21',
+    buttonHex: '#333842',
   }),
   Object.freeze({
     id: 'silver',

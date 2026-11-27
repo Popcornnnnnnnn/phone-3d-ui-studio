@@ -90,6 +90,11 @@
 .spatial-fullscreen-status { font-weight: 600; color: var(--text-primary); }
 .spatial-fullscreen-exit-hint { font-size: 11px; color: var(--text-tertiary); padding-left: 6px; }
 .studio-app { min-height: 100dvh; display: flex; flex-direction: column; background: var(--app-background); }
+@media(min-width: 761px) {
+  .studio-app { height: 100dvh; overflow: hidden; }
+  .studio-mode-nav, .spatial-experience-nav { flex: none; }
+  .spatial-experience { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+}
 :root[data-desktop=true] :is(body, #root, .studio-app) { height: 100dvh; min-height: 0; overflow: hidden; }
 :root[data-desktop=true] .studio-app { display: flex; flex-direction: column; }
 :root[data-desktop=true] .studio-mode-nav { flex: none; padding-block: 6px; }

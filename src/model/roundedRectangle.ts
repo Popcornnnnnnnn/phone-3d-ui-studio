@@ -9,18 +9,58 @@ export function createRoundedRectangleShape(
   const right = width / 2
   const bottom = -height / 2
   const top = height / 2
-  const safeRadius = Math.min(radius, width / 2, height / 2)
+  const safeRadius = Number.isFinite(radius)
+    ? Math.max(0, Math.min(radius, width / 2, height / 2))
+    : 0
   const shape = new Shape()
+
+  if (safeRadius <= 1e-4) {
+    shape.moveTo(left, bottom)
+    shape.lineTo(right, bottom)
+    shape.lineTo(right, top)
+    shape.lineTo(left, top)
+    shape.closePath()
+    return shape
+  }
 
   shape.moveTo(left + safeRadius, bottom)
   shape.lineTo(right - safeRadius, bottom)
-  shape.quadraticCurveTo(right, bottom, right, bottom + safeRadius)
+  shape.absarc(
+    right - safeRadius,
+    bottom + safeRadius,
+    safeRadius,
+    -Math.PI / 2,
+    0,
+    false,
+  )
   shape.lineTo(right, top - safeRadius)
-  shape.quadraticCurveTo(right, top, right - safeRadius, top)
+  shape.absarc(
+    right - safeRadius,
+    top - safeRadius,
+    safeRadius,
+    0,
+    Math.PI / 2,
+    false,
+  )
   shape.lineTo(left + safeRadius, top)
-  shape.quadraticCurveTo(left, top, left, top - safeRadius)
+  shape.absarc(
+    left + safeRadius,
+    top - safeRadius,
+    safeRadius,
+    Math.PI / 2,
+    Math.PI,
+    false,
+  )
   shape.lineTo(left, bottom + safeRadius)
-  shape.quadraticCurveTo(left, bottom, left + safeRadius, bottom)
+  shape.absarc(
+    left + safeRadius,
+    bottom + safeRadius,
+    safeRadius,
+    Math.PI,
+    Math.PI * 1.5,
+    false,
+  )
+  shape.closePath()
 
   return shape
 }

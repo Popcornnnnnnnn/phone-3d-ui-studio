@@ -67,7 +67,12 @@ function ProceduralScreenSurface({
   return (
     <group position={[0, 0, surfaceZ]}>
       <mesh geometry={geometry} name="screen-mesh">
-        <ScreenSurfaceMaterial media={media} orientation={orientation} />
+        <ScreenSurfaceMaterial
+          media={media}
+          orientation={orientation}
+          displayWidth={displayWidth}
+          displayHeight={displayHeight}
+        />
       </mesh>
       <ScreenGlass geometry={geometry} />
     </group>

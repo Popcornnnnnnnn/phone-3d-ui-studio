@@ -368,12 +368,17 @@ export class DemoScreenRenderer {
     c.fillStyle = aura
     c.fillRect(0, 0, w, h)
 
+    const now = new Date()
+    const formattedDate = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+    }).format(now)
     c.textAlign = 'center'
     c.fillStyle = '#fafafa'
     c.font = '600 30px -apple-system, BlinkMacSystemFont, sans-serif'
-    c.fillText('Thursday, Nov 26', w / 2, 165)
+    c.fillText(formattedDate, w / 2, 165)
     c.font = '300 96px -apple-system, BlinkMacSystemFont, sans-serif'
-    const now = new Date()
     c.fillText(
       `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
       w / 2,

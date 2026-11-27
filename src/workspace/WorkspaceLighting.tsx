@@ -16,15 +16,15 @@ export function WorkspaceLighting({ daylight }: { daylight?: boolean } = {}) {
     <Environment resolution={256}>
       <Lightformer
         form="rect"
-        intensity={isLight ? 3.2 : 3.6}
+        intensity={isLight ? 3.2 : 2.4}
         color="#ffffff"
-        position={[0, 3.2, 0.8]}
+        position={isLight ? [0, 3.2, 0.8] : [0.6, 3.4, -0.9]}
         rotation={[Math.PI / 2, 0, 0]}
-        scale={[4.2, 5.2, 1]}
+        scale={isLight ? [4.2, 5.2, 1] : [3.4, 3.8, 1]}
       />
       <Lightformer
         form="rect"
-        intensity={isLight ? 2.4 : 3.0}
+        intensity={isLight ? 2.4 : 2.6}
         color="#e0edff"
         position={[-3.2, 1.1, 1.4]}
         rotation={[0, Math.PI / 2, 0]}
@@ -32,7 +32,7 @@ export function WorkspaceLighting({ daylight }: { daylight?: boolean } = {}) {
       />
       <Lightformer
         form="rect"
-        intensity={isLight ? 2.0 : 2.6}
+        intensity={isLight ? 2.0 : 2.2}
         color="#fff3e2"
         position={[3.2, 0.8, -1.8]}
         rotation={[0, -Math.PI / 2, 0]}
