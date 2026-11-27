@@ -19,6 +19,8 @@ VARIABLES
   d1LateMsgTried,         \* BOOLEAN: d1 attempted sending a late message while superseded
   d1ClientClosePending,   \* BOOLEAN: d1 client onclose(4001) not yet processed
   d1ClientState,          \* "paired" | "replaced" | "reconnecting"
+  phonePeerJoinedPending, \* BOOLEAN: peer-joined sent on Desktop2 takeover, awaiting Phone receipt
+  phonePeerLeftPending,   \* BOOLEAN: peer-left sent on Desktop2 disconnect, awaiting Phone receipt
   phoneStatus,            \* "paired-p2p" | "paired-relay" | "waiting-peer"
   phoneDcTarget,          \* "d1" | "d2" | "none"
   d2OfferState,           \* "none" | "creating" | "sent" | "open"
@@ -33,6 +35,8 @@ vars == <<
   d1LateMsgTried,
   d1ClientClosePending,
   d1ClientState,
+  phonePeerJoinedPending,
+  phonePeerLeftPending,
   phoneStatus,
   phoneDcTarget,
   d2OfferState,
@@ -48,6 +52,8 @@ Init ==
   /\ d1LateMsgTried = FALSE
   /\ d1ClientClosePending = FALSE
   /\ d1ClientState = "paired"
+  /\ phonePeerJoinedPending = FALSE
+  /\ phonePeerLeftPending = FALSE
   /\ phoneStatus = "paired-p2p"
   /\ phoneDcTarget = "d1"
   /\ d2OfferState = "none"
@@ -58,17 +64,33 @@ Init ==
 
 \* Desktop 2 joins the same room as role=desktop:
 \* - RoomRelay.fetch marks d1 superseded, closes d1 with 4001, activates d2, sends peer-joined to phone.
-\* - Phone RoomConnection handles peer-joined by calling teardownPeer() and entering paired-relay.
 \* - Desktop 2 RoomConnection starts startPeerAsOfferer() (creating offer / setLocalDescription in flight).
+\* - Phone continues holding its existing WebRTC DataChannel to d1 until it processes peer-joined.
 Desktop2TakesOver ==
   /\ activeDesktop = "d1"
   /\ activeDesktop' = "d2"
   /\ d1SupersededPending' = TRUE
   /\ d1ClientClosePending' = TRUE
+  /\ phonePeerJoinedPending' = TRUE
+  /\ d2OfferState' = "creating"
+  /\ UNCHANGED <<
+       d1LateMsgTried, d1ClientState, phoneStatus, phoneDcTarget,
+       d2ErrorPendingClose, peerLeftEvents, staleMsgRelayed, staleOfferSent,
+       phonePeerLeftPending
+     >>
+
+\* Phone processes peer-joined on its WebSocket in FIFO order:
+\* tears down the stale WebRTC peer/DataChannel to d1 and enters paired-relay.
+PhoneReceivesPeerJoined ==
+  /\ phonePeerJoinedPending = TRUE
+  /\ phonePeerJoinedPending' = FALSE
   /\ phoneStatus' = "paired-relay"
   /\ phoneDcTarget' = "none"
-  /\ d2OfferState' = "creating"
-  /\ UNCHANGED <<d1LateMsgTried, d1ClientState, d2ErrorPendingClose, peerLeftEvents, staleMsgRelayed, staleOfferSent>>
+  /\ UNCHANGED <<
+       activeDesktop, d1SupersededPending, d1LateMsgTried, d1ClientClosePending,
+       d1ClientState, d2OfferState, d2ErrorPendingClose,
+       peerLeftEvents, staleMsgRelayed, staleOfferSent, phonePeerLeftPending
+     >>
 
 \* Superseded d1 attempts to send a message before server close completes.
 \* Fixed RoomRelay.webSocketMessage checks isSocketActive(ws) and drops it.
@@ -78,6 +100,7 @@ SupersededD1SendsMessage ==
   /\ d1LateMsgTried' = TRUE
   /\ UNCHANGED <<
        activeDesktop, d1SupersededPending, d1ClientClosePending, d1ClientState,
+       phonePeerJoinedPending, phonePeerLeftPending,
        phoneStatus, phoneDcTarget, d2OfferState, d2ErrorPendingClose,
        peerLeftEvents, staleMsgRelayed, staleOfferSent
      >>
@@ -89,6 +112,7 @@ RelayClosesSupersededD1 ==
   /\ d1SupersededPending' = FALSE
   /\ UNCHANGED <<
        activeDesktop, d1LateMsgTried, d1ClientClosePending, d1ClientState,
+       phonePeerJoinedPending, phonePeerLeftPending,
        phoneStatus, phoneDcTarget, d2OfferState, d2ErrorPendingClose,
        peerLeftEvents, staleMsgRelayed, staleOfferSent
      >>
@@ -101,6 +125,7 @@ D1Receives4001Close ==
   /\ d1ClientState' = "replaced"
   /\ UNCHANGED <<
        activeDesktop, d1SupersededPending, d1LateMsgTried,
+       phonePeerJoinedPending, phonePeerLeftPending,
        phoneStatus, phoneDcTarget, d2OfferState, d2ErrorPendingClose,
        peerLeftEvents, staleMsgRelayed, staleOfferSent
      >>
@@ -112,13 +137,16 @@ Desktop2SendsOffer ==
   /\ d2OfferState' = "sent"
   /\ UNCHANGED <<
        activeDesktop, d1SupersededPending, d1LateMsgTried, d1ClientClosePending,
-       d1ClientState, phoneStatus, phoneDcTarget, d2ErrorPendingClose,
+       d1ClientState, phonePeerJoinedPending, phonePeerLeftPending,
+       phoneStatus, phoneDcTarget, d2ErrorPendingClose,
        peerLeftEvents, staleMsgRelayed, staleOfferSent
      >>
 
 \* Phone accepts Desktop 2's offer and opens the new P2P DataChannel.
+\* Enforces single-WebSocket FIFO order: peer-joined sent in fetch() precedes d2's rtc-offer.
 PhoneOpensP2PWithD2 ==
   /\ activeDesktop = "d2"
+  /\ phonePeerJoinedPending = FALSE
   /\ d2OfferState = "sent"
   /\ phoneStatus = "paired-relay"
   /\ d2OfferState' = "open"
@@ -126,22 +154,23 @@ PhoneOpensP2PWithD2 ==
   /\ phoneDcTarget' = "d2"
   /\ UNCHANGED <<
        activeDesktop, d1SupersededPending, d1LateMsgTried, d1ClientClosePending,
-       d1ClientState, d2ErrorPendingClose, peerLeftEvents, staleMsgRelayed, staleOfferSent
+       d1ClientState, phonePeerJoinedPending, phonePeerLeftPending,
+       d2ErrorPendingClose, peerLeftEvents, staleMsgRelayed, staleOfferSent
      >>
 
 \* Active Desktop 2 hits a transport error (webSocketError followed later by webSocketClose).
-\* Fixed RoomRelay marks d2 closed, emits peer-left once; Phone tears down P2P and waits.
+\* Fixed RoomRelay marks d2 closed and queues peer-left once to Phone.
 Desktop2Errors ==
   /\ activeDesktop = "d2"
   /\ d2ErrorPendingClose = FALSE
   /\ activeDesktop' = "none"
   /\ d2ErrorPendingClose' = TRUE
   /\ peerLeftEvents' = peerLeftEvents + 1
-  /\ phoneStatus' = "waiting-peer"
-  /\ phoneDcTarget' = "none"
+  /\ phonePeerLeftPending' = TRUE
   /\ d2OfferState' = IF d2OfferState = "creating" THEN "creating" ELSE "none"
   /\ UNCHANGED <<
        d1SupersededPending, d1LateMsgTried, d1ClientClosePending, d1ClientState,
+       phonePeerJoinedPending, phoneStatus, phoneDcTarget,
        staleMsgRelayed, staleOfferSent
      >>
 
@@ -151,12 +180,26 @@ Desktop2ClosesCleanly ==
   /\ d2ErrorPendingClose = FALSE
   /\ activeDesktop' = "none"
   /\ peerLeftEvents' = peerLeftEvents + 1
-  /\ phoneStatus' = "waiting-peer"
-  /\ phoneDcTarget' = "none"
+  /\ phonePeerLeftPending' = TRUE
   /\ d2OfferState' = IF d2OfferState = "creating" THEN "creating" ELSE "none"
   /\ UNCHANGED <<
        d1SupersededPending, d1LateMsgTried, d1ClientClosePending, d1ClientState,
+       phonePeerJoinedPending, phoneStatus, phoneDcTarget,
        d2ErrorPendingClose, staleMsgRelayed, staleOfferSent
+     >>
+
+\* Phone processes peer-left on its WebSocket in FIFO order after peer-joined:
+\* tears down any active WebRTC peer/DataChannel and awaits the next desktop.
+PhoneReceivesPeerLeft ==
+  /\ phonePeerLeftPending = TRUE
+  /\ phonePeerJoinedPending = FALSE
+  /\ phonePeerLeftPending' = FALSE
+  /\ phoneStatus' = "waiting-peer"
+  /\ phoneDcTarget' = "none"
+  /\ UNCHANGED <<
+       activeDesktop, d1SupersededPending, d1LateMsgTried, d1ClientClosePending,
+       d1ClientState, d2OfferState, d2ErrorPendingClose,
+       peerLeftEvents, staleMsgRelayed, staleOfferSent, phonePeerJoinedPending
      >>
 
 \* Runtime fires webSocketClose(d2) after webSocketError(d2).
@@ -166,7 +209,8 @@ RelayClosesD2AfterError ==
   /\ d2ErrorPendingClose' = FALSE
   /\ UNCHANGED <<
        activeDesktop, d1SupersededPending, d1LateMsgTried, d1ClientClosePending,
-       d1ClientState, phoneStatus, phoneDcTarget, d2OfferState,
+       d1ClientState, phonePeerJoinedPending, phonePeerLeftPending,
+       phoneStatus, phoneDcTarget, d2OfferState,
        peerLeftEvents, staleMsgRelayed, staleOfferSent
      >>
 
@@ -178,21 +222,25 @@ Desktop2DropsStaleOffer ==
   /\ d2OfferState' = "none"
   /\ UNCHANGED <<
        activeDesktop, d1SupersededPending, d1LateMsgTried, d1ClientClosePending,
-       d1ClientState, phoneStatus, phoneDcTarget, d2ErrorPendingClose,
+       d1ClientState, phonePeerJoinedPending, phonePeerLeftPending,
+       phoneStatus, phoneDcTarget, d2ErrorPendingClose,
        peerLeftEvents, staleMsgRelayed, staleOfferSent
      >>
 
-\* Settled end state: all close callbacks and in-flight offers finished.
+\* Settled end state: all close callbacks, in-flight notices, and offers finished.
 Done ==
   /\ activeDesktop = "none"
   /\ d1SupersededPending = FALSE
   /\ d1ClientClosePending = FALSE
+  /\ phonePeerJoinedPending = FALSE
+  /\ phonePeerLeftPending = FALSE
   /\ d2ErrorPendingClose = FALSE
   /\ d2OfferState = "none"
   /\ UNCHANGED vars
 
 Next ==
   \/ Desktop2TakesOver
+  \/ PhoneReceivesPeerJoined
   \/ SupersededD1SendsMessage
   \/ RelayClosesSupersededD1
   \/ D1Receives4001Close
@@ -200,6 +248,7 @@ Next ==
   \/ PhoneOpensP2PWithD2
   \/ Desktop2Errors
   \/ Desktop2ClosesCleanly
+  \/ PhoneReceivesPeerLeft
   \/ RelayClosesD2AfterError
   \/ Desktop2DropsStaleOffer
   \/ Done
@@ -214,6 +263,8 @@ TypeOK ==
   /\ d1LateMsgTried \in BOOLEAN
   /\ d1ClientClosePending \in BOOLEAN
   /\ d1ClientState \in {"paired", "replaced", "reconnecting"}
+  /\ phonePeerJoinedPending \in BOOLEAN
+  /\ phonePeerLeftPending \in BOOLEAN
   /\ phoneStatus \in {"paired-p2p", "paired-relay", "waiting-peer"}
   /\ phoneDcTarget \in {"d1", "d2", "none"}
   /\ d2OfferState \in {"none", "creating", "sent", "open"}
@@ -224,12 +275,17 @@ TypeOK ==
 
 \* 1. An active desktop holder is never falsely reported as departed to the phone.
 NoSplitBrainPeerLeft ==
-  activeDesktop /= "none" => (phoneStatus /= "waiting-peer" /\ peerLeftEvents = 0)
+  activeDesktop /= "none" => (phoneStatus /= "waiting-peer" /\ peerLeftEvents = 0 /\ ~phonePeerLeftPending)
 
-\* 2. Phone's open DataChannel never stays connected to an evicted or departed desktop.
+\* 2. After asynchronous peer-joined / peer-left delivery settles, Phone's open DataChannel
+\*    never points to an evicted or departed desktop. During the brief propagation window
+\*    while peer-joined or peer-left is in flight over WebSocket (and d1's 4001 close
+\*    is racing across clients), Phone may still hold d1's direct DataChannel until
+\*    PhoneReceivesPeerJoined or PhoneReceivesPeerLeft tears it down.
 NoStaleP2PRouting ==
-  /\ (phoneDcTarget /= "none" => phoneDcTarget = activeDesktop)
-  /\ (phoneStatus = "paired-p2p" => (activeDesktop /= "none" /\ phoneDcTarget = activeDesktop))
+  (~phonePeerJoinedPending /\ ~phonePeerLeftPending) =>
+    /\ (phoneDcTarget /= "none" => phoneDcTarget = activeDesktop)
+    /\ (phoneStatus = "paired-p2p" => (activeDesktop /= "none" /\ phoneDcTarget = activeDesktop))
 
 \* 3. A 4001-evicted client never auto-reconnects to cause an eviction storm.
 No4001ReconnectStorm ==

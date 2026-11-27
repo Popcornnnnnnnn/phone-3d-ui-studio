@@ -10,11 +10,12 @@ export const colors = {
 const hasViolation = (v) => {
   const splitBrain =
     v.activeDesktop !== "none" &&
-    (v.phoneStatus === "waiting-peer" || v.peerLeftEvents > 0);
+    (v.phoneStatus === "waiting-peer" || v.peerLeftEvents > 0 || v.phonePeerLeftPending);
   const staleP2P =
-    (v.phoneDcTarget !== "none" && v.phoneDcTarget !== v.activeDesktop) ||
-    (v.phoneStatus === "paired-p2p" &&
-      (v.activeDesktop === "none" || v.phoneDcTarget !== v.activeDesktop));
+    (!v.phonePeerJoinedPending && !v.phonePeerLeftPending) &&
+    ((v.phoneDcTarget !== "none" && v.phoneDcTarget !== v.activeDesktop) ||
+      (v.phoneStatus === "paired-p2p" &&
+        (v.activeDesktop === "none" || v.phoneDcTarget !== v.activeDesktop)));
   const reconnectStorm = v.d1ClientState === "reconnecting";
   const staleRelay = Boolean(v.staleMsgRelayed);
   const staleOffer = Boolean(v.staleOfferSent);
@@ -43,6 +44,9 @@ export const state = (v) => {
   }
 
   if (v.activeDesktop === "d2") {
+    if (v.phonePeerJoinedPending) {
+      return "Desktop 2 active, takeover notice in flight";
+    }
     if (v.phoneStatus === "paired-p2p") {
       return "Paired P2P with Desktop 2";
     }
@@ -52,6 +56,9 @@ export const state = (v) => {
     return "Desktop 2 relay, offer pending";
   }
 
+  if (v.phonePeerJoinedPending || v.phonePeerLeftPending) {
+    return "Desktop 2 gone, peer-left in flight";
+  }
   if (v.d2OfferState === "creating") {
     return "Waiting for desktop, offer cancelling";
   }
@@ -86,6 +93,10 @@ export const step = (action, from, to) => {
   switch (action) {
     case "Desktop2TakesOver":
       return "Desktop 2 replaces Desktop 1 (4001)";
+    case "PhoneReceivesPeerJoined":
+      return "Phone processes peer-joined and drops old P2P";
+    case "PhoneReceivesPeerLeft":
+      return "Phone processes peer-left and awaits desktop";
     case "SupersededD1SendsMessage":
       return to?.staleMsgRelayed
         ? "superseded Desktop 1 message relayed"

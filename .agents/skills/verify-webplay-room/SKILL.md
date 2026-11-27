@@ -28,8 +28,8 @@ If any covered file changed after `sync_commit`, follow the installed `maintain-
 
 ## Verified Properties (Invariants)
 
-1. **`NoSplitBrainPeerLeft`:** Whenever an active desktop holds the room (`activeDesktop /= "none"`), the phone is never falsely dropped to `waiting-peer` and no `peer-left` notice is emitted.
-2. **`NoStaleP2PRouting`:** Whenever the phone has an open WebRTC DataChannel, it points strictly to the current active desktop (`phoneDcTarget = activeDesktop`) and matches `paired-p2p` status.
+1. **`NoSplitBrainPeerLeft`:** Whenever an active desktop holds the room (`activeDesktop /= "none"`), the phone is never falsely dropped to `waiting-peer`, no `peer-left` notice is emitted, and no `peer-left` is in flight (`~phonePeerLeftPending`).
+2. **`NoStaleP2PRouting`:** Once asynchronous WebSocket control delivery settles (`~phonePeerJoinedPending /\ ~phonePeerLeftPending`), an open WebRTC DataChannel on the phone never points to an evicted or departed desktop (`phoneDcTarget = activeDesktop`, matching `paired-p2p`). *Propagation window:* while `peer-joined` or `peer-left` is still in flight across WebSocket (and `d1`'s `4001` close is racing across clients), `Phone` may temporarily hold its direct `d1` DataChannel until `PhoneReceivesPeerJoined` or `PhoneReceivesPeerLeft` tears it down via `teardownPeer()`.
 3. **`No4001ReconnectStorm`:** A client evicted with close code `4001` (`Replaced by new connection`) never auto-reconnects to evict the active holder.
 4. **`NoSupersededMessageRelayed`:** Late frames sent on a superseded socket before its close completes are never relayed to the room peer.
 5. **`NoStaleOfferSent`:** An in-flight WebRTC `setLocalDescription` whose `RTCPeerConnection` was torn down never sends a stale `rtc-offer`.
@@ -38,13 +38,15 @@ If any covered file changed after `sync_commit`, follow the installed `maintain-
 
 ## Bounds, Assumptions & Out-of-Scope
 
-- **Bounds:** Single room (`1` phone + `2` desktop generations: initial `d1` paired over P2P, takeover by `d2`, interleaved with `d1`'s delayed server close, `d1`'s late message, `d1`'s `4001` client close, `d2`'s async offer/P2P upgrade, and `d2`'s error+close or clean disconnect).
-- **Out of scope:** Multi-room isolation, WebRTC ICE candidate buffering ordering (covered by Vitest in `src/webplay/roomConnection.test.ts`), Rapier physics state, and LAN/ARKit bridge (`scripts/live-bridge.mjs`).
+- **Bounds:** Single room (`1` phone + `2` desktop generations: initial `d1` paired over P2P, takeover by `d2`, asynchronous FIFO WebSocket delivery of `peer-joined` and `peer-left` to `phone`, interleaved with `d1`'s delayed server close, `d1`'s late message, `d1`'s `4001` client close, `d2`'s async offer/P2P upgrade, and `d2`'s error+close or clean disconnect).
+- **Out of scope:** Multi-room isolation, sub-millisecond direct-P2P writes during the client's pre-`peer-joined` propagation window, WebRTC ICE candidate buffering ordering (covered by Vitest in `src/webplay/roomConnection.test.ts`), Rapier physics state, and LAN/ARKit bridge (`scripts/live-bridge.mjs`).
 
 ## Verified Status at `c606012`
 
-- **`WebPlayRoomProtocol`:** TLC explores **57 states / 169 steps** (7 chart states, 11 arrows). `TypeOK`, `NoSplitBrainPeerLeft`, `NoStaleP2PRouting`, `No4001ReconnectStorm`, `NoSupersededMessageRelayed`, `NoStaleOfferSent`, `AtMostOnePeerLeft`, and `NoDeadlock` all **hold** (`exit 0`).
-- **Mutation proof:** Reverting `RelayClosesSupersededD1` to emit `peer-left` fails `NoSplitBrainPeerLeft` in 2 steps and `AtMostOnePeerLeft` in 3 steps (`exit 1`).
+- **`WebPlayRoomProtocol`:** TLC explores **153 states / 497 steps** (9 chart states, 15 arrows). `TypeOK`, `NoSplitBrainPeerLeft`, `NoStaleP2PRouting`, `No4001ReconnectStorm`, `NoSupersededMessageRelayed`, `NoStaleOfferSent`, `AtMostOnePeerLeft`, and `NoDeadlock` all **hold** (`exit 0`).
+- **Mutation proofs:**
+  - Mutation A: reverting `RelayClosesSupersededD1` to emit `peer-left` fails `NoSplitBrainPeerLeft` in 2 steps and `AtMostOnePeerLeft` in 3 steps (`exit 1`).
+  - Mutation B: skipping `phoneDcTarget' = "none"` in `PhoneReceivesPeerJoined` fails `NoStaleP2PRouting` in 2 steps (`exit 1`).
 - **Vitest regression coverage:** `worker/src/index.test.ts`, `src/webplay/roomConnection.test.ts`, and `scripts/webplay-room-relay.test.mjs`.
 
 Treat any failure in these invariants or `NoDeadlock` as a blocker before merging or deploying the Worker.
