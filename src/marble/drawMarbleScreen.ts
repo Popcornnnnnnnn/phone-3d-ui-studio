@@ -1,9 +1,29 @@
 import { MARBLE_GEOMETRY as G, projectMarble } from '../../shared/marbleMath.mjs'
 import type { WorldSnapshot } from '../../shared/worldProtocol.mjs'
 
-export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, height: number, s: WorldSnapshot | null) {
+export interface DrawMarbleScreenOptions {
+  /** 'surface' draws a 3D-aligned contact shadow/glow under the WebGL sphere; '2d' renders a standalone 2D marble. */
+  mode?: 'surface' | '2d'
+  /** Rendered OLED screen width in world meters (for exact 3D overlay alignment). */
+  displayWidthMeters?: number
+  /** Rendered OLED screen height in world meters (for exact 3D overlay alignment). */
+  displayHeightMeters?: number
+}
+
+export function drawMarbleScreen(
+  c: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  s: WorldSnapshot | null,
+  options: DrawMarbleScreenOptions = {},
+) {
+  const mode = options.mode ?? '2d'
   const g = s?.geometry ?? G
-  const scale = width / g.width
+  const surfaceW = options.displayWidthMeters ?? g.width
+  const surfaceH = options.displayHeightMeters ?? g.height
+  const scaleX = width / surfaceW
+  const scaleY = height / surfaceH
+  const scale = (scaleX + scaleY) * 0.5
   const cornerRatio = Math.min(0.22, Math.max(0.08, g.cornerRadius / Math.min(g.width, g.height)))
   const outerRadius = Math.max(12, Math.min(width, height) * cornerRatio)
 
@@ -61,7 +81,7 @@ export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, hei
 
   // Rounded inner tray rail hugging the OLED perimeter with open right exit gate
   const innerRadius = Math.max(8, outerRadius - inset)
-  const gap = (g.exitHalfWidth / g.height) * height
+  const gap = (g.exitHalfWidth / surfaceH) * height
 
   c.save()
   c.beginPath()
@@ -118,55 +138,131 @@ export function drawMarbleScreen(c: CanvasRenderingContext2D, width: number, hei
   c.font = `600 ${Math.round(width * 0.028)}px ui-monospace, SFMono-Regular, Menlo, monospace`
   c.fillText(statusLabel, cx, hudY + Math.round(width * 0.048))
 
-  // Glossy projected marble when rendered inside 2D view
   const ball = s?.balls.find((b) => b.id === s.activeBallId)
   if (ball && s?.phone) {
     const p = projectMarble(ball, s.phone, g)
-    const x = p.u * width
-    const y = p.v * height
+    const x = (0.5 + p.local[0] / surfaceW) * width
+    const y = (0.5 - p.local[1] / surfaceH) * height
+    const fullRadius = (ball.radius ?? g.radius) * scale
     const r = p.radius * scale
-    if (r > 0) {
-      // Soft ambient drop shadow
-      c.save()
-      c.fillStyle = 'rgba(0, 0, 0, 0.48)'
+
+    if (mode === 'surface') {
+      const aboveTray =
+        p.depth > -g.radius * 1.05 &&
+        p.depth < 0.16 &&
+        Math.abs(p.local[0]) <= surfaceW * 0.65 &&
+        Math.abs(p.local[1]) <= surfaceH * 0.65
+
+      if (aboveTray && fullRadius > 0) {
+        const airHeight = Math.max(0, p.depth)
+        const proximity = Math.max(0, 1 - airHeight / 0.14)
+
+        // Centered ambient-occlusion contact shadow beneath the 3D sphere
+        const shadowRadius = fullRadius * (1.42 + airHeight * 12)
+        const peakAo = 0.74 * proximity * proximity
+        const ao = c.createRadialGradient(x, y, fullRadius * 0.15, x, y, shadowRadius)
+        ao.addColorStop(0, `rgba(0, 0, 0, ${peakAo.toFixed(3)})`)
+        ao.addColorStop(0.58, `rgba(0, 0, 0, ${(peakAo * 0.56).toFixed(3)})`)
+        ao.addColorStop(0.82, `rgba(0, 0, 0, ${(peakAo * 0.18).toFixed(3)})`)
+        ao.addColorStop(1, 'rgba(0, 0, 0, 0)')
+        c.fillStyle = ao
+        c.beginPath()
+        c.arc(x, y, shadowRadius, 0, Math.PI * 2)
+        c.fill()
+
+        // Subtle emerald caustic glow on dark OLED glass when close to the screen
+        if (proximity > 0.2) {
+          const causticRadius = fullRadius * 1.68
+          const causticAlpha = 0.15 * Math.pow(proximity, 3)
+          const caustic = c.createRadialGradient(x, y, fullRadius * 0.62, x, y, causticRadius)
+          caustic.addColorStop(0, `rgba(40, 212, 148, ${causticAlpha.toFixed(3)})`)
+          caustic.addColorStop(0.55, `rgba(26, 168, 114, ${(causticAlpha * 0.45).toFixed(3)})`)
+          caustic.addColorStop(1, 'rgba(26, 168, 114, 0)')
+          c.fillStyle = caustic
+          c.beginPath()
+          c.arc(x, y, causticRadius, 0, Math.PI * 2)
+          c.fill()
+        }
+
+        // Recessed slot interior strictly inside the 3D sphere equator (never extends past the 3D edge)
+        if (r > 1 && p.depth <= 0.0005) {
+          const insetRadius = r * 0.96
+          const well = c.createRadialGradient(
+            x - insetRadius * 0.2,
+            y - insetRadius * 0.2,
+            insetRadius * 0.08,
+            x,
+            y,
+            insetRadius,
+          )
+          well.addColorStop(0, '#0d543a')
+          well.addColorStop(0.65, '#072e20')
+          well.addColorStop(1, '#03170f')
+          c.fillStyle = well
+          c.beginPath()
+          c.arc(x, y, insetRadius, 0, Math.PI * 2)
+          c.fill()
+        }
+      }
+    } else if (r > 0) {
+      // Paired 2D mobile controller marble
+      const shadowRadius = r * 1.32
+      const ao = c.createRadialGradient(x, y + r * 0.08, r * 0.2, x, y + r * 0.08, shadowRadius)
+      ao.addColorStop(0, 'rgba(0, 0, 0, 0.52)')
+      ao.addColorStop(0.7, 'rgba(0, 0, 0, 0.22)')
+      ao.addColorStop(1, 'rgba(0, 0, 0, 0)')
+      c.fillStyle = ao
       c.beginPath()
-      c.arc(x + 2, y + 3, r * 1.08, 0, Math.PI * 2)
+      c.arc(x, y + r * 0.08, shadowRadius, 0, Math.PI * 2)
       c.fill()
-      c.restore()
 
       c.save()
       c.beginPath()
       c.arc(x, y, r, 0, Math.PI * 2)
       c.clip()
-      const fullRadius = ball.radius * scale
-      const gradient = c.createRadialGradient(
-        x - fullRadius * 0.34,
-        y - fullRadius * 0.36,
-        fullRadius * 0.04,
+
+      const body = c.createRadialGradient(
+        x - fullRadius * 0.26,
+        y - fullRadius * 0.28,
+        fullRadius * 0.08,
         x,
         y,
         fullRadius,
       )
-      gradient.addColorStop(0, '#eefff6')
-      gradient.addColorStop(0.28, '#7af0b3')
-      gradient.addColorStop(0.7, '#27a368')
-      gradient.addColorStop(1, '#0c3623')
-      c.fillStyle = gradient
+      body.addColorStop(0, '#2ab882')
+      body.addColorStop(0.42, '#137e55')
+      body.addColorStop(0.78, '#08422c')
+      body.addColorStop(1, '#041f14')
+      c.fillStyle = body
       c.fillRect(x - fullRadius, y - fullRadius, fullRadius * 2, fullRadius * 2)
-      if (p.marker[2] > 0) {
-        c.fillStyle = '#072215'
+
+      // Soft internal seafoam cat's-eye ribbon reflecting spin without an opaque dot
+      if (p.marker[2] > -0.25) {
+        const mx = x + p.marker[0] * fullRadius * 0.62
+        const my = y - p.marker[1] * fullRadius * 0.62
+        const swirlR = fullRadius * 0.56
+        const swirlAlpha = 0.55 * Math.max(0.15, (p.marker[2] + 0.25) / 1.25)
+        const swirl = c.createRadialGradient(mx, my, swirlR * 0.08, mx, my, swirlR)
+        swirl.addColorStop(0, `rgba(167, 243, 208, ${swirlAlpha.toFixed(3)})`)
+        swirl.addColorStop(0.45, `rgba(74, 218, 162, ${(swirlAlpha * 0.55).toFixed(3)})`)
+        swirl.addColorStop(1, 'rgba(20, 130, 88, 0)')
+        c.fillStyle = swirl
         c.beginPath()
-        c.ellipse(
-          x + p.marker[0] * fullRadius * 0.95,
-          y - p.marker[1] * fullRadius * 0.95,
-          fullRadius * 0.13,
-          fullRadius * 0.13 * Math.max(0.12, p.marker[2]),
-          0,
-          0,
-          Math.PI * 2,
-        )
+        c.arc(mx, my, swirlR, 0, Math.PI * 2)
         c.fill()
       }
+
+      // Clean specular glass highlight
+      const specX = x - fullRadius * 0.34
+      const specY = y - fullRadius * 0.36
+      const spec = c.createRadialGradient(specX, specY, 0, specX, specY, fullRadius * 0.42)
+      spec.addColorStop(0, 'rgba(236, 253, 245, 0.72)')
+      spec.addColorStop(0.4, 'rgba(209, 250, 229, 0.24)')
+      spec.addColorStop(1, 'rgba(209, 250, 229, 0)')
+      c.fillStyle = spec
+      c.beginPath()
+      c.arc(specX, specY, fullRadius * 0.42, 0, Math.PI * 2)
+      c.fill()
       c.restore()
     }
   }

@@ -4,7 +4,6 @@ import { ContactShadows, OrbitControls } from '@react-three/drei'
 import {
   CanvasTexture,
   Matrix4,
-  MeshStandardMaterial,
   Quaternion,
   SRGBColorSpace,
   Vector2,
@@ -21,12 +20,12 @@ import {
   type PhoneProfile,
   type PhoneProfileId,
 } from '../../shared/phoneGeometry.mjs'
-import { SPATIAL_START } from '../../shared/spatialMath.mjs'
+import { SPATIAL_MODEL_SCALE, SPATIAL_START } from '../../shared/spatialMath.mjs'
 import { WORLD_VERSION, type WorldSnapshot } from '../../shared/worldProtocol.mjs'
 import { formatRoomCode } from '../../shared/webPlayProtocol.mjs'
 import { useAppearance } from '../appearance'
 import { drawMarbleScreen } from '../marble/drawMarbleScreen'
-import { createClippedMarbleMaterial } from '../marble/marbleMaterials'
+import { createMarbleMaterialSet } from '../marble/marbleMaterials'
 import { fittedPhoneDisplayMetrics } from '../model/publicPhoneAssets'
 import { usePhoneAppearance } from '../model/usePhoneAppearance'
 import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
@@ -98,26 +97,23 @@ function WebPlayScene({
     return {
       canvas,
       context: canvas.getContext('2d')!,
+      displayWidthMeters: displayWidth * SPATIAL_MODEL_SCALE,
+      displayHeightMeters: displayHeight * SPATIAL_MODEL_SCALE,
       media: { kind: 'texture' as const, name: 'Online Elastic Tray', width: canvas.width, height: canvas.height, texture },
     }
   }, [profile])
 
-  const material = useMemo(() => createClippedMarbleMaterial('#34d888', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const marker = useMemo(() => createClippedMarbleMaterial('#082418', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const trailMaterial = useMemo(() => new MeshStandardMaterial({ color: '#454d5c', roughness: 0.45, metalness: 0.2 }), [])
-  const trailMarker = useMemo(() => new MeshStandardMaterial({ color: '#222833', roughness: 0.55 }), [])
+  const marbleMaterials = useMemo(() => createMarbleMaterialSet(inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
   const surfaceRef = useRef(surface)
 
   useEffect(() => {
     surfaceRef.current = surface
     return () => surface.media.texture.dispose()
   }, [surface])
-  useEffect(() => () => {
-    material.dispose()
-    marker.dispose()
-    trailMaterial.dispose()
-    trailMarker.dispose()
-  }, [material, marker, trailMaterial, trailMarker])
+  useEffect(() => {
+    marbleMaterials.ensureTexturesUploaded()
+    return () => marbleMaterials.dispose()
+  }, [marbleMaterials])
 
   const lastHudSyncRef = useRef(0)
 
@@ -177,7 +173,11 @@ function WebPlayScene({
       lastImpact: snap.lastImpact,
     }
     const display = surfaceRef.current
-    drawMarbleScreen(display.context, display.canvas.width, display.canvas.height, drawSnap)
+    drawMarbleScreen(display.context, display.canvas.width, display.canvas.height, drawSnap, {
+      mode: 'surface',
+      displayWidthMeters: display.displayWidthMeters,
+      displayHeightMeters: display.displayHeightMeters,
+    })
     display.media.texture.needsUpdate = true
 
     if (sharedRoom.paired) {
@@ -227,14 +227,8 @@ function WebPlayScene({
       </group>
       {Array.from({ length: 5 }, (_, index) => (
         <group key={index} ref={(group) => { balls.current[index] = group }} visible={false}>
-          <group>
-            <mesh material={material}><sphereGeometry args={[G.radius, 40, 24]} /></mesh>
-            <mesh material={marker} position={[0, 0, G.radius * 0.994]}><sphereGeometry args={[G.radius * 0.13, 16, 12]} /></mesh>
-          </group>
-          <group>
-            <mesh material={trailMaterial}><sphereGeometry args={[G.radius, 24, 16]} /></mesh>
-            <mesh material={trailMarker} position={[0, 0, G.radius * 0.994]}><sphereGeometry args={[G.radius * 0.13, 12, 8]} /></mesh>
-          </group>
+          <mesh material={marbleMaterials.active}><sphereGeometry args={[G.radius, 48, 32]} /></mesh>
+          <mesh material={marbleMaterials.trail}><sphereGeometry args={[G.radius, 32, 24]} /></mesh>
         </group>
       ))}
       <OrbitControls makeDefault target={SPATIAL_START} minDistance={0.14} maxDistance={1.1} />

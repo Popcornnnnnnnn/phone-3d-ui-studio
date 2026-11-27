@@ -3,37 +3,22 @@ import { WorkspaceLighting } from '../workspace/WorkspaceLighting'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { ContactShadows, OrbitControls } from '@react-three/drei'
-import { CanvasTexture, Matrix4, MeshStandardMaterial, Quaternion, SRGBColorSpace, Vector2, Vector3, type Group } from 'three'
+import { CanvasTexture, Matrix4, Quaternion, SRGBColorSpace, Vector2, Vector3, type Group } from 'three'
 import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
-import { SPATIAL_START } from '../../shared/spatialMath.mjs'
+import { SPATIAL_MODEL_SCALE, SPATIAL_START } from '../../shared/spatialMath.mjs'
 import { phoneProfile, phoneProfileNotice } from '../../shared/phoneGeometry.mjs'
 import { MARBLE_GEOMETRY as G } from '../../shared/marbleMath.mjs'
 import { DEFAULT_MARBLE_SETTINGS, MARBLE_SETTING_LIMITS, type MarbleSettings } from '../../shared/marbleSettings.mjs'
+import { fittedPhoneDisplayMetrics } from '../model/publicPhoneAssets'
 import { useMarbleWorld } from './useMarbleWorld'
 import { drawMarbleScreen } from './drawMarbleScreen'
+import { createMarbleMaterialSet, createMarblePreviewMaterial } from './marbleMaterials'
 import type { WorldClient } from './WorldClient'
 import { SpatialViewport } from '../spatial/SpatialViewport'
 import { WorkspaceGrid } from '../spatial/WorkspaceGrid'
 import '../spatial/spatial.css'
 import './marble.css'
 
-function clippedMaterial(color: string, inverse: Matrix4, slotGeometry: Vector2, screenBounds: Vector3) {
-  const material = new MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.05 })
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.inversePhone = { value: inverse }
-    shader.uniforms.slotGeometry = { value: slotGeometry }
-    shader.uniforms.screenBounds = { value: screenBounds }
-    shader.vertexShader = 'uniform mat4 inversePhone; varying vec3 phoneFragment;\n' + shader.vertexShader
-    shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\nphoneFragment = (inversePhone * modelMatrix * vec4(transformed, 1.0)).xyz;')
-    shader.fragmentShader = 'uniform vec2 slotGeometry; uniform vec3 screenBounds; varying vec3 phoneFragment;\n' + shader.fragmentShader
-    shader.fragmentShader = shader.fragmentShader.replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-      vec2 delta = abs(phoneFragment.xy) - screenBounds.xy;
-      float edgeDistance = length(max(delta, 0.0)) + min(max(delta.x, delta.y), 0.0) - screenBounds.z;
-      if (edgeDistance <= 0.0 && phoneFragment.z >= slotGeometry.y - slotGeometry.x && phoneFragment.z < slotGeometry.y) discard;`)
-  }
-  material.customProgramCacheKey = () => 'marble-finite-slot-device-profile-v2'
-  return material
-}
 function MarbleScene({ client, preview }: { client: WorldClient; preview: boolean }) {
   const phone = useRef<Group>(null), balls = useRef<Array<Group | null>>([])
   const inverse = useMemo(() => new Matrix4(), [])
@@ -41,17 +26,33 @@ function MarbleScene({ client, preview }: { client: WorldClient; preview: boolea
   const slotGeometry = useMemo(() => new Vector2(G.radius, G.screenZ), [])
   const screenBounds = useMemo(() => new Vector3(G.width / 2 - G.cornerRadius, G.height / 2 - G.cornerRadius, G.cornerRadius), [])
   const surface = useMemo(() => {
-    const canvas = document.createElement('canvas'); canvas.width = profile.displayPixels.width / 3; canvas.height = profile.displayPixels.height / 3
-    const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace
-    return { canvas, context: canvas.getContext('2d')!, media: { kind: 'texture' as const, name: 'Shared marble', width: canvas.width, height: canvas.height, texture } }
+    const { displayWidth, displayHeight } = fittedPhoneDisplayMetrics(profile)
+    const canvas = document.createElement('canvas')
+    canvas.width = 640
+    canvas.height = Math.round(640 * (displayHeight / displayWidth))
+    const texture = new CanvasTexture(canvas)
+    texture.colorSpace = SRGBColorSpace
+    texture.anisotropy = 8
+    return {
+      canvas,
+      context: canvas.getContext('2d')!,
+      displayWidthMeters: displayWidth * SPATIAL_MODEL_SCALE,
+      displayHeightMeters: displayHeight * SPATIAL_MODEL_SCALE,
+      media: { kind: 'texture' as const, name: 'Shared marble', width: canvas.width, height: canvas.height, texture },
+    }
   }, [profile])
-  const material = useMemo(() => clippedMaterial('#a4df83', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const marker = useMemo(() => clippedMaterial('#264b39', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const trailMaterial = useMemo(() => new MeshStandardMaterial({ color: '#9eafa0', roughness: 0.75 }), [])
-  const trailMarker = useMemo(() => new MeshStandardMaterial({ color: '#647969', roughness: 0.75 }), [])
+  const marbleMaterials = useMemo(() => createMarbleMaterialSet(inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
+  const previewMaterial = useMemo(() => createMarblePreviewMaterial(), [])
   const surfaceRef = useRef(surface)
   useEffect(() => { surfaceRef.current = surface; return () => surface.media.texture.dispose() }, [surface])
-  useEffect(() => () => { material.dispose(); marker.dispose(); trailMaterial.dispose(); trailMarker.dispose() }, [material, marker, trailMaterial, trailMarker])
+  useEffect(() => {
+    marbleMaterials.ensureTexturesUploaded()
+    return () => marbleMaterials.dispose()
+  }, [marbleMaterials])
+  useEffect(() => {
+    previewMaterial.ensureTexturesUploaded()
+    return () => previewMaterial.dispose()
+  }, [previewMaterial])
   useFrame(() => {
     const state = preview ? null : client.render()
     const geometry = state?.geometry ?? G
@@ -71,7 +72,12 @@ function MarbleScene({ client, preview }: { client: WorldClient; preview: boolea
       group.children[1].visible = body.state !== 'active'
     })
     const display = surfaceRef.current
-    drawMarbleScreen(display.context, display.canvas.width, display.canvas.height, state); display.media.texture.needsUpdate = true
+    drawMarbleScreen(display.context, display.canvas.width, display.canvas.height, state, {
+      mode: 'surface',
+      displayWidthMeters: display.displayWidthMeters,
+      displayHeightMeters: display.displayHeightMeters,
+    })
+    display.media.texture.needsUpdate = true
   }, -1)
   return <>
     <WorkspaceLighting />
@@ -79,19 +85,13 @@ function MarbleScene({ client, preview }: { client: WorldClient; preview: boolea
     {preview && <ContactShadows frames={1} position={[0, 0.15, 0]} opacity={0.28} scale={0.8} blur={2.8} far={0.2} resolution={256} color="#303747" />}
     <group ref={phone}>
       <SpatialPhoneModel profile={profile} media={surface.media} />
-      {preview && <mesh position={[0, 0.008, G.screenZ + G.radius]}>
-        <sphereGeometry args={[G.radius, 40, 24]} /><meshStandardMaterial color="#b4ec8b" roughness={0.24} metalness={0.12} />
+      {preview && <mesh position={[0, 0.008, G.screenZ + G.radius]} material={previewMaterial.material}>
+        <sphereGeometry args={[G.radius, 48, 32]} />
       </mesh>}
     </group>
     {Array.from({ length: 5 }, (_, index) => <group key={index} ref={(group) => { balls.current[index] = group }} visible={false}>
-      <group>
-        <mesh material={material}><sphereGeometry args={[G.radius, 40, 24]} /></mesh>
-        <mesh material={marker} position={[0, 0, G.radius * 0.994]}><sphereGeometry args={[G.radius * 0.13, 16, 12]} /></mesh>
-      </group>
-      <group>
-        <mesh material={trailMaterial}><sphereGeometry args={[G.radius, 24, 16]} /></mesh>
-        <mesh material={trailMarker} position={[0, 0, G.radius * 0.994]}><sphereGeometry args={[G.radius * 0.13, 12, 8]} /></mesh>
-      </group>
+      <mesh material={marbleMaterials.active}><sphereGeometry args={[G.radius, 48, 32]} /></mesh>
+      <mesh material={marbleMaterials.trail}><sphereGeometry args={[G.radius, 32, 24]} /></mesh>
     </group>)}
     <OrbitControls makeDefault target={preview ? [0, 0.18, 0] : SPATIAL_START} minDistance={0.08} />
   </>
