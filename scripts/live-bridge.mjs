@@ -20,6 +20,7 @@ import {
   sameProducerIdentity,
   selectUniqueProducerPair,
 } from './producer-identity.mjs'
+import { selectPhoneProfile } from '../shared/phoneGeometry.mjs'
 
 const port = Number.parseInt(process.env.PHONE_BRIDGE_PORT ?? '4319', 10)
 const framePort = Number.parseInt(
@@ -1000,8 +1001,43 @@ function counts() {
   }
 }
 
+const phoneClientRoles = ['phone', 'phone-pose', 'phone-webrtc']
+
+function normalizeDeviceModel(value) {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 && trimmed.length <= 64 ? trimmed : null
+}
+
+export function resolveConnectedPhoneProfile(entries) {
+  for (const preferredRole of phoneClientRoles) {
+    for (const entry of entries) {
+      if (!entry || entry.role !== preferredRole) continue
+      const model = normalizeDeviceModel(entry.deviceModel)
+      if (model) return selectPhoneProfile(model)
+    }
+  }
+  return null
+}
+
+function activeBridgeDeviceProfile() {
+  const entries = []
+  for (const [socket, role] of clients) {
+    if (!phoneClientRoles.includes(role)) continue
+    entries.push({
+      role,
+      deviceModel: clientDetails.get(socket)?.deviceModel ?? null,
+    })
+  }
+  return resolveConnectedPhoneProfile(entries)
+}
+
 function broadcastStatus() {
-  const message = JSON.stringify({ type: 'bridge-status', ...counts() })
+  const message = JSON.stringify({
+    type: 'bridge-status',
+    ...counts(),
+    deviceProfile: activeBridgeDeviceProfile(),
+  })
 
   for (const [client, role] of clients) {
     if (
@@ -3171,6 +3207,7 @@ sockets.on('connection', (socket, request) => {
       ? requestedClientId
       : null
   const producerIdentityDetails = queryProducerIdentityDetails(url)
+  const deviceModel = normalizeDeviceModel(url.searchParams.get('deviceModel'))
 
   if (
     role !== 'browser' &&
@@ -3201,6 +3238,7 @@ sockets.on('connection', (socket, request) => {
     localPort: request.socket.localPort ?? null,
     addressFamily: request.socket.remoteFamily ?? null,
     clientId,
+    deviceModel,
     ...producerIdentityDetails,
     connectedAtMs: Date.now(),
     lastActivityAtMs: Date.now(),
@@ -3415,6 +3453,15 @@ sockets.on('connection', (socket, request) => {
     try {
       message = JSON.parse(data.toString())
     } catch {
+      return
+    }
+
+    if (message.type === 'phone-identity' && details) {
+      const nextDeviceModel = normalizeDeviceModel(message.deviceModel)
+      if (nextDeviceModel !== details.deviceModel) {
+        details.deviceModel = nextDeviceModel
+        broadcastStatus()
+      }
       return
     }
 

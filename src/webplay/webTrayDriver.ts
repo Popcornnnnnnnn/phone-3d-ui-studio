@@ -31,27 +31,34 @@ export interface WebTrayCallbacks {
   onSpawn?: () => void
 }
 
+export interface WebTrayDriverOptions {
+  startWithBall?: boolean
+}
+
 export class WebTrayDriver {
   private world: MarbleWorld
   private settings: WebPlaySettings
   private profile: PhoneProfile
+  private started: boolean
   private currentQuat = new Quaternion(...FLAT_PHONE_QUAT)
   private targetQuat = new Quaternion(...FLAT_PHONE_QUAT)
   private accumulatorSec = 0
   private simTimeMs = 0
   private toss: TossEnvelope | null = null
   private lastImpactSeq = 0
-  private hadActiveBall = true
+  private hadActiveBall = false
   private callbacks: WebTrayCallbacks
 
   constructor(
     settings: Partial<WebPlaySettings> = {},
     callbacks: WebTrayCallbacks = {},
     profile: PhoneProfile = DEFAULT_PHONE_PROFILE,
+    options: WebTrayDriverOptions = {},
   ) {
     this.settings = { ...DEFAULT_WEB_PLAY_SETTINGS, ...settings }
     this.callbacks = callbacks
     this.profile = profile
+    this.started = options.startWithBall ?? true
     this.world = new MarbleWorld(
       { position: [...SPATIAL_START], quaternion: [...FLAT_PHONE_QUAT] },
       {
@@ -60,6 +67,7 @@ export class WebTrayDriver {
         restitution: this.settings.restitution,
       },
       this.profile,
+      { spawnInitialBall: this.started },
     )
     this.hadActiveBall = this.world.activeBallId !== null
   }
@@ -74,6 +82,10 @@ export class WebTrayDriver {
 
   getSettings(): WebPlaySettings {
     return { ...this.settings }
+  }
+
+  isStarted(): boolean {
+    return this.started
   }
 
   setProfile(nextProfile: PhoneProfile) {
@@ -114,19 +126,33 @@ export class WebTrayDriver {
     }
   }
 
+  startGame(): boolean {
+    this.started = true
+    if (this.world.activeBallId !== null) return true
+    if (this.addBall()) return true
+    this.restart(undefined, true)
+    if (this.world.activeBallId !== null) {
+      this.callbacks.onSpawn?.()
+      return true
+    }
+    return false
+  }
+
   addBall(): boolean {
     const added = this.world.addBall()
     if (added) {
+      this.started = true
       this.hadActiveBall = true
       this.callbacks.onSpawn?.()
     }
     return added
   }
 
-  restart(nextSettings?: Partial<WebPlaySettings>) {
+  restart(nextSettings?: Partial<WebPlaySettings>, spawnBall = this.started) {
     if (nextSettings) {
       this.settings = { ...this.settings, ...nextSettings }
     }
+    this.started = spawnBall
     this.world.free()
     this.currentQuat.set(...FLAT_PHONE_QUAT)
     this.targetQuat.set(...FLAT_PHONE_QUAT)
@@ -142,6 +168,7 @@ export class WebTrayDriver {
         restitution: this.settings.restitution,
       },
       this.profile,
+      { spawnInitialBall: this.started },
     )
     this.hadActiveBall = this.world.activeBallId !== null
   }

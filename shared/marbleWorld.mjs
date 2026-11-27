@@ -18,7 +18,7 @@ const material = (collider, restitution, collisionGroups) => collider.setRestitu
   .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Min).setCollisionGroups(collisionGroups)
 
 export class MarbleWorld {
-  constructor(phone, settings = DEFAULT_MARBLE_SETTINGS, profile) {
+  constructor(phone, settings = DEFAULT_MARBLE_SETTINGS, profile, options = {}) {
     this.settings = { ...settings }
     const G = this.geometry = marbleGeometry(settings, profile)
     this.world = new RAPIER.World({ x: 0, y: -G.gravity, z: 0 })
@@ -65,7 +65,7 @@ export class MarbleWorld {
       .setTranslation(0, -0.025, 0).setFriction(0.65), 0.1, groups.ground))
     this.balls = []; this.activeBallId = null; this.hitCount = 0; this.lastImpact = null
     this.steps = 0; this.region = 'needs-ball'; this.lastOutcome = ''
-    this.addBall()
+    if (options.spawnInitialBall !== false) this.addBall()
   }
   get activeBall() { return this.balls.find((b) => b.id === this.activeBallId) }
   get canAddBall() { return this.activeBallId === null && isTrayUp(this.phone) }

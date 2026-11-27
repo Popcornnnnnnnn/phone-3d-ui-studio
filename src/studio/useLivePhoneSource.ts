@@ -6,6 +6,7 @@ import {
   VideoFrameTexture,
   type Texture,
 } from 'three'
+import type { PhoneProfileSelection } from '../../shared/phoneGeometry.mjs'
 import type { ScreenOrientation } from '../model/iphone17'
 import {
   summarizeLiveRenderSchedulerRun,
@@ -949,6 +950,7 @@ export function useLivePhoneSource(
   const [error, commitError, currentErrorRef] =
     useDeduplicatedState<string | null>(null)
   const [stats, setStats] = useState<LivePhoneStats>(initialStats)
+  const [deviceProfile, setDeviceProfile] = useState<PhoneProfileSelection | null>(null)
   const [measurement, setMeasurement] =
     useState<LiveMeasurementState>(initialMeasurement)
 
@@ -1281,6 +1283,7 @@ export function useLivePhoneSource(
     commitStatus('idle')
     commitError(null)
     setStats(initialStats)
+    setDeviceProfile(null)
   }, [
     cancelMeasurement,
     commitError,
@@ -2527,6 +2530,11 @@ export function useLivePhoneSource(
         captureState:
           message.phones > 0 ? current.captureState : null,
       }))
+      setDeviceProfile(
+        message.phones > 0 || message.webrtcPhones > 0 || message.deviceProfile
+          ? message.deviceProfile
+          : null,
+      )
       if (message.phones > 0) {
         sendPosePresentationMode(posePresentationModeRef.current)
         sendH264OutputFormat()
@@ -3054,6 +3062,7 @@ export function useLivePhoneSource(
   return {
     calibratePose,
     connect,
+    deviceProfile,
     disconnect,
     downloadMeasurementReport,
     error,

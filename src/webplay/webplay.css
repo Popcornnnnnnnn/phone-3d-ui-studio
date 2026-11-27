@@ -71,6 +71,54 @@
   right: 18px;
 }
 
+.studio-viewport-actions {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spatial-viewport:is(.is-expanded, :fullscreen) .studio-viewport-actions {
+  left: 18px;
+  right: auto;
+}
+
+.workspace-shell button.webplay-glass-pill {
+  min-height: 34px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-glass-border);
+  background: var(--surface-floating);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 8px 24px var(--shadow);
+  color: var(--text-primary);
+  font: 520 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.workspace-shell button.webplay-glass-pill:not(:disabled):hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.workspace-shell button.webplay-glass-pill.is-paired {
+  border-color: rgb(75 232 157 / 35%);
+  background: var(--selection);
+  color: var(--selection-text);
+}
+
+.workspace-shell .webplay-dialog .webplay-dialog-actions button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font: 520 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 .webplay-status-dot {
   width: 7px;
   height: 7px;

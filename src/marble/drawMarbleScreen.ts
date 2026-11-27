@@ -122,24 +122,35 @@ export function drawMarbleScreen(
   c.stroke()
 
   // Clean OLED top telemetry bar below Dynamic Island
-  const hits = s?.hitCount ?? 0
-  const statusLabel = s?.canAddBall
-    ? 'ADD BALL'
-    : s?.region === 'air'
-      ? 'AIRBORNE'
-      : 'READY'
+  const isRunning = s?.phase === 'running'
   const hudY = Math.round(height * 0.122)
   c.textAlign = 'center'
-  c.fillStyle = 'rgba(244, 245, 248, 0.92)'
-  c.font = `600 ${Math.round(width * 0.082)}px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif`
-  c.fillText(String(hits).padStart(2, '0'), cx, hudY)
+  if (isRunning) {
+    const hits = s?.hitCount ?? 0
+    const statusLabel = s?.canAddBall
+      ? 'ADD BALL'
+      : s?.region === 'air'
+        ? 'AIRBORNE'
+        : 'READY'
+    c.fillStyle = 'rgba(244, 245, 248, 0.92)'
+    c.font = `600 ${Math.round(width * 0.082)}px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif`
+    c.fillText(String(hits).padStart(2, '0'), cx, hudY)
 
-  c.fillStyle = s?.canAddBall ? '#7df2b8' : 'rgba(154, 161, 176, 0.85)'
-  c.font = `600 ${Math.round(width * 0.028)}px ui-monospace, SFMono-Regular, Menlo, monospace`
-  c.fillText(statusLabel, cx, hudY + Math.round(width * 0.048))
+    c.fillStyle = s?.canAddBall ? '#7df2b8' : 'rgba(154, 161, 176, 0.85)'
+    c.font = `600 ${Math.round(width * 0.028)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+    c.fillText(statusLabel, cx, hudY + Math.round(width * 0.048))
+  } else {
+    c.fillStyle = 'rgba(244, 245, 248, 0.86)'
+    c.font = `600 ${Math.round(width * 0.036)}px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif`
+    c.fillText('ELASTIC TRAY', cx, hudY - Math.round(width * 0.01))
 
-  const ball = s?.balls.find((b) => b.id === s.activeBallId)
-  if (ball && s?.phone) {
+    c.fillStyle = 'rgba(154, 161, 176, 0.75)'
+    c.font = `600 ${Math.round(width * 0.026)}px ui-monospace, SFMono-Regular, Menlo, monospace`
+    c.fillText('PRESS START', cx, hudY + Math.round(width * 0.042))
+  }
+
+  const ball = isRunning ? s?.balls.find((b) => b.id === s.activeBallId) : undefined
+  if (isRunning && ball && s?.phone) {
     const p = projectMarble(ball, s.phone, g)
     const x = (0.5 + p.local[0] / surfaceW) * width
     const y = (0.5 - p.local[1] / surfaceH) * height

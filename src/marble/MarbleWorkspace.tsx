@@ -12,7 +12,7 @@ import { DEFAULT_MARBLE_SETTINGS, MARBLE_SETTING_LIMITS, type MarbleSettings } f
 import { fittedPhoneDisplayMetrics } from '../model/publicPhoneAssets'
 import { useMarbleWorld } from './useMarbleWorld'
 import { drawMarbleScreen } from './drawMarbleScreen'
-import { createMarbleMaterialSet, createMarblePreviewMaterial } from './marbleMaterials'
+import { createMarbleMaterialSet } from './marbleMaterials'
 import type { WorldClient } from './WorldClient'
 import { SpatialViewport } from '../spatial/SpatialViewport'
 import { WorkspaceGrid } from '../spatial/WorkspaceGrid'
@@ -42,17 +42,12 @@ function MarbleScene({ client, preview }: { client: WorldClient; preview: boolea
     }
   }, [profile])
   const marbleMaterials = useMemo(() => createMarbleMaterialSet(inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const previewMaterial = useMemo(() => createMarblePreviewMaterial(), [])
   const surfaceRef = useRef(surface)
   useEffect(() => { surfaceRef.current = surface; return () => surface.media.texture.dispose() }, [surface])
   useEffect(() => {
     marbleMaterials.ensureTexturesUploaded()
     return () => marbleMaterials.dispose()
   }, [marbleMaterials])
-  useEffect(() => {
-    previewMaterial.ensureTexturesUploaded()
-    return () => previewMaterial.dispose()
-  }, [previewMaterial])
   useFrame(() => {
     const state = preview ? null : client.render()
     const geometry = state?.geometry ?? G
@@ -85,9 +80,6 @@ function MarbleScene({ client, preview }: { client: WorldClient; preview: boolea
     {preview && <ContactShadows frames={1} position={[0, 0.15, 0]} opacity={0.28} scale={0.8} blur={2.8} far={0.2} resolution={256} color="#303747" />}
     <group ref={phone}>
       <SpatialPhoneModel profile={profile} media={surface.media} />
-      {preview && <mesh position={[0, 0.008, G.screenZ + G.radius]} material={previewMaterial.material}>
-        <sphereGeometry args={[G.radius, 48, 32]} />
-      </mesh>}
     </group>
     {Array.from({ length: 5 }, (_, index) => <group key={index} ref={(group) => { balls.current[index] = group }} visible={false}>
       <mesh material={marbleMaterials.active}><sphereGeometry args={[G.radius, 48, 32]} /></mesh>

@@ -118,6 +118,7 @@ function SoloMobileScene({
       driver.setTiltInput(dragTiltRef.current.x, dragTiltRef.current.y)
     }
     const snap = driver.stepFrame(delta)
+    const started = driver.isStarted()
     const curG = driver.getGeometry()
     slotGeometry.set(curG.radius, curG.screenZ)
     screenBounds.set(curG.width / 2 - curG.cornerRadius, curG.height / 2 - curG.cornerRadius, curG.cornerRadius)
@@ -146,18 +147,18 @@ function SoloMobileScene({
       epoch: 1,
       sequence: 1,
       serverTimeMs: Date.now(),
-      phase: 'running',
+      phase: started ? 'running' : 'ready',
       reason: '',
       ownerId: null,
       phoneSessionId: null,
       phoneConnectionId: null,
       source: null,
-      canStart: false,
+      canStart: !started,
       canAddBall: snap.canAddBall,
-      active: true,
+      active: started,
       hitCount: snap.hitCount,
       region: snap.region,
-      geometry: driver.getGeometry(),
+      geometry: curG,
       phone: snap.phone,
       balls: snap.balls,
       activeBallId: snap.activeBallId,
@@ -213,7 +214,9 @@ export function MobilePlayView({
 }) {
   const appearance = usePhoneAppearance()
   const { applyDetectedDevice } = appearance
-  const localDeviceRef = useRef<DetectedDeviceInfo | null>(null)
+  const [localDevice, setLocalDevice] = useState<DetectedDeviceInfo | null>(null)
+  const userPickedProfileRef = useRef<PhoneProfileId | null>(null)
+  const userPickedFinishRef = useRef<PhoneFinishId | null>(null)
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false)
 
   const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode)
@@ -227,11 +230,15 @@ export function MobilePlayView({
   // Solo physics state
   const [driver, setDriver] = useState<WebTrayDriver | null>(null)
   const initialProfileRef = useRef(appearance.profile)
-  const [soloHud, setSoloHud] = useState({ hitCount: 0, canAddBall: false, hasActive: true })
+  const [soloHud, setSoloHud] = useState({ hitCount: 0, canAddBall: false, hasActive: false })
 
   // Paired room state
   const [roomStatus, setRoomStatus] = useState<RoomConnectionStatus>('idle')
   const [pairedSnapshot, setPairedSnapshot] = useState<WebWorldSnapshot | null>(null)
+  const desktopStateRef = useRef<{ mode: WebPlayMode; phase: 'idle' | 'running' }>({
+    mode: 'showcase',
+    phase: 'running',
+  })
   const connRef = useRef<RoomConnection | null>(null)
   const pairedCanvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -255,29 +262,36 @@ export function MobilePlayView({
   const dragOriginRef = useRef<{ x: number; y: number } | null>(null)
 
   const sendLocalDeviceInfo = useCallback(
-    (overrideProfileId?: PhoneProfileId) => {
-      const info = localDeviceRef.current
-      if (!info || !connRef.current) return
+    (explicitProfileId?: PhoneProfileId | null, explicitFinishId?: PhoneFinishId | null) => {
+      if (!localDevice || !connRef.current) return
+      const profileOverride =
+        explicitProfileId === null
+          ? undefined
+          : explicitProfileId ?? userPickedProfileRef.current ?? undefined
+      const finishOverride =
+        explicitFinishId === null
+          ? undefined
+          : explicitFinishId ?? userPickedFinishRef.current ?? undefined
       const payload: WebDeviceMessage = {
         type: 'web-device',
-        platform: info.platform,
-        screenWidth: info.screenWidth,
-        screenHeight: info.screenHeight,
-        dpr: info.dpr,
-        ...(info.modelHint ? { modelHint: info.modelHint } : {}),
-        ...(overrideProfileId ? { preferredProfileId: overrideProfileId } : !appearance.autoMatch ? { preferredProfileId: appearance.profileId } : {}),
-        preferredFinishId: appearance.finishId,
+        platform: localDevice.platform,
+        screenWidth: localDevice.screenWidth,
+        screenHeight: localDevice.screenHeight,
+        dpr: localDevice.dpr,
+        ...(localDevice.modelHint ? { modelHint: localDevice.modelHint } : {}),
+        ...(profileOverride ? { preferredProfileId: profileOverride } : {}),
+        ...(finishOverride ? { preferredFinishId: finishOverride } : {}),
       }
       connRef.current.send(payload)
     },
-    [appearance.autoMatch, appearance.finishId, appearance.profileId],
+    [localDevice],
   )
 
   useEffect(() => {
     let cancelled = false
     void detectLocalDeviceInfo().then((info) => {
       if (cancelled) return
-      localDeviceRef.current = info
+      setLocalDevice(info)
       applyDetectedDevice(info)
     })
     return () => {
@@ -302,6 +316,7 @@ export function MobilePlayView({
           onSpawn: () => soundFeedback.playSpawn(),
         },
         initialProfileRef.current,
+        { startWithBall: false },
       )
       setDriver(instance)
     })
@@ -309,6 +324,12 @@ export function MobilePlayView({
       cancelled = true
     }
   }, [isPairedMode])
+
+  useEffect(() => {
+    if (!isPairedMode && !gateOpen && driver && !driver.isStarted()) {
+      driver.startGame()
+    }
+  }, [driver, gateOpen, isPairedMode])
 
   useEffect(() => {
     return () => {
@@ -347,10 +368,17 @@ export function MobilePlayView({
   }, [roomCode])
 
   useEffect(() => {
-    if (roomStatus === 'paired-relay' || roomStatus === 'paired-p2p') {
+    if ((roomStatus === 'paired-relay' || roomStatus === 'paired-p2p') && localDevice) {
       sendLocalDeviceInfo()
     }
-  }, [roomStatus, sendLocalDeviceInfo])
+  }, [localDevice, roomStatus, sendLocalDeviceInfo])
+
+  useEffect(() => {
+    desktopStateRef.current = {
+      mode: pairedSnapshot?.mode ?? 'showcase',
+      phase: pairedSnapshot?.phase ?? 'running',
+    }
+  }, [pairedSnapshot])
 
   useEffect(() => {
     const canvas = pairedCanvasRef.current
@@ -364,15 +392,15 @@ export function MobilePlayView({
       epoch: 1,
       sequence: pairedSnapshot.seq,
       serverTimeMs: Date.now(),
-      phase: 'running',
+      phase: pairedSnapshot.phase === 'idle' ? 'ready' : 'running',
       reason: '',
       ownerId: null,
       phoneSessionId: null,
       phoneConnectionId: null,
       source: null,
-      canStart: false,
+      canStart: pairedSnapshot.phase === 'idle',
       canAddBall: pairedSnapshot.canAddBall,
-      active: true,
+      active: pairedSnapshot.phase !== 'idle',
       hitCount: pairedSnapshot.hitCount,
       region: pairedSnapshot.region,
       geometry: pairedSnapshot.geometry,
@@ -427,7 +455,9 @@ export function MobilePlayView({
       const strength = flickDetectorRef.current.sample(event.acceleration)
       if (!strength) return
       if (isPairedMode) {
-        connRef.current?.send({ type: 'web-action', action: 'toss', strength })
+        if (desktopStateRef.current.mode === 'marble' && desktopStateRef.current.phase !== 'idle') {
+          connRef.current?.send({ type: 'web-action', action: 'toss', strength })
+        }
       } else {
         driver?.triggerToss(strength)
       }
@@ -461,7 +491,7 @@ export function MobilePlayView({
     setGateOpen(false)
   }, [])
 
-  const desktopMode: WebPlayMode = pairedSnapshot?.mode ?? 'marble'
+  const desktopMode: WebPlayMode = pairedSnapshot?.mode ?? 'showcase'
   const pairedLabel = roomStatus === 'paired-p2p'
     ? `Room ${formatRoomCode(roomCode ?? '')} · Direct P2P`
     : roomStatus === 'paired-relay'
@@ -549,41 +579,50 @@ export function MobilePlayView({
       >
         {isPairedMode ? (
           desktopMode === 'showcase' ? (
-            <div className="mobile-showcase-remote">
-              <h2>3D UI Showcase Remote</h2>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
-                Tilt your phone to rotate the 3D iPhone on desktop, and tap below to control the screen live.
-              </p>
-              <div className="mobile-remote-row">
-                {DEMO_SCREENS.map((scr) => (
-                  <button
-                    key={scr.id}
-                    type="button"
-                    className={pairedSnapshot?.activeScreenId === scr.id ? 'is-primary' : ''}
-                    onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: scr.id, control: 'select-screen', value: scr.id })}
-                  >
-                    {scr.label}
-                  </button>
-                ))}
+            pairedSnapshot?.activeScreenId === 'local-video' ? (
+              <div className="mobile-showcase-remote">
+                <h2>3D Studio Remote</h2>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Tilt your phone to rotate the 3D model playing your local video on desktop.
+                </p>
               </div>
-              {((pairedSnapshot?.activeScreenId as DemoScreenId | undefined) ?? 'audio') === 'audio' && (
+            ) : (
+              <div className="mobile-showcase-remote">
+                <h2>3D Studio Remote</h2>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Tilt your phone to rotate the 3D phone on desktop, and tap below to control the screen live.
+                </p>
                 <div className="mobile-remote-row">
-                  <button type="button" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'audio', control: 'prev-track' })}>Prev</button>
-                  <button type="button" className="is-primary" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'audio', control: 'toggle-play' })}>Play / Pause</button>
-                  <button type="button" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'audio', control: 'next-track' })}>Next</button>
+                  {DEMO_SCREENS.map((scr) => (
+                    <button
+                      key={scr.id}
+                      type="button"
+                      className={pairedSnapshot?.activeScreenId === scr.id ? 'is-primary' : ''}
+                      onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: scr.id, control: 'select-screen', value: scr.id })}
+                    >
+                      {scr.label}
+                    </button>
+                  ))}
                 </div>
-              )}
-              {pairedSnapshot?.activeScreenId === 'weather' && (
-                <div className="mobile-remote-row">
-                  <button type="button" className="is-primary" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'weather', control: 'cycle-weather' })}>Switch Weather</button>
-                </div>
-              )}
-              {pairedSnapshot?.activeScreenId === 'notifications' && (
-                <div className="mobile-remote-row">
-                  <button type="button" className="is-primary" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'notifications', control: 'cycle-notification' })}>Next Notification Card</button>
-                </div>
-              )}
-            </div>
+                {((pairedSnapshot?.activeScreenId as DemoScreenId | undefined) ?? 'audio') === 'audio' && (
+                  <div className="mobile-remote-row">
+                    <button type="button" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'audio', control: 'prev-track' })}>Prev</button>
+                    <button type="button" className="is-primary" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'audio', control: 'toggle-play' })}>Play / Pause</button>
+                    <button type="button" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'audio', control: 'next-track' })}>Next</button>
+                  </div>
+                )}
+                {pairedSnapshot?.activeScreenId === 'weather' && (
+                  <div className="mobile-remote-row">
+                    <button type="button" className="is-primary" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'weather', control: 'cycle-weather' })}>Switch Weather</button>
+                  </div>
+                )}
+                {pairedSnapshot?.activeScreenId === 'notifications' && (
+                  <div className="mobile-remote-row">
+                    <button type="button" className="is-primary" onClick={() => connRef.current?.send({ type: 'web-ui-event', screenId: 'notifications', control: 'cycle-notification' })}>Next Notification Card</button>
+                  </div>
+                )}
+              </div>
+            )
           ) : (
             <>
               <canvas
@@ -596,7 +635,13 @@ export function MobilePlayView({
               <div className="mobile-play-hud">
                 <span className="mobile-hud-pill">{pairedSnapshot?.hitCount ?? 0} catches</span>
                 <span className="mobile-hud-pill">
-                  {pairedSnapshot?.canAddBall ? 'Tap Add ball' : pairedSnapshot?.region === 'air' ? 'In air' : 'On tray'}
+                  {pairedSnapshot?.phase === 'idle'
+                    ? 'Ready · Press Start game'
+                    : pairedSnapshot?.canAddBall
+                      ? 'Tap Add ball'
+                      : pairedSnapshot?.region === 'air'
+                        ? 'In air'
+                        : 'On tray'}
                 </span>
               </div>
             </>
@@ -633,7 +678,7 @@ export function MobilePlayView({
               <h1>{isPairedMode ? 'Connect Motion Controller' : 'Play Elastic Tray'}</h1>
               <p>
                 {isPairedMode
-                  ? 'Allow motion access so your phone tilts the 3D iPhone and tosses marbles live on your desktop.'
+                  ? 'Allow motion access so your phone tilts the 3D model and auto-matches your hardware live on desktop.'
                   : 'Tilt your phone to roll the marble through the right exit, or flick upward to toss and catch it.'}
               </p>
               <button type="button" className="is-primary" onClick={() => void startWithSensors()}>
@@ -658,31 +703,53 @@ export function MobilePlayView({
 
       <footer className="mobile-play-bar">
         {isPairedMode ? (
-          <>
-            <button
-              type="button"
-              className={pairedSnapshot?.canAddBall ? 'is-primary' : ''}
-              disabled={!pairedSnapshot?.canAddBall}
-              onClick={() => {
-                soundFeedback.unlock()
-                connRef.current?.send({ type: 'web-action', action: 'add-ball' })
-              }}
-            >
-              Add ball
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                soundFeedback.unlock()
-                connRef.current?.send({ type: 'web-action', action: 'toss', strength: 1 })
-              }}
-            >
-              Toss
-            </button>
+          desktopMode === 'showcase' ? (
             <button type="button" onClick={recenter}>
               Recenter
             </button>
-          </>
+          ) : pairedSnapshot?.phase === 'idle' ? (
+            <>
+              <button
+                type="button"
+                className="is-primary"
+                onClick={() => {
+                  soundFeedback.unlock()
+                  connRef.current?.send({ type: 'web-action', action: 'start' })
+                }}
+              >
+                Start game
+              </button>
+              <button type="button" onClick={recenter}>
+                Recenter
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className={pairedSnapshot?.canAddBall ? 'is-primary' : ''}
+                disabled={!pairedSnapshot?.canAddBall}
+                onClick={() => {
+                  soundFeedback.unlock()
+                  connRef.current?.send({ type: 'web-action', action: 'add-ball' })
+                }}
+              >
+                Add ball
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundFeedback.unlock()
+                  connRef.current?.send({ type: 'web-action', action: 'toss', strength: 1 })
+                }}
+              >
+                Toss
+              </button>
+              <button type="button" onClick={recenter}>
+                Recenter
+              </button>
+            </>
+          )
         ) : (
           <>
             <button
@@ -732,7 +799,16 @@ export function MobilePlayView({
           compact
           appearance={appearance}
           onUserChange={(profileId) => {
+            userPickedProfileRef.current = profileId
             if (isPairedMode) sendLocalDeviceInfo(profileId)
+          }}
+          onFinishChange={(finishId) => {
+            userPickedFinishRef.current = finishId
+            if (isPairedMode) sendLocalDeviceInfo(undefined, finishId)
+          }}
+          onAutoMatch={() => {
+            userPickedProfileRef.current = null
+            if (isPairedMode) sendLocalDeviceInfo(null)
           }}
         />
         <div className="webplay-dialog-actions">

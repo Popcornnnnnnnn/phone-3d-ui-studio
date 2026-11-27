@@ -6,8 +6,6 @@ import {
 } from './demoScreens'
 import type { PoseSample } from './contracts'
 import type { SharedRoomController } from '../webplay/useSharedRoom'
-import { MARBLE_GEOMETRY } from '../../shared/marbleMath.mjs'
-import { SPATIAL_START } from '../../shared/spatialMath.mjs'
 
 export function useDemoScreen(active: boolean, sharedRoom?: SharedRoomController) {
   const [renderer] = useState(() => new DemoScreenRenderer())
@@ -52,25 +50,6 @@ export function useDemoScreen(active: boolean, sharedRoom?: SharedRoomController
       }
     })
   }, [active, renderer, sharedRoom])
-
-  useEffect(() => {
-    if (!active || !sharedRoom?.paired) return
-    const timer = setInterval(() => {
-      sharedRoom.sendWorldSnapshot({
-        phone: { position: [...SPATIAL_START], quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] },
-        balls: [],
-        activeBallId: null,
-        hitCount: 0,
-        lastImpact: null,
-        canAddBall: false,
-        region: 'tray',
-        geometry: MARBLE_GEOMETRY,
-        mode: 'showcase',
-        activeScreenId: demoState.screenId,
-      })
-    }, 250)
-    return () => clearInterval(timer)
-  }, [active, demoState.screenId, sharedRoom])
 
   const dispatchControl = useCallback(
     (control: string, value?: string | number | boolean) => {

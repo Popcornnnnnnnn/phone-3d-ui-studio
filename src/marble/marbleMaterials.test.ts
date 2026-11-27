@@ -16,7 +16,6 @@ import { MARBLE_GEOMETRY as G } from '../../shared/marbleMath.mjs'
 import {
   createClippedMarbleMaterial,
   createMarbleMaterialSet,
-  createMarblePreviewMaterial,
   createMarbleSurfaceTexture,
 } from './marbleMaterials'
 
@@ -82,13 +81,6 @@ describe('marbleMaterials', () => {
     expect(set.active.map!.version).toBeGreaterThan(prevActiveVersion)
     expect(set.trail.map!.version).toBeGreaterThan(prevTrailVersion)
     set.dispose()
-
-    const preview = createMarblePreviewMaterial()
-    expect(preview.material.map).toBeTruthy()
-    const prevPreviewVersion = preview.material.map!.version
-    preview.ensureTexturesUploaded()
-    expect(preview.material.map!.version).toBeGreaterThan(prevPreviewVersion)
-    preview.dispose()
   })
 
   it('injects finite-slot clipping and IBL scaling into Three.js physical shaders with unique cache keys', () => {

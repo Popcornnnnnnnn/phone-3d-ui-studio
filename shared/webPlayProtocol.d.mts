@@ -17,7 +17,7 @@ export interface WebPoseMessage {
 
 export interface WebActionMessage {
   type: 'web-action'
-  action: 'toss' | 'add-ball' | 'recenter'
+  action: 'start' | 'toss' | 'add-ball' | 'recenter'
   strength?: number
 }
 
@@ -51,6 +51,7 @@ export interface WebWorldSnapshot {
   region: 'tray' | 'air' | 'needs-ball'
   geometry: MarbleGeometry
   mode: WebPlayMode
+  phase?: 'idle' | 'running'
   activeScreenId: string
 }
 
