@@ -51,13 +51,15 @@ describe('rounded rectangle geometry', () => {
     geometry.dispose()
   })
 
-  it('supports zero-radius sharp corners cleanly', () => {
-    const geometry = createRoundedRectangleGeometry(2, 4, 0)
-    geometry.computeBoundingBox()
-    expect(geometry.boundingBox?.min.x).toBeCloseTo(-1)
-    expect(geometry.boundingBox?.max.x).toBeCloseTo(1)
-    expect(geometry.boundingBox?.min.y).toBeCloseTo(-2)
-    expect(geometry.boundingBox?.max.y).toBeCloseTo(2)
-    geometry.dispose()
+  it('supports zero, sub-epsilon, and non-finite radius sharp corners cleanly', () => {
+    for (const radius of [0, 1e-5, Number.NaN]) {
+      const geometry = createRoundedRectangleGeometry(2, 4, radius)
+      geometry.computeBoundingBox()
+      expect(geometry.boundingBox?.min.x).toBeCloseTo(-1)
+      expect(geometry.boundingBox?.max.x).toBeCloseTo(1)
+      expect(geometry.boundingBox?.min.y).toBeCloseTo(-2)
+      expect(geometry.boundingBox?.max.y).toBeCloseTo(2)
+      geometry.dispose()
+    }
   })
 })

@@ -165,13 +165,27 @@ function DynamicIslandSurface({
       <mesh geometry={geometry}>
         <meshBasicMaterial color="#020305" toneMapped={false} />
       </mesh>
-      <mesh position={[importedDynamicIsland.width * 0.27, 0, 0.0001]}>
+      <mesh position={[importedDynamicIsland.width * 0.27, 0, 0.00025]}>
         <circleGeometry args={[importedDynamicIsland.height * 0.28, 24]} />
-        <meshBasicMaterial color="#0c1322" toneMapped={false} />
+        <meshBasicMaterial
+          color="#0c1322"
+          toneMapped={false}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
+        />
       </mesh>
-      <mesh position={[importedDynamicIsland.width * 0.27, 0, 0.00015]}>
+      <mesh position={[importedDynamicIsland.width * 0.27, 0, 0.0005]}>
         <circleGeometry args={[importedDynamicIsland.height * 0.14, 20]} />
-        <meshBasicMaterial color="#050810" toneMapped={false} />
+        <meshBasicMaterial
+          color="#050810"
+          toneMapped={false}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
+        />
       </mesh>
     </group>
   )

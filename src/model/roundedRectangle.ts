@@ -9,10 +9,12 @@ export function createRoundedRectangleShape(
   const right = width / 2
   const bottom = -height / 2
   const top = height / 2
-  const safeRadius = Math.max(0, Math.min(radius, width / 2, height / 2))
+  const safeRadius = Number.isFinite(radius)
+    ? Math.max(0, Math.min(radius, width / 2, height / 2))
+    : 0
   const shape = new Shape()
 
-  if (safeRadius === 0) {
+  if (safeRadius <= 1e-4) {
     shape.moveTo(left, bottom)
     shape.lineTo(right, bottom)
     shape.lineTo(right, top)

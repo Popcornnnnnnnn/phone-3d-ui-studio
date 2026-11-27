@@ -92,7 +92,8 @@
 .studio-app { min-height: 100dvh; display: flex; flex-direction: column; background: var(--app-background); }
 @media(min-width: 761px) {
   .studio-app { height: 100dvh; overflow: hidden; }
-  .spatial-workspace { flex: 1; min-height: 0; overflow-y: auto; }
+  .studio-mode-nav, .spatial-experience-nav { flex: none; }
+  .spatial-experience { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 }
 :root[data-desktop=true] :is(body, #root, .studio-app) { height: 100dvh; min-height: 0; overflow: hidden; }
 :root[data-desktop=true] .studio-app { display: flex; flex-direction: column; }
