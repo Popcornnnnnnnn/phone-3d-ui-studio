@@ -73,6 +73,7 @@ export type WebPlaySignalMessage =
   | { type: 'room-error'; code: string; message: string }
 
 export const ROOM_CODE_ALPHABET: string
+export const ROOM_REPLACED_CLOSE_CODE: 4001
 export function generateRoomCode(): string
 export function normalizeRoomCode(raw: string): string | null
 export function formatRoomCode(code: string): string

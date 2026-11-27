@@ -1,5 +1,9 @@
 import { WebSocket, WebSocketServer } from 'ws'
-import { normalizeRoomCode, parseWebPlayMessage } from '../shared/webPlayProtocol.mjs'
+import {
+  normalizeRoomCode,
+  parseWebPlayMessage,
+  ROOM_REPLACED_CLOSE_CODE,
+} from '../shared/webPlayProtocol.mjs'
 
 const RELAYED_TYPES = new Set([
   'rtc-offer',
@@ -43,14 +47,14 @@ export function createWebPlayRoomRelay() {
       }
 
       const previous = room[role]
+      room[role] = ws
       if (previous && previous !== ws) {
         try {
-          previous.close(4001, 'Replaced by new connection')
+          previous.close(ROOM_REPLACED_CLOSE_CODE, 'Replaced by new connection')
         } catch {
           // ignore
         }
       }
-      room[role] = ws
       const peerRole = role === 'desktop' ? 'phone' : 'desktop'
       const peer = room[peerRole]
 
@@ -62,6 +66,15 @@ export function createWebPlayRoomRelay() {
       })
       if (peer && peer.readyState === WebSocket.OPEN) {
         sendJson(peer, { type: 'peer-joined', role })
+      }
+
+      const releaseSocket = () => {
+        if (room[role] !== ws) return
+        room[role] = null
+        sendJson(room[peerRole], { type: 'peer-left', role })
+        if (!room.desktop && !room.phone) {
+          rooms.delete(roomCode)
+        }
       }
 
       ws.on('message', (data) => {
@@ -83,14 +96,8 @@ export function createWebPlayRoomRelay() {
         }
       })
 
-      ws.on('close', () => {
-        if (room[role] !== ws) return
-        room[role] = null
-        sendJson(room[peerRole], { type: 'peer-left', role })
-        if (!room.desktop && !room.phone) {
-          rooms.delete(roomCode)
-        }
-      })
+      ws.on('error', releaseSocket)
+      ws.on('close', releaseSocket)
     })
     return true
   }
