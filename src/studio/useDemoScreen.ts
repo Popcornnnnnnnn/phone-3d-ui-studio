@@ -1,16 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   DemoScreenRenderer,
   INITIAL_DEMO_STATE,
   type DemoScreenState,
 } from './demoScreens'
-import type { PoseSample } from './contracts'
 import type { SharedRoomController } from '../webplay/useSharedRoom'
 
 export function useDemoScreen(active: boolean, sharedRoom?: SharedRoomController) {
   const [renderer] = useState(() => new DemoScreenRenderer())
   const [demoState, setDemoState] = useState<DemoScreenState>(INITIAL_DEMO_STATE)
-  const poseRef = useRef<PoseSample | null>(null)
 
   useEffect(() => {
     return () => {
@@ -23,14 +21,6 @@ export function useDemoScreen(active: boolean, sharedRoom?: SharedRoomController
     let rafId = 0
     const tick = (nowMs: number) => {
       const paired = Boolean(sharedRoom?.paired && sharedRoom.peerPoseRef.current)
-      if (paired && sharedRoom?.peerPoseRef.current) {
-        poseRef.current = {
-          timestampMs: Date.now(),
-          quaternion: sharedRoom.peerPoseRef.current,
-        }
-      } else {
-        poseRef.current = null
-      }
       const tilt = paired && sharedRoom
         ? sharedRoom.peerTiltRef.current
         : { x: Math.sin(nowMs / 1700) * 0.35, y: Math.cos(nowMs / 2100) * 0.25 }
@@ -64,8 +54,7 @@ export function useDemoScreen(active: boolean, sharedRoom?: SharedRoomController
       media: renderer.media,
       demoState,
       dispatchControl,
-      poseRef: poseRef as RefObject<PoseSample | null>,
     }),
-    [demoState, dispatchControl, poseRef, renderer.media],
+    [demoState, dispatchControl, renderer.media],
   )
 }

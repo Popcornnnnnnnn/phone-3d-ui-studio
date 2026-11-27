@@ -122,16 +122,18 @@ export function drawMarbleScreen(
   c.stroke()
 
   // Clean OLED top telemetry bar below Dynamic Island
-  const isRunning = s?.phase === 'running'
+  const isStarted = s?.phase === 'running' || s?.phase === 'paused' || Boolean(s?.active)
   const hudY = Math.round(height * 0.122)
   c.textAlign = 'center'
-  if (isRunning) {
+  if (isStarted) {
     const hits = s?.hitCount ?? 0
-    const statusLabel = s?.canAddBall
-      ? 'ADD BALL'
-      : s?.region === 'air'
-        ? 'AIRBORNE'
-        : 'READY'
+    const statusLabel = s?.phase === 'paused'
+      ? 'PAUSED'
+      : s?.canAddBall
+        ? 'ADD BALL'
+        : s?.region === 'air'
+          ? 'AIRBORNE'
+          : 'READY'
     c.fillStyle = 'rgba(244, 245, 248, 0.92)'
     c.font = `600 ${Math.round(width * 0.082)}px -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif`
     c.fillText(String(hits).padStart(2, '0'), cx, hudY)
@@ -149,8 +151,8 @@ export function drawMarbleScreen(
     c.fillText('PRESS START', cx, hudY + Math.round(width * 0.042))
   }
 
-  const ball = isRunning ? s?.balls.find((b) => b.id === s.activeBallId) : undefined
-  if (isRunning && ball && s?.phone) {
+  const ball = isStarted ? s?.balls.find((b) => b.id === s.activeBallId) : undefined
+  if (isStarted && ball && s?.phone) {
     const p = projectMarble(ball, s.phone, g)
     const x = (0.5 + p.local[0] / surfaceW) * width
     const y = (0.5 - p.local[1] / surfaceH) * height

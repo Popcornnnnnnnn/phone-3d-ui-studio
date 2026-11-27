@@ -1,6 +1,7 @@
 import { PHONE_FINISHES, PHONE_PROFILES } from './phoneGeometry.mjs'
 
 export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+export const ROOM_REPLACED_CLOSE_CODE = 4001
 
 export function generateRoomCode() {
   const bytes = new Uint8Array(6)

@@ -1397,6 +1397,7 @@ export function useLivePhoneSource(
     commitScreenStale(false)
     setPoseStale(false)
     setPoseDiagnostics(null)
+    setDeviceProfile(null)
     if (isHostedStaticDemo()) {
       shouldReconnectRef.current = false
       commitStatus('idle')

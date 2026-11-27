@@ -276,4 +276,18 @@ describe('drawMarbleScreen', () => {
     expect(mock2d.texts).toContain('ELASTIC TRAY')
     expect(mock2d.arcs.filter((a) => a.x === 195 && a.y === 422)).toHaveLength(2)
   })
+
+  it('preserves catch HUD and marble contact shadow during paused MarbleWorkspace rounds', () => {
+    const pausedSnap: WorldSnapshot = {
+      ...makeSnapshot([0, 0, G.screenZ]),
+      phase: 'paused',
+      active: true,
+    }
+    const mock = createMockCanvasContext()
+
+    drawMarbleScreen(mock.ctx, 640, 1380, pausedSnap, { mode: 'surface' })
+    expect(mock.texts).toContain('02')
+    expect(mock.texts).toContain('PAUSED')
+    expect(mock.arcs.filter((a) => Math.abs(a.x - 320) < 0.05 && a.y === 690).length).toBeGreaterThan(2)
+  })
 })

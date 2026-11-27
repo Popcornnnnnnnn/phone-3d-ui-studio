@@ -35,7 +35,7 @@ import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
 import { DEMO_SCREENS, type DemoScreenId } from '../studio/demoScreens'
 import { WorkspaceLighting } from '../workspace/WorkspaceLighting'
 import { DeviceAppearancePicker } from './DeviceAppearancePicker'
-import { detectLocalDeviceInfo, type DetectedDeviceInfo } from './deviceDetect'
+import { detectLocalDeviceInfo, inferPhoneFromDeviceInfo, type DetectedDeviceInfo } from './deviceDetect'
 import { NativeDialog } from './NativeDialog'
 import {
   applyHandheldNeutral,
@@ -266,7 +266,7 @@ export function MobilePlayView({
       if (!localDevice || !connRef.current) return
       const profileOverride =
         explicitProfileId === null
-          ? undefined
+          ? inferPhoneFromDeviceInfo(localDevice).profileId
           : explicitProfileId ?? userPickedProfileRef.current ?? undefined
       const finishOverride =
         explicitFinishId === null
@@ -344,14 +344,22 @@ export function MobilePlayView({
       return
     }
 
+    lastImpactPlayedRef.current = 0
     const conn = new RoomConnection({
       roomCode,
       role: 'phone',
-      onStatus: setRoomStatus,
+      onStatus: (next) => {
+        setRoomStatus(next)
+        if (next !== 'paired-relay' && next !== 'paired-p2p') {
+          lastImpactPlayedRef.current = 0
+        }
+      },
       onMessage: (msg) => {
         if (msg.type === 'web-world') {
           setPairedSnapshot(msg)
-          if (msg.lastImpact && msg.lastImpact.sequence > lastImpactPlayedRef.current) {
+          if (!msg.lastImpact) {
+            lastImpactPlayedRef.current = 0
+          } else if (msg.lastImpact.sequence > lastImpactPlayedRef.current) {
             lastImpactPlayedRef.current = msg.lastImpact.sequence
             soundFeedback.playCatch()
           }
@@ -498,9 +506,13 @@ export function MobilePlayView({
       ? `Room ${formatRoomCode(roomCode ?? '')} · Cloud Relay`
       : roomStatus === 'waiting-peer'
         ? `Room ${formatRoomCode(roomCode ?? '')} · Waiting for desktop`
-        : roomStatus === 'unavailable'
-          ? 'Signaling server unreachable'
-          : 'Connecting to desktop…'
+        : roomStatus === 'replaced'
+          ? `Room ${formatRoomCode(roomCode ?? '')} · Replaced by another session`
+          : roomStatus === 'unavailable'
+            ? 'Signaling server unreachable'
+            : roomStatus === 'closed'
+              ? 'Room disconnected'
+              : 'Connecting to desktop…'
 
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault()
@@ -511,7 +523,9 @@ export function MobilePlayView({
     }
     setCodeError(null)
     setPairDialogOpen(false)
+    setDriver(null)
     pairedCalRef.current = null
+    lastImpactPlayedRef.current = 0
     setRoomCode(normalized)
     const url = new URL(window.location.href)
     url.searchParams.set('pair', normalized)
@@ -541,6 +555,8 @@ export function MobilePlayView({
                 setRoomCode(null)
                 setRoomStatus('idle')
                 setPairedSnapshot(null)
+                lastImpactPlayedRef.current = 0
+                pairedCalRef.current = null
                 const url = new URL(window.location.href)
                 url.searchParams.delete('pair')
                 window.history.replaceState(null, '', url)

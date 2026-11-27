@@ -72,4 +72,47 @@ describe('webplay room relay', () => {
     expect(await desktop.nextMessage()).toEqual({ type: 'peer-left', role: 'phone' })
     desktop.close()
   })
+
+  it('evicts previous role holder with 4001 without emitting peer-left and handles socket errors safely', async () => {
+    const server = http.createServer()
+    const relay = createWebPlayRoomRelay()
+    const detach = relay.attach(server)
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const { port } = server.address()
+
+    cleanups.push(async () => {
+      detach()
+      relay.close()
+      await new Promise((resolve) => server.close(resolve))
+    })
+
+    const desktop1 = await connectWs(`ws://127.0.0.1:${port}/api/room/ABC234?role=desktop`)
+    expect(await desktop1.nextMessage()).toMatchObject({ type: 'room-joined', peerConnected: false })
+
+    const phone = await connectWs(`ws://127.0.0.1:${port}/api/room/ABC234?role=phone`)
+    expect(await phone.nextMessage()).toMatchObject({ type: 'room-joined', peerConnected: true })
+    expect(await desktop1.nextMessage()).toEqual({ type: 'peer-joined', role: 'phone' })
+
+    const desktop1CloseCode = new Promise((resolve) => {
+      desktop1.once('close', (code) => resolve(code))
+    })
+
+    const desktop2 = await connectWs(`ws://127.0.0.1:${port}/api/room/ABC234?role=desktop`)
+    expect(await desktop2.nextMessage()).toMatchObject({ type: 'room-joined', peerConnected: true })
+    expect(await desktop1CloseCode).toBe(4001)
+    expect(await phone.nextMessage()).toEqual({ type: 'peer-joined', role: 'desktop' })
+
+    // Verify phone receives desktop2's action directly with no spurious peer-left from desktop1
+    desktop2.send(JSON.stringify({ type: 'web-action', action: 'add-ball' }))
+    expect(await phone.nextMessage()).toEqual({ type: 'web-action', action: 'add-ball' })
+
+    // Emit an error on server-side desktop2 socket, then close; should not crash and emit peer-left once
+    const room = relay.rooms.get('ABC234')
+    expect(room?.desktop).toBeTruthy()
+    room.desktop.emit('error', new Error('simulated reset'))
+    expect(await phone.nextMessage()).toEqual({ type: 'peer-left', role: 'desktop' })
+
+    desktop2.close()
+    phone.close()
+  })
 })

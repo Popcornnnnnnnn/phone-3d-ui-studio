@@ -115,8 +115,14 @@ function deviceStateEqual(a: SharedDeviceState, b: SharedDeviceState): boolean {
   return (
     a.activeConnectionKey === b.activeConnectionKey &&
     a.detectedLabel === b.detectedLabel &&
-    a.bridgeDeviceProfile === b.bridgeDeviceProfile &&
-    a.detectedDevice === b.detectedDevice
+    a.bridgeDeviceProfile?.profileId === b.bridgeDeviceProfile?.profileId &&
+    a.bridgeDeviceProfile?.deviceModel === b.bridgeDeviceProfile?.deviceModel &&
+    a.bridgeDeviceProfile?.status === b.bridgeDeviceProfile?.status &&
+    a.detectedDevice?.platform === b.detectedDevice?.platform &&
+    a.detectedDevice?.screenWidth === b.detectedDevice?.screenWidth &&
+    a.detectedDevice?.screenHeight === b.detectedDevice?.screenHeight &&
+    a.detectedDevice?.dpr === b.detectedDevice?.dpr &&
+    a.detectedDevice?.modelHint === b.detectedDevice?.modelHint
   )
 }
 
