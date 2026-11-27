@@ -1,3 +1,8 @@
+import {
+  parsePhoneProfileSelection,
+  type PhoneProfileSelection,
+} from '../../shared/phoneGeometry.mjs'
+
 export type QuaternionTuple = readonly [
   x: number,
   y: number,
@@ -38,6 +43,7 @@ export interface BridgeStatusMessage {
   phones: number
   webrtcBrowsers: number
   webrtcPhones: number
+  deviceProfile: PhoneProfileSelection | null
 }
 
 export interface FrameMetadataMessage {
@@ -287,6 +293,7 @@ export function parseLiveTextMessage(value: string): LiveTextMessage | null {
       phones: message.phones,
       webrtcBrowsers: optionalFiniteNumber(message.webrtcBrowsers) ?? 0,
       webrtcPhones: optionalFiniteNumber(message.webrtcPhones) ?? 0,
+      deviceProfile: parsePhoneProfileSelection(message.deviceProfile),
     }
   }
 

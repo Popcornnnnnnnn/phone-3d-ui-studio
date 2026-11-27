@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAppearance, type Appearance } from './appearance'
 import { SpatialExperience } from './spatial/SpatialExperience'
 import { WorkspaceConnection, WorkspaceInspector, WorkspaceStatus } from './workspace/WorkspaceUI'
@@ -8,19 +8,19 @@ import { MarbleWorkspace } from './marble/MarbleWorkspace'
 import { WebPlayWorkspace } from './webplay/WebPlayWorkspace'
 import { MobilePlayView } from './webplay/MobilePlayView'
 import { DeviceAppearancePicker } from './webplay/DeviceAppearancePicker'
+import { PairPhoneControl } from './webplay/PairPhoneControl'
 import { useSharedRoom, type SharedRoomController } from './webplay/useSharedRoom'
 import { normalizeRoomCode } from '../shared/webPlayProtocol.mjs'
+import { MARBLE_GEOMETRY } from '../shared/marbleMath.mjs'
+import { SPATIAL_START } from '../shared/spatialMath.mjs'
 import { DEMO_SCREENS } from './studio/demoScreens'
 import { useDemoScreen } from './studio/useDemoScreen'
 import { usePhoneAppearance } from './model/usePhoneAppearance'
-import {
-  IPHONE_17_MM,
-  type ReviewView,
-  type ScreenOrientation,
-} from './model/iphone17'
+import type { ReviewView, ScreenOrientation } from './model/iphone17'
 import { StudioScene } from './scene/StudioScene'
 import { createBrowserLiveRenderScheduler } from './scene/liveRenderScheduler'
 import { findStudioPreset, studioPresets } from './studio/presets'
+import type { PoseSample } from './studio/contracts'
 import type { CaptureState, QuaternionTuple } from './studio/liveProtocol'
 import type { DetailedMetricSummary } from './studio/liveMeasurement'
 import {
@@ -115,8 +115,9 @@ export function App() {
   const [experience, setExperience] = useState<'tracking' | 'marble'>(() => initialParams.get('experience') === 'tracking' ? 'tracking' : 'marble')
   const [webTab, setWebTab] = useState<WebWorkspaceTab>(() => {
     if (hasExplicitLocalParam) return 'local'
-    if (initialParams.get('mode') === 'mirroring' || initialParams.get('tab') === 'showcase') return 'showcase'
-    return 'webplay'
+    const tabParam = initialParams.get('tab')
+    if (tabParam === 'tray' || tabParam === 'play' || tabParam === 'webplay') return 'webplay'
+    return 'showcase'
   })
 
   const showMobileController = !desktop && (initialPairCode !== null || (mobileScreen && !forceDesktopWeb && !hasExplicitLocalParam))
@@ -181,11 +182,11 @@ export function App() {
           <span>Phone 3D</span>
         </div>
         <div className="studio-nav-pills">
-          <button aria-pressed={webTab === 'webplay'} onClick={() => setWebTab('webplay')}>
-            Play Online
-          </button>
           <button aria-pressed={webTab === 'showcase'} onClick={() => setWebTab('showcase')}>
-            3D UI Showcase
+            3D Studio
+          </button>
+          <button aria-pressed={webTab === 'webplay'} onClick={() => setWebTab('webplay')}>
+            Elastic Tray
           </button>
           <button aria-pressed={webTab === 'local'} onClick={() => setWebTab('local')}>
             Local ARKit (Pro)
@@ -253,19 +254,69 @@ function MirroringApp({
   )
   const preset = useMemo(() => findStudioPreset(presetId), [presetId])
   const appearance = usePhoneAppearance()
-  const { applyRemoteDevice } = appearance
-  const peerDevice = sharedRoom?.peerDevice ?? null
-  useEffect(() => {
-    if (peerDevice) applyRemoteDevice(peerDevice)
-  }, [applyRemoteDevice, peerDevice])
+  const { applyRemoteDevice, applyBridgeDeviceProfile } = appearance
   const demoScreen = useDemoScreen(active && sourceMode === 'demo', sharedRoom)
   const localVideo = useLocalVideoSource(active && sourceMode === 'local')
   const livePhone = useLivePhoneSource(renderConfiguration, liveRenderScheduler, active && sourceMode === 'live')
+
+  const peerDevice = sharedRoom?.peerDevice ?? null
+  useEffect(() => {
+    applyRemoteDevice(sourceMode === 'live' ? null : peerDevice)
+  }, [applyRemoteDevice, peerDevice, sourceMode])
+
+  useEffect(() => {
+    applyBridgeDeviceProfile(sourceMode === 'live' ? livePhone.deviceProfile : null)
+  }, [applyBridgeDeviceProfile, livePhone.deviceProfile, sourceMode])
+
+  const pairedPoseRef = useRef<PoseSample | null>(null)
+  useEffect(() => {
+    if (!active || sourceMode === 'live' || !sharedRoom?.paired) {
+      pairedPoseRef.current = null
+      return
+    }
+    if (sharedRoom.peerPoseRef.current) {
+      pairedPoseRef.current = {
+        timestampMs: Date.now(),
+        quaternion: sharedRoom.peerPoseRef.current,
+      }
+    }
+    return sharedRoom.subscribeMessages((msg) => {
+      if (msg.type === 'web-pose') {
+        pairedPoseRef.current = {
+          timestampMs: Date.now(),
+          quaternion: msg.quaternion,
+        }
+      }
+    })
+  }, [active, sharedRoom, sourceMode])
+
+  useEffect(() => {
+    if (!active || sourceMode === 'live' || !sharedRoom?.paired) return
+    const sendShowcaseSnapshot = () => {
+      sharedRoom.sendWorldSnapshot({
+        phone: { position: [...SPATIAL_START], quaternion: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] },
+        balls: [],
+        activeBallId: null,
+        hitCount: 0,
+        lastImpact: null,
+        canAddBall: false,
+        region: 'tray',
+        geometry: MARBLE_GEOMETRY,
+        mode: 'showcase',
+        activeScreenId: sourceMode === 'demo' ? demoScreen.demoState.screenId : 'local-video',
+      })
+    }
+    sendShowcaseSnapshot()
+    const timer = setInterval(sendShowcaseSnapshot, 250)
+    return () => clearInterval(timer)
+  }, [active, demoScreen.demoState.screenId, sharedRoom, sourceMode])
+
   const screenMedia = sourceMode === 'demo' ? demoScreen.media : sourceMode === 'live' ? livePhone.media : localVideo.media
   const sourceReady = screenMedia !== null
+  const webPairedPose = sourceMode !== 'live' && Boolean(sharedRoom?.paired)
   const sourceStatus =
     sourceMode === 'demo'
-      ? sharedRoom?.paired ? 'Paired phone tilt active' : 'Interactive demo'
+      ? webPairedPose ? 'Paired phone tilt active' : 'Interactive demo'
       : sourceMode === 'live' && livePhone.screenStale
         ? 'stale'
         : sourceMode === 'live'
@@ -275,7 +326,6 @@ function MirroringApp({
     sourceMode === 'live' ? livePhone.error : sourceMode === 'local' ? localVideo.error : null
   const activeOrientation =
     sourceMode === 'live' ? livePhone.orientation : sourceMode === 'demo' ? 'portrait' : orientation
-  const demoPairedPose = sourceMode === 'demo' && sharedRoom?.paired
   const poseAccuracy =
     sourceMode === 'live' && livePhone.poseDiagnostics && renderedPose
       ? buildPoseAccuracySnapshot(
@@ -292,7 +342,7 @@ function MirroringApp({
           <StudioScene
             active={active}
             preset={preset}
-            animate={sourceMode !== 'live' && !demoPairedPose && animate}
+            animate={sourceMode !== 'live' && !webPairedPose && animate}
             ambientMotion={ambientMotion}
             showGrid={showGrid}
             showAxes={showAxes}
@@ -302,8 +352,8 @@ function MirroringApp({
             profile={appearance.profile}
             finishId={appearance.finishId}
             livePoseRef={
-              demoPairedPose
-                ? demoScreen.poseRef
+              webPairedPose
+                ? pairedPoseRef
                 : sourceMode === 'live' && livePhone.poseReady
                   ? livePhone.poseRef
                   : undefined
@@ -340,13 +390,22 @@ function MirroringApp({
             cameraResetRevision={cameraResetRevision}
             liveRenderScheduler={liveRenderScheduler}
             renderConfiguration={renderConfiguration}
-            useTabletopStandard={sourceMode === 'live' || demoPairedPose}
+            useTabletopStandard={sourceMode === 'live' || webPairedPose}
           />
-          <WorkspaceStatus live={sourceMode === 'demo' || (sourceReady && !livePhone.screenStale)}>
-            {sourceMode === 'demo' ? demoPairedPose ? 'Phone Paired · Demo' : 'Interactive Demo' : sourceMode === 'local' ? sourceReady ? 'Local video' : 'Preview' : livePhone.screenStale ? 'Screen paused' : sourceReady ? 'Live screen' : 'Preview'}
+          <WorkspaceStatus live={sourceMode === 'demo' || webPairedPose || (sourceReady && !livePhone.screenStale)}>
+            {sourceMode === 'demo'
+              ? webPairedPose ? 'Phone Paired · Demo' : 'Interactive Demo'
+              : sourceMode === 'local'
+                ? webPairedPose ? 'Phone Paired · Local video' : sourceReady ? 'Local video' : 'Preview'
+                : livePhone.screenStale ? 'Screen paused' : sourceReady ? 'Live screen' : 'Preview'}
           </WorkspaceStatus>
+          {sharedRoom && (
+            <div className="studio-viewport-actions">
+              <PairPhoneControl sharedRoom={sharedRoom} />
+            </div>
+          )}
         </SpatialViewport>
-        <WorkspaceInspector title="3D UI Showcase" description="Preview interactive UI screens or your own recording on a 3D iPhone.">
+        <WorkspaceInspector title="3D Studio" description="Catch live phone movement and screen feeds, preview interactive UIs, or play a local recording.">
           {sourceMode === 'live' && !livePhone.stats.phones && <WorkspaceConnection description="Pair your iPhone, then start screen sharing in the iPhone app." />}
           <section className="workspace-section">
             <h2>Screen source</h2>
@@ -415,8 +474,8 @@ function MirroringApp({
                 )}
                 <p className="source-description">
                   {sharedRoom?.paired
-                    ? 'Paired phone is tilting this 3D iPhone and can control this UI remotely.'
-                    : 'Pair your phone in Play Online to tilt this screen with your hand, or drag to orbit.'}
+                    ? 'Paired phone is tilting this 3D phone and can control this UI remotely.'
+                    : 'Click Pair Phone above to tilt this model with your phone and auto-match your hardware, or drag to orbit.'}
                 </p>
               </>
             )}
@@ -576,22 +635,27 @@ function MirroringApp({
 
           <details className="workspace-disclosure">
             <summary>Motion</summary>
-            <span className={sourceMode === 'local' || (livePhone.poseReady && !livePhone.poseStale) ? 'chip ready' : 'chip'}>
-              {sourceMode === 'local'
-                ? 'Ready'
+            <span className={sourceMode !== 'live' || (livePhone.poseReady && !livePhone.poseStale) ? 'chip ready' : 'chip'}>
+              {sourceMode !== 'live'
+                ? webPairedPose
+                  ? 'Paired phone'
+                  : animate
+                    ? 'Ready'
+                    : 'Paused'
                 : livePhone.poseStale
                   ? 'Stale'
                   : livePhone.poseReady
                     ? 'Ready'
                     : 'Waiting'}
             </span>
-            {sourceMode === 'local' ? (
+            {sourceMode !== 'live' ? (
               <button
                 className="wide-button"
                 type="button"
+                disabled={webPairedPose}
                 onClick={() => setAnimate((value) => !value)}
               >
-                {animate ? 'Pause motion' : 'Resume motion'}
+                {webPairedPose ? 'Driven by paired phone' : animate ? 'Pause motion' : 'Resume motion'}
               </button>
             ) : (
               <>
@@ -1041,16 +1105,20 @@ function MirroringApp({
             <summary>Device details</summary>
             <dl>
               <div>
+                <dt>Model</dt>
+                <dd>{appearance.profile.name}</dd>
+              </div>
+              <div>
                 <dt>Body</dt>
-                <dd>{IPHONE_17_MM.width} × {IPHONE_17_MM.height} mm</dd>
+                <dd>{appearance.profile.bodyMm.width} × {appearance.profile.bodyMm.height} mm</dd>
               </div>
               <div>
                 <dt>Depth</dt>
-                <dd>{IPHONE_17_MM.depth} mm</dd>
+                <dd>{appearance.profile.bodyMm.depth} mm</dd>
               </div>
               <div>
                 <dt>Finish</dt>
-                <dd>Black</dd>
+                <dd>{appearance.finish.label}</dd>
               </div>
             </dl>
           </details>

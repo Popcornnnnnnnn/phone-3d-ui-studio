@@ -1288,8 +1288,22 @@ final class ScreenCaptureController: NSObject, ObservableObject {
         sendBenchmarkEventIfConnected(event)
     }
 
+    private static var hardwareModel: String {
+        var info = utsname()
+        uname(&info)
+        let capacity = MemoryLayout.size(ofValue: info.machine)
+        return withUnsafePointer(to: &info.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: capacity) {
+                String(cString: $0)
+            }
+        }
+    }
+
     private func bridgeURL() -> URL? {
-        BridgeEndpointStore.current?.socketURL(role: "phone")
+        BridgeEndpointStore.current?.socketURL(
+            role: "phone",
+            extra: [URLQueryItem(name: "deviceModel", value: Self.hardwareModel)]
+        )
     }
 
     private func poseBridgeURL(from bridgeURL: URL) -> URL {

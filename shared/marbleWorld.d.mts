@@ -24,6 +24,10 @@ export interface MarbleWorldSnapshot {
   canAddBall: boolean
 }
 
+export interface MarbleWorldOptions {
+  spawnInitialBall?: boolean
+}
+
 export class MarbleWorld {
   settings: MarbleSettings
   geometry: MarbleGeometry
@@ -36,7 +40,7 @@ export class MarbleWorld {
   region: 'tray' | 'air' | 'needs-ball'
   lastOutcome: string
   readonly canAddBall: boolean
-  constructor(phone: Transform, settings?: MarbleSettings, profile?: PhoneProfile)
+  constructor(phone: Transform, settings?: MarbleSettings, profile?: PhoneProfile, options?: MarbleWorldOptions)
   setPhoneTarget(phone: Transform): void
   addBall(): boolean
   step(atMs?: number): void

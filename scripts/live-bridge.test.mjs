@@ -26,6 +26,7 @@ import {
   measuredCaptureConfigurationError,
   observeBenchmarkThermalState,
   resolutionBenchmarkCaptureSourceError,
+  resolveConnectedPhoneProfile,
   selectBrowserLeaseHandoffCandidate,
   shouldPruneBrowserClient,
   shouldReplaceBrowserClientSocket,
@@ -1365,5 +1366,36 @@ describe('bridge browser frame backpressure admission', () => {
         maximumBufferedBytes,
       ),
     ).toBe(true)
+  })
+})
+
+describe('connected phone hardware profile resolution', () => {
+  it('prefers the frame phone model and ignores non-phone roles or empty hints', () => {
+    expect(
+      resolveConnectedPhoneProfile([
+        { role: 'browser', deviceModel: 'iPhone18,2' },
+        { role: 'phone-pose', deviceModel: 'iPhone17,1' },
+        { role: 'phone', deviceModel: 'iPhone18,1' },
+      ]),
+    ).toMatchObject({
+      profileId: 'iphone-17-pro',
+      deviceModel: 'iPhone18,1',
+      status: 'recognized',
+    })
+
+    expect(
+      resolveConnectedPhoneProfile([
+        { role: 'phone', deviceModel: null },
+        { role: 'phone-pose', deviceModel: 'iPhone18,2' },
+      ]),
+    ).toMatchObject({
+      profileId: 'iphone-17-pro-max',
+      deviceModel: 'iPhone18,2',
+      status: 'recognized',
+    })
+
+    expect(
+      resolveConnectedPhoneProfile([{ role: 'phone', deviceModel: '   ' }]),
+    ).toBeNull()
   })
 })

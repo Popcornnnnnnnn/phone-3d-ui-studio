@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   PHONE_FINISHES,
   PHONE_PROFILES,
+  type PhoneFinishId,
   type PhoneProfileId,
 } from '../../shared/phoneGeometry.mjs'
 import { ALL_PUBLIC_ATTRIBUTIONS } from '../model/publicPhoneAssets'
@@ -22,10 +23,14 @@ const ORDERED_PROFILES: readonly PhoneProfileId[] = [
 export function DeviceAppearancePicker({
   appearance,
   onUserChange,
+  onFinishChange,
+  onAutoMatch,
   compact = false,
 }: {
   appearance: PhoneAppearanceState
   onUserChange?: (profileId: PhoneProfileId) => void
+  onFinishChange?: (finishId: PhoneFinishId) => void
+  onAutoMatch?: () => void
   compact?: boolean
 }) {
   const [creditsOpen, setCreditsOpen] = useState(false)
@@ -78,7 +83,10 @@ export function DeviceAppearancePicker({
               aria-label={finish.label}
               title={finish.label}
               style={{ backgroundColor: finish.swatch }}
-              onClick={() => appearance.setFinishId(finish.id)}
+              onClick={() => {
+                appearance.setFinishId(finish.id)
+                onFinishChange?.(finish.id)
+              }}
             />
           )
         })}
@@ -86,11 +94,14 @@ export function DeviceAppearancePicker({
       </div>
 
       <div className="device-picker-foot">
-        {appearance.detectedDevice && !appearance.autoMatch ? (
+        {(appearance.detectedDevice || appearance.detectedLabel) && !appearance.autoMatch ? (
           <button
             type="button"
             className="device-link-btn"
-            onClick={() => appearance.resetToDetected()}
+            onClick={() => {
+              appearance.resetToDetected()
+              onAutoMatch?.()
+            }}
           >
             Auto-match phone
           </button>

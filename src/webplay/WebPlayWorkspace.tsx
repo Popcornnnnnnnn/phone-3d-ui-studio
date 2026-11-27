@@ -22,7 +22,6 @@ import {
 } from '../../shared/phoneGeometry.mjs'
 import { SPATIAL_MODEL_SCALE, SPATIAL_START } from '../../shared/spatialMath.mjs'
 import { WORLD_VERSION, type WorldSnapshot } from '../../shared/worldProtocol.mjs'
-import { formatRoomCode } from '../../shared/webPlayProtocol.mjs'
 import { useAppearance } from '../appearance'
 import { drawMarbleScreen } from '../marble/drawMarbleScreen'
 import { createMarbleMaterialSet } from '../marble/marbleMaterials'
@@ -32,8 +31,7 @@ import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
 import { WorkspaceGrid } from '../spatial/WorkspaceGrid'
 import { WorkspaceLighting } from '../workspace/WorkspaceLighting'
 import { DeviceAppearancePicker } from './DeviceAppearancePicker'
-import { NativeDialog } from './NativeDialog'
-import { QrCodeSvg } from './QrCodeSvg'
+import { PairPhoneControl } from './PairPhoneControl'
 import { soundFeedback } from './soundFeedback'
 import type { SharedRoomController } from './useSharedRoom'
 import { DEFAULT_WEB_PLAY_SETTINGS, WebTrayDriver, type WebPlaySettings } from './webTrayDriver'
@@ -53,6 +51,7 @@ const DOCK_MODELS: readonly PhoneProfileId[] = [
 ]
 
 interface HudState {
+  started: boolean
   hitCount: number
   canAddBall: boolean
   region: 'tray' | 'air' | 'needs-ball'
@@ -125,6 +124,7 @@ function WebPlayScene({
     }
 
     const snap = driver.stepFrame(delta)
+    const started = driver.isStarted()
     const curG = driver.getGeometry()
     slotGeometry.set(curG.radius, curG.screenZ)
     screenBounds.set(curG.width / 2 - curG.cornerRadius, curG.height / 2 - curG.cornerRadius, curG.cornerRadius)
@@ -154,15 +154,15 @@ function WebPlayScene({
       epoch: 1,
       sequence: 1,
       serverTimeMs: Date.now(),
-      phase: 'running',
+      phase: started ? 'running' : 'ready',
       reason: '',
       ownerId: null,
       phoneSessionId: null,
       phoneConnectionId: null,
       source: null,
-      canStart: false,
+      canStart: !started,
       canAddBall: snap.canAddBall,
-      active: true,
+      active: started,
       hitCount: snap.hitCount,
       region: snap.region,
       geometry: curG,
@@ -190,6 +190,7 @@ function WebPlayScene({
         region: snap.region,
         geometry: curG,
         mode: 'marble',
+        phase: started ? 'running' : 'idle',
         activeScreenId: 'marble',
       })
     }
@@ -198,6 +199,7 @@ function WebPlayScene({
     if (now - lastHudSyncRef.current > 100) {
       lastHudSyncRef.current = now
       onHudUpdate({
+        started,
         hitCount: snap.hitCount,
         canAddBall: snap.canAddBall,
         region: snap.region,
@@ -250,17 +252,30 @@ export function WebPlayWorkspace({
   const [settings, setSettings] = useState<WebPlaySettings>({ ...DEFAULT_WEB_PLAY_SETTINGS })
   const [muted, setMuted] = useState(false)
   const [viewRev, setViewRev] = useState(0)
-  const [qrOpen, setQrOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [gameStarted, setGameStarted] = useState(false)
   const [hud, setHud] = useState<HudState>({
+    started: false,
     hitCount: 0,
     canAddBall: false,
-    region: 'tray',
-    ballsCount: 1,
-    hasActive: true,
+    region: 'needs-ball',
+    ballsCount: 0,
+    hasActive: false,
   })
+
+  const handleHudUpdate = useCallback((next: HudState) => {
+    setHud(next)
+    setGameStarted(next.started)
+  }, [])
+
+  const startGame = useCallback(() => {
+    soundFeedback.unlock()
+    if (!driver) return
+    if (driver.startGame()) {
+      setGameStarted(true)
+    }
+  }, [driver])
 
   const stageRef = useRef<HTMLElement>(null)
   const tiltInputRef = useRef({ x: 0, y: 0 })
@@ -282,6 +297,7 @@ export function WebPlayWorkspace({
             onSpawn: () => soundFeedback.playSpawn(),
           },
           initialProfileRef.current,
+          { startWithBall: false },
         )
         setDriver(instance)
         setPhysicsReady(true)
@@ -314,10 +330,21 @@ export function WebPlayWorkspace({
     if (!driver || !active) return
     return sharedRoom.subscribeMessages((msg) => {
       if (msg.type === 'web-pose' && msg.flickStrength) {
-        driver.triggerToss(msg.flickStrength)
+        if (driver.isStarted()) driver.triggerToss(msg.flickStrength)
       } else if (msg.type === 'web-action') {
-        if (msg.action === 'toss') driver.triggerToss(msg.strength ?? 1)
-        else if (msg.action === 'add-ball') driver.addBall()
+        if (msg.action === 'start') {
+          soundFeedback.unlock()
+          if (driver.startGame()) setGameStarted(true)
+        } else if (msg.action === 'toss') {
+          if (driver.isStarted()) driver.triggerToss(msg.strength ?? 1)
+        } else if (msg.action === 'add-ball') {
+          if (!driver.isStarted()) {
+            soundFeedback.unlock()
+            if (driver.startGame()) setGameStarted(true)
+          } else {
+            driver.addBall()
+          }
+        }
       }
     })
   }, [active, driver, sharedRoom])
@@ -350,16 +377,22 @@ export function WebPlayWorkspace({
       if (e.code === 'Space') {
         e.preventDefault()
         soundFeedback.unlock()
-        driver.triggerToss(1)
+        if (!driver.isStarted()) {
+          if (driver.startGame()) setGameStarted(true)
+        } else {
+          driver.triggerToss(1)
+        }
         return
       }
       if (e.code === 'KeyB') {
+        if (!driver.isStarted()) return
         soundFeedback.unlock()
         driver.addBall()
         return
       }
       if (e.code === 'KeyR') {
-        driver.restart(settings)
+        if (!driver.isStarted()) return
+        driver.restart(settings, true)
         return
       }
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyS', 'KeyA', 'KeyD'].includes(e.code)) {
@@ -379,14 +412,6 @@ export function WebPlayWorkspace({
     }
   }, [active, driver, settings, settingsOpen])
 
-  const pairUrl = useMemo(() => {
-    if (typeof window === 'undefined') return `https://phone3d.popcornnn.xyz/?pair=${sharedRoom.roomCode}`
-    const u = new URL(window.location.href)
-    u.search = `?pair=${sharedRoom.roomCode}`
-    u.hash = ''
-    return u.toString()
-  }, [sharedRoom.roomCode])
-
   const updateTiltFromPointer = useCallback((clientX: number, clientY: number) => {
     const pad = padRef.current
     if (!pad) return
@@ -405,16 +430,6 @@ export function WebPlayWorkspace({
     },
     [driver, settings],
   )
-
-  const handleCopyLink = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(pairUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1600)
-    } catch {
-      /* ignore */
-    }
-  }, [pairUrl])
 
   const toggleFullscreen = useCallback(async () => {
     if (expanded) {
@@ -455,7 +470,7 @@ export function WebPlayWorkspace({
               finishId={appearance.finishId}
               sharedRoom={sharedRoom}
               tiltInputRef={tiltInputRef}
-              onHudUpdate={setHud}
+              onHudUpdate={handleHudUpdate}
             />
           </Canvas>
         ) : (
@@ -468,25 +483,26 @@ export function WebPlayWorkspace({
       {/* Top-left floating live HUD pill */}
       <div className="webplay-hud-top-left" role="status">
         <span className={'webplay-status-dot' + (sharedRoom.paired ? ' is-paired' : physicsReady ? ' is-ready' : '')} aria-hidden="true" />
-        <strong>{hud.hitCount} {hud.hitCount === 1 ? 'catch' : 'catches'}</strong>
-        <span className="webplay-hud-sep">·</span>
-        <span>{hud.ballsCount}/5 balls</span>
+        {gameStarted ? (
+          <>
+            <strong>{hud.hitCount} {hud.hitCount === 1 ? 'catch' : 'catches'}</strong>
+            <span className="webplay-hud-sep">·</span>
+            <span>{hud.ballsCount}/5 balls</span>
+          </>
+        ) : (
+          <>
+            <strong>Ready</strong>
+            <span className="webplay-hud-sep">·</span>
+            <span>Press Start game</span>
+          </>
+        )}
         <span className="webplay-hud-sep webplay-hide-narrow">·</span>
         <span className="webplay-hud-muted webplay-hide-narrow">{statusLabel}</span>
       </div>
 
       {/* Top-right floating Pair & Settings actions */}
       <div className="webplay-hud-top-right">
-        <button
-          type="button"
-          className={'webplay-glass-pill' + (sharedRoom.paired ? ' is-paired' : '')}
-          aria-expanded={qrOpen}
-          onClick={() => setQrOpen(true)}
-        >
-          <span className={'webplay-status-dot' + (sharedRoom.paired ? ' is-paired' : '')} aria-hidden="true" />
-          <span>{sharedRoom.paired ? 'Paired' : 'Pair Phone'}</span>
-          <code className="webplay-code-chip">{formatRoomCode(sharedRoom.roomCode)}</code>
-        </button>
+        <PairPhoneControl sharedRoom={sharedRoom} />
         <button
           type="button"
           className="webplay-glass-pill"
@@ -600,38 +616,51 @@ export function WebPlayWorkspace({
         </div>
 
         <div className="webplay-dock-group">
-          <button
-            type="button"
-            className="webplay-btn-primary"
-            disabled={!driver || !hud.hasActive}
-            onClick={() => {
-              soundFeedback.unlock()
-              driver?.triggerToss(1)
-            }}
-          >
-            Toss
-          </button>
-          <button
-            type="button"
-            className={hud.canAddBall ? 'webplay-btn-primary' : ''}
-            disabled={!driver || !hud.canAddBall}
-            onClick={() => {
-              soundFeedback.unlock()
-              driver?.addBall()
-            }}
-          >
-            Add ball
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              soundFeedback.unlock()
-              driver?.restart(settings)
-            }}
-            disabled={!driver}
-          >
-            Reset
-          </button>
+          {!gameStarted ? (
+            <button
+              type="button"
+              className="webplay-btn-primary"
+              disabled={!driver}
+              onClick={startGame}
+            >
+              Start game
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="webplay-btn-primary"
+                disabled={!driver || !hud.hasActive}
+                onClick={() => {
+                  soundFeedback.unlock()
+                  driver?.triggerToss(1)
+                }}
+              >
+                Toss
+              </button>
+              <button
+                type="button"
+                className={hud.canAddBall ? 'webplay-btn-primary' : ''}
+                disabled={!driver || !hud.canAddBall}
+                onClick={() => {
+                  soundFeedback.unlock()
+                  driver?.addBall()
+                }}
+              >
+                Add ball
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundFeedback.unlock()
+                  driver?.restart(settings, true)
+                }}
+                disabled={!driver}
+              >
+                Reset
+              </button>
+            </>
+          )}
         </div>
 
         <span className="webplay-dock-divider" aria-hidden="true" />
@@ -692,25 +721,6 @@ export function WebPlayWorkspace({
           </button>
         </div>
       </div>
-
-      <NativeDialog open={qrOpen} title="Pair with your phone" onClose={() => setQrOpen(false)}>
-        <p>Scan with your iPhone or Android camera to drive the 3D phone live and auto-match your hardware shell.</p>
-        <div className="webplay-dialog-qr">
-          <QrCodeSvg value={pairUrl} size={200} label="Large QR pairing code" />
-          <div className="webplay-room-code">{formatRoomCode(sharedRoom.roomCode)}</div>
-        </div>
-        <div className="webplay-dialog-actions">
-          <button type="button" onClick={() => void handleCopyLink()}>
-            {copied ? 'Copied link' : 'Copy URL'}
-          </button>
-          <button type="button" onClick={sharedRoom.regenerateRoom}>
-            New code
-          </button>
-          <button type="button" autoFocus onClick={() => setQrOpen(false)}>
-            Done
-          </button>
-        </div>
-      </NativeDialog>
     </main>
   )
 }

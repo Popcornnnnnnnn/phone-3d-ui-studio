@@ -4,8 +4,8 @@ import { WebTrayDriver } from './webTrayDriver'
 
 let drivers: WebTrayDriver[] = []
 
-function makeDriver(callbacks = {}) {
-  const driver = new WebTrayDriver({}, callbacks)
+function makeDriver(callbacks = {}, options = {}) {
+  const driver = new WebTrayDriver({}, callbacks, undefined, options)
   drivers.push(driver)
   return driver
 }
@@ -56,5 +56,27 @@ describe('WebTrayDriver', () => {
 
     expect(driver.addBall()).toBe(true)
     expect(driver.snapshot().activeBallId).not.toBeNull()
+  })
+
+  it('starts without a marble when startWithBall is false until startGame is called', () => {
+    const onSpawn = vi.fn()
+    const driver = makeDriver({ onSpawn }, { startWithBall: false })
+    expect(driver.isStarted()).toBe(false)
+    expect(driver.snapshot().balls).toHaveLength(0)
+
+    // Stepping idle or restarting settings before start keeps the marble hidden
+    for (let i = 0; i < 20; i++) driver.stepFrame(1 / 60)
+    driver.restart({ ballDiameterMm: 12 })
+    expect(driver.isStarted()).toBe(false)
+    expect(driver.snapshot().balls).toHaveLength(0)
+
+    // Starting even under a steep tilt spawns an active marble centered on the tray
+    driver.setTiltInput(1, 1)
+    for (let i = 0; i < 30; i++) driver.stepFrame(1 / 60)
+    expect(driver.startGame()).toBe(true)
+    expect(driver.isStarted()).toBe(true)
+    expect(driver.snapshot().balls).toHaveLength(1)
+    expect(driver.snapshot().activeBallId).not.toBeNull()
+    expect(onSpawn).toHaveBeenCalledTimes(1)
   })
 })

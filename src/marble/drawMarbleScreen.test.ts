@@ -21,6 +21,7 @@ function createMockCanvasContext() {
   const fills: Array<string | RecordedGradient> = []
   const ellipses: Array<{ x: number; y: number }> = []
   const gradients: RecordedGradient[] = []
+  const texts: string[] = []
 
   let currentFill: string | RecordedGradient = ''
   const makeRadialGradient = (_x0: number, _y0: number, r0: number, _x1: number, _y1: number, r1: number) => {
@@ -63,7 +64,9 @@ function createMockCanvasContext() {
     lineTo() {},
     setLineDash() {},
     stroke() {},
-    fillText() {},
+    fillText(text: string) {
+      texts.push(text)
+    },
     fillRect() {
       fills.push(currentFill)
     },
@@ -93,6 +96,7 @@ function createMockCanvasContext() {
     fills,
     ellipses,
     gradients,
+    texts,
   }
 }
 
@@ -249,5 +253,41 @@ describe('drawMarbleScreen', () => {
 
     drawMarbleScreen(backMock.ctx, 390, 844, backSnap, { mode: '2d' })
     expect(backMock.arcs.length).toBeLessThan(frontMock.arcs.length)
+  })
+
+  it('shows Elastic Tray prompt and omits all marble/shadow/well arcs before the round starts', () => {
+    const readySnap: WorldSnapshot = {
+      ...makeSnapshot([0, 0, G.screenZ]),
+      phase: 'ready',
+      active: false,
+      balls: [],
+      activeBallId: null,
+    }
+    const mock = createMockCanvasContext()
+
+    drawMarbleScreen(mock.ctx, 640, 1380, readySnap, { mode: 'surface' })
+    expect(mock.texts).toContain('ELASTIC TRAY')
+    expect(mock.texts).toContain('PRESS START')
+    // Only the two precision reticle rings at center (320, 690) are drawn when idle/ready
+    expect(mock.arcs.filter((a) => a.x === 320 && a.y === 690)).toHaveLength(2)
+
+    const mock2d = createMockCanvasContext()
+    drawMarbleScreen(mock2d.ctx, 390, 844, readySnap, { mode: '2d' })
+    expect(mock2d.texts).toContain('ELASTIC TRAY')
+    expect(mock2d.arcs.filter((a) => a.x === 195 && a.y === 422)).toHaveLength(2)
+  })
+
+  it('preserves catch HUD and marble contact shadow during paused MarbleWorkspace rounds', () => {
+    const pausedSnap: WorldSnapshot = {
+      ...makeSnapshot([0, 0, G.screenZ]),
+      phase: 'paused',
+      active: true,
+    }
+    const mock = createMockCanvasContext()
+
+    drawMarbleScreen(mock.ctx, 640, 1380, pausedSnap, { mode: 'surface' })
+    expect(mock.texts).toContain('02')
+    expect(mock.texts).toContain('PAUSED')
+    expect(mock.arcs.filter((a) => Math.abs(a.x - 320) < 0.05 && a.y === 690).length).toBeGreaterThan(2)
   })
 })

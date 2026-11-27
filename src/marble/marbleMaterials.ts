@@ -319,38 +319,3 @@ export function createMarbleMaterialSet(
     },
   }
 }
-
-export interface MarblePreviewMaterialHandle {
-  material: MeshPhysicalMaterial
-  ensureTexturesUploaded: () => void
-  dispose: () => void
-}
-
-export function createMarblePreviewMaterial(): MarblePreviewMaterialHandle {
-  const texture = createMarbleSurfaceTexture('active')
-  const material = applySoftMarbleReflections(
-    new MeshPhysicalMaterial({
-      color: '#ffffff',
-      map: texture,
-      roughness: 0.2,
-      metalness: 0.02,
-      clearcoat: 0.72,
-      clearcoatRoughness: 0.14,
-      ior: 1.5,
-      reflectivity: 0.55,
-      specularIntensity: 0.65,
-    }),
-    MARBLE_SPECULAR_IBL_SCALE,
-  )
-
-  return {
-    material,
-    ensureTexturesUploaded() {
-      texture.needsUpdate = true
-    },
-    dispose() {
-      material.dispose()
-      texture.dispose()
-    },
-  }
-}

@@ -47,7 +47,7 @@ export function parseWebPlayMessage(value) {
         ...(v.flickStrength !== undefined ? { flickStrength: v.flickStrength } : {}),
       }
     case 'web-action':
-      if (!['toss', 'add-ball', 'recenter'].includes(v.action)) return null
+      if (!['start', 'toss', 'add-ball', 'recenter'].includes(v.action)) return null
       if (v.strength !== undefined && (!Number.isFinite(v.strength) || v.strength <= 0 || v.strength > 3)) return null
       return {
         type: 'web-action',
@@ -91,6 +91,7 @@ export function parseWebPlayMessage(value) {
       if (!Number.isSafeInteger(v.seq) || v.seq < 0 || !isTransform(v.phone) || !Array.isArray(v.balls) || v.balls.length > 5) return null
       if (typeof v.canAddBall !== 'boolean' || !Number.isSafeInteger(v.hitCount) || v.hitCount < 0) return null
       if (!['tray', 'air', 'needs-ball'].includes(v.region) || !['marble', 'showcase'].includes(v.mode)) return null
+      if (v.phase !== undefined && !['idle', 'running'].includes(v.phase)) return null
       if (typeof v.activeScreenId !== 'string' || !v.geometry || typeof v.geometry !== 'object') return null
       return v
     case 'room-joined':

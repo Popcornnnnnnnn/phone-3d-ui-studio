@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { selectPhoneProfile } from '../../shared/phoneGeometry.mjs'
 import {
   normalizeQuaternion,
   parseLiveTextMessage,
@@ -7,6 +8,60 @@ import {
 } from './liveProtocol'
 
 describe('live phone protocol', () => {
+  it('parses bridge-status with optional and valid deviceProfile', () => {
+    const selected = selectPhoneProfile('iPhone18,1')
+    expect(
+      parseLiveTextMessage(
+        JSON.stringify({
+          type: 'bridge-status',
+          browsers: 1,
+          phones: 1,
+          webrtcBrowsers: 1,
+          webrtcPhones: 1,
+          deviceProfile: selected,
+        }),
+      ),
+    ).toEqual({
+      type: 'bridge-status',
+      browsers: 1,
+      phones: 1,
+      webrtcBrowsers: 1,
+      webrtcPhones: 1,
+      deviceProfile: selected,
+    })
+
+    expect(
+      parseLiveTextMessage(
+        JSON.stringify({
+          type: 'bridge-status',
+          browsers: 1,
+          phones: 0,
+        }),
+      ),
+    ).toEqual({
+      type: 'bridge-status',
+      browsers: 1,
+      phones: 0,
+      webrtcBrowsers: 0,
+      webrtcPhones: 0,
+      deviceProfile: null,
+    })
+
+    expect(
+      parseLiveTextMessage(
+        JSON.stringify({
+          type: 'bridge-status',
+          browsers: 1,
+          phones: 1,
+          deviceProfile: { invalid: true },
+        }),
+      ),
+    ).toMatchObject({
+      type: 'bridge-status',
+      deviceProfile: null,
+    })
+  })
+
   it('accepts a finite pose packet', () => {
     expect(
       parseLiveTextMessage(
