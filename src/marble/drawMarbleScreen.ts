@@ -155,7 +155,11 @@ export function drawMarbleScreen(
 
       if (aboveTray && fullRadius > 0) {
         const airHeight = Math.max(0, p.depth)
-        const proximity = Math.max(0, 1 - airHeight / 0.14)
+        const dropDepth = Math.max(0, -p.depth)
+        const ballRadiusMeters = ball.radius ?? g.radius
+        const airFade = Math.max(0, 1 - airHeight / 0.14)
+        const dropFade = Math.max(0, 1 - dropDepth / Math.max(1e-6, ballRadiusMeters * 0.95))
+        const proximity = p.depth >= 0 ? airFade : dropFade
 
         // Centered ambient-occlusion contact shadow beneath the 3D sphere
         const shadowRadius = fullRadius * (1.42 + airHeight * 12)
@@ -184,9 +188,14 @@ export function drawMarbleScreen(
           c.fill()
         }
 
-        // Recessed slot interior strictly inside the 3D sphere equator (never extends past the 3D edge)
-        if (r > 1 && p.depth <= 0.0005) {
-          const insetRadius = r * 0.96
+        // Recessed slot interior strictly inside the sphere's z = screenZ cross-section
+        const planeSliceRadius =
+          dropDepth >= ballRadiusMeters
+            ? 0
+            : Math.sqrt(Math.max(0, ballRadiusMeters * ballRadiusMeters - dropDepth * dropDepth)) * scale
+        const boundedSlotRadius = Math.min(r, planeSliceRadius)
+        if (boundedSlotRadius > 1 && p.depth <= 0.0005) {
+          const insetRadius = boundedSlotRadius * 0.96
           const well = c.createRadialGradient(
             x - insetRadius * 0.2,
             y - insetRadius * 0.2,

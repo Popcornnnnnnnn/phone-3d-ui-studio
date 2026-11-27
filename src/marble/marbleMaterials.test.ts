@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { ClampToEdgeWrapping, Matrix4, RepeatWrapping, SRGBColorSpace, Vector2, Vector3 } from 'three'
+import {
+  ClampToEdgeWrapping,
+  LinearFilter,
+  LinearMipmapLinearFilter,
+  Matrix4,
+  RepeatWrapping,
+  ShaderLib,
+  SRGBColorSpace,
+  Vector2,
+  Vector3,
+  type WebGLProgramParametersWithUniforms,
+  type WebGLRenderer,
+} from 'three'
 import { MARBLE_GEOMETRY as G } from '../../shared/marbleMath.mjs'
 import {
+  createClippedMarbleMaterial,
   createMarbleMaterialSet,
   createMarblePreviewMaterial,
   createMarbleSurfaceTexture,
@@ -19,6 +32,10 @@ describe('marbleMaterials', () => {
       expect(texture.colorSpace).toBe(SRGBColorSpace)
       expect(texture.wrapS).toBe(RepeatWrapping)
       expect(texture.wrapT).toBe(ClampToEdgeWrapping)
+      expect(texture.minFilter).toBe(LinearMipmapLinearFilter)
+      expect(texture.magFilter).toBe(LinearFilter)
+      expect(texture.generateMipmaps).toBe(true)
+      expect(texture.anisotropy).toBe(8)
 
       let minGreen = 255
       let maxGreen = 0
@@ -35,6 +52,16 @@ describe('marbleMaterials', () => {
         const left = data[midRow * 4 + c]
         const right = data[(midRow + 255) * 4 + c]
         expect(Math.abs(left - right)).toBeLessThanOrEqual(8)
+      }
+
+      // Polar rows stay uniform across longitude so poles exhibit zero pinching
+      for (const polarRow of [0, 127]) {
+        const rowOffset = polarRow * 256 * 4
+        for (let px = 1; px < 256; px++) {
+          for (let c = 0; c < 3; c++) {
+            expect(Math.abs(data[rowOffset + px * 4 + c] - data[rowOffset + c])).toBeLessThanOrEqual(4)
+          }
+        }
       }
 
       texture.dispose()
@@ -62,5 +89,47 @@ describe('marbleMaterials', () => {
     preview.ensureTexturesUploaded()
     expect(preview.material.map!.version).toBeGreaterThan(prevPreviewVersion)
     preview.dispose()
+  })
+
+  it('injects finite-slot clipping and IBL scaling into Three.js physical shaders with unique cache keys', () => {
+    const inverse = new Matrix4()
+    const slotGeometry = new Vector2(G.radius, G.screenZ)
+    const screenBounds = new Vector3(G.width / 2 - G.cornerRadius, G.height / 2 - G.cornerRadius, G.cornerRadius)
+
+    const matDefault = createClippedMarbleMaterial('#ffffff', inverse, slotGeometry, screenBounds)
+    const matCustom = createClippedMarbleMaterial('#ffffff', inverse, slotGeometry, screenBounds, {
+      specularIblScale: 0.25,
+    })
+
+    expect(matDefault.customProgramCacheKey()).not.toBe(matCustom.customProgramCacheKey())
+
+    const shader = {
+      uniforms: {},
+      vertexShader: ShaderLib.physical.vertexShader,
+      fragmentShader: ShaderLib.physical.fragmentShader,
+    } as unknown as WebGLProgramParametersWithUniforms
+
+    matDefault.onBeforeCompile(shader, {} as WebGLRenderer)
+
+    expect(shader.uniforms).toHaveProperty('inversePhone')
+    expect(shader.uniforms).toHaveProperty('slotGeometry')
+    expect(shader.uniforms).toHaveProperty('screenBounds')
+    expect(shader.vertexShader).toContain('phoneFragment = (inversePhone * modelMatrix * vec4(transformed, 1.0)).xyz;')
+    expect(shader.fragmentShader).toContain('if (edgeDistance <= 0.0 && phoneFragment.z >= slotGeometry.y - slotGeometry.x && phoneFragment.z < slotGeometry.y) discard;')
+    expect(shader.fragmentShader).toContain('radiance *= 0.100;')
+    expect(shader.fragmentShader).toContain('clearcoatRadiance *= 0.100;')
+
+    const set = createMarbleMaterialSet(inverse, slotGeometry, screenBounds)
+    const trailShader = {
+      uniforms: {},
+      vertexShader: ShaderLib.physical.vertexShader,
+      fragmentShader: ShaderLib.physical.fragmentShader,
+    } as unknown as WebGLProgramParametersWithUniforms
+    set.trail.onBeforeCompile(trailShader, {} as WebGLRenderer)
+    expect(trailShader.fragmentShader).toContain('radiance *= 0.100;')
+
+    matDefault.dispose()
+    matCustom.dispose()
+    set.dispose()
   })
 })

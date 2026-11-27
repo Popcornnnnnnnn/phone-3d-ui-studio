@@ -80,11 +80,10 @@ function WebPlayScene({
   const phone = useRef<Group>(null)
   const balls = useRef<Array<Group | null>>([])
   const inverse = useMemo(() => new Matrix4(), [])
-  const g = driver.getGeometry()
-  const slotGeometry = useMemo(() => new Vector2(g.radius, g.screenZ), [g.radius, g.screenZ])
+  const slotGeometry = useMemo(() => new Vector2(G.radius, G.screenZ), [])
   const screenBounds = useMemo(
-    () => new Vector3(g.width / 2 - g.cornerRadius, g.height / 2 - g.cornerRadius, g.cornerRadius),
-    [g.cornerRadius, g.height, g.width],
+    () => new Vector3(G.width / 2 - G.cornerRadius, G.height / 2 - G.cornerRadius, G.cornerRadius),
+    [],
   )
   const surface = useMemo(() => {
     const { displayWidth, displayHeight } = fittedPhoneDisplayMetrics(profile)
