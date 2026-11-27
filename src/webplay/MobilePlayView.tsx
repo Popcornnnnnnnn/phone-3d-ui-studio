@@ -4,7 +4,6 @@ import { ContactShadows } from '@react-three/drei'
 import {
   CanvasTexture,
   Matrix4,
-  MeshStandardMaterial,
   Quaternion,
   SRGBColorSpace,
   Vector2,
@@ -18,6 +17,7 @@ import {
   type PhoneProfile,
   type PhoneProfileId,
 } from '../../shared/phoneGeometry.mjs'
+import { SPATIAL_MODEL_SCALE } from '../../shared/spatialMath.mjs'
 import { WORLD_VERSION, type WorldSnapshot } from '../../shared/worldProtocol.mjs'
 import {
   normalizeRoomCode,
@@ -28,7 +28,7 @@ import {
 } from '../../shared/webPlayProtocol.mjs'
 import { useAppearance } from '../appearance'
 import { drawMarbleScreen } from '../marble/drawMarbleScreen'
-import { createClippedMarbleMaterial } from '../marble/marbleMaterials'
+import { createMarbleMaterialSet } from '../marble/marbleMaterials'
 import { fittedPhoneDisplayMetrics } from '../model/publicPhoneAssets'
 import { usePhoneAppearance } from '../model/usePhoneAppearance'
 import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
@@ -75,11 +75,10 @@ function SoloMobileScene({
   const phone = useRef<Group>(null)
   const balls = useRef<Array<Group | null>>([])
   const inverse = useMemo(() => new Matrix4(), [])
-  const g = driver.getGeometry()
-  const slotGeometry = useMemo(() => new Vector2(g.radius, g.screenZ), [g.radius, g.screenZ])
+  const slotGeometry = useMemo(() => new Vector2(G.radius, G.screenZ), [])
   const screenBounds = useMemo(
-    () => new Vector3(g.width / 2 - g.cornerRadius, g.height / 2 - g.cornerRadius, g.cornerRadius),
-    [g.cornerRadius, g.height, g.width],
+    () => new Vector3(G.width / 2 - G.cornerRadius, G.height / 2 - G.cornerRadius, G.cornerRadius),
+    [],
   )
   const surface = useMemo(() => {
     const { displayWidth, displayHeight } = fittedPhoneDisplayMetrics(profile)
@@ -92,26 +91,23 @@ function SoloMobileScene({
     return {
       canvas,
       context: canvas.getContext('2d')!,
+      displayWidthMeters: displayWidth * SPATIAL_MODEL_SCALE,
+      displayHeightMeters: displayHeight * SPATIAL_MODEL_SCALE,
       media: { kind: 'texture' as const, name: 'Solo Tray', width: canvas.width, height: canvas.height, texture },
     }
   }, [profile])
 
-  const material = useMemo(() => createClippedMarbleMaterial('#34d888', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const marker = useMemo(() => createClippedMarbleMaterial('#082418', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
-  const trailMaterial = useMemo(() => new MeshStandardMaterial({ color: '#454d5c', roughness: 0.45, metalness: 0.2 }), [])
-  const trailMarker = useMemo(() => new MeshStandardMaterial({ color: '#222833', roughness: 0.55 }), [])
+  const marbleMaterials = useMemo(() => createMarbleMaterialSet(inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
   const surfaceRef = useRef(surface)
 
   useEffect(() => {
     surfaceRef.current = surface
     return () => surface.media.texture.dispose()
   }, [surface])
-  useEffect(() => () => {
-    material.dispose()
-    marker.dispose()
-    trailMaterial.dispose()
-    trailMarker.dispose()
-  }, [material, marker, trailMaterial, trailMarker])
+  useEffect(() => {
+    marbleMaterials.ensureTexturesUploaded()
+    return () => marbleMaterials.dispose()
+  }, [marbleMaterials])
 
   const lastHudRef = useRef(0)
 
@@ -168,7 +164,11 @@ function SoloMobileScene({
       lastImpact: snap.lastImpact,
     }
     const display = surfaceRef.current
-    drawMarbleScreen(display.context, display.canvas.width, display.canvas.height, drawSnap)
+    drawMarbleScreen(display.context, display.canvas.width, display.canvas.height, drawSnap, {
+      mode: 'surface',
+      displayWidthMeters: display.displayWidthMeters,
+      displayHeightMeters: display.displayHeightMeters,
+    })
     display.media.texture.needsUpdate = true
 
     const now = performance.now()
@@ -196,14 +196,8 @@ function SoloMobileScene({
       </group>
       {Array.from({ length: 5 }, (_, index) => (
         <group key={index} ref={(group) => { balls.current[index] = group }} visible={false}>
-          <group>
-            <mesh material={material}><sphereGeometry args={[G.radius, 36, 20]} /></mesh>
-            <mesh material={marker} position={[0, 0, G.radius * 0.994]}><sphereGeometry args={[G.radius * 0.13, 14, 10]} /></mesh>
-          </group>
-          <group>
-            <mesh material={trailMaterial}><sphereGeometry args={[G.radius, 20, 14]} /></mesh>
-            <mesh material={trailMarker} position={[0, 0, G.radius * 0.994]}><sphereGeometry args={[G.radius * 0.13, 10, 8]} /></mesh>
-          </group>
+          <mesh material={marbleMaterials.active}><sphereGeometry args={[G.radius, 48, 32]} /></mesh>
+          <mesh material={marbleMaterials.trail}><sphereGeometry args={[G.radius, 32, 24]} /></mesh>
         </group>
       ))}
     </>
@@ -387,7 +381,7 @@ export function MobilePlayView({
       activeBallId: pairedSnapshot.activeBallId,
       lastImpact: pairedSnapshot.lastImpact,
     }
-    drawMarbleScreen(ctx, canvas.width, canvas.height, drawSnap)
+    drawMarbleScreen(ctx, canvas.width, canvas.height, drawSnap, { mode: '2d' })
   }, [pairedSnapshot, roomCode])
 
   const recenter = useCallback(() => {
