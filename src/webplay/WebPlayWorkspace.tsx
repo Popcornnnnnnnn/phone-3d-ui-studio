@@ -441,7 +441,9 @@ export function WebPlayWorkspace({
     ? 'Phone Paired · P2P'
     : sharedRoom.status === 'paired-relay'
       ? 'Phone Paired · Relay'
-      : 'Solo · Drag pad or Keys'
+      : sharedRoom.status === 'replaced'
+        ? 'Room replaced · Generate new code'
+        : 'Solo · Drag pad or Keys'
 
   return (
     <main ref={stageRef} className={'webplay-stage-shell' + (expanded ? ' is-expanded' : '')} aria-label="Online 3D Elastic Tray">

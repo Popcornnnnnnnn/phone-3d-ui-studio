@@ -219,7 +219,7 @@ export function MobilePlayView({
 }) {
   const appearance = usePhoneAppearance()
   const { applyDetectedDevice } = appearance
-  const localDeviceRef = useRef<DetectedDeviceInfo | null>(null)
+  const [localDevice, setLocalDevice] = useState<DetectedDeviceInfo | null>(null)
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false)
 
   const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode)
@@ -262,28 +262,27 @@ export function MobilePlayView({
 
   const sendLocalDeviceInfo = useCallback(
     (overrideProfileId?: PhoneProfileId) => {
-      const info = localDeviceRef.current
-      if (!info || !connRef.current) return
+      if (!localDevice || !connRef.current) return
       const payload: WebDeviceMessage = {
         type: 'web-device',
-        platform: info.platform,
-        screenWidth: info.screenWidth,
-        screenHeight: info.screenHeight,
-        dpr: info.dpr,
-        ...(info.modelHint ? { modelHint: info.modelHint } : {}),
+        platform: localDevice.platform,
+        screenWidth: localDevice.screenWidth,
+        screenHeight: localDevice.screenHeight,
+        dpr: localDevice.dpr,
+        ...(localDevice.modelHint ? { modelHint: localDevice.modelHint } : {}),
         ...(overrideProfileId ? { preferredProfileId: overrideProfileId } : !appearance.autoMatch ? { preferredProfileId: appearance.profileId } : {}),
         preferredFinishId: appearance.finishId,
       }
       connRef.current.send(payload)
     },
-    [appearance.autoMatch, appearance.finishId, appearance.profileId],
+    [appearance.autoMatch, appearance.finishId, appearance.profileId, localDevice],
   )
 
   useEffect(() => {
     let cancelled = false
     void detectLocalDeviceInfo().then((info) => {
       if (cancelled) return
-      localDeviceRef.current = info
+      setLocalDevice(info)
       applyDetectedDevice(info)
     })
     return () => {
@@ -329,14 +328,22 @@ export function MobilePlayView({
       return
     }
 
+    lastImpactPlayedRef.current = 0
     const conn = new RoomConnection({
       roomCode,
       role: 'phone',
-      onStatus: setRoomStatus,
+      onStatus: (next) => {
+        setRoomStatus(next)
+        if (next !== 'paired-relay' && next !== 'paired-p2p') {
+          lastImpactPlayedRef.current = 0
+        }
+      },
       onMessage: (msg) => {
         if (msg.type === 'web-world') {
           setPairedSnapshot(msg)
-          if (msg.lastImpact && msg.lastImpact.sequence > lastImpactPlayedRef.current) {
+          if (!msg.lastImpact) {
+            lastImpactPlayedRef.current = 0
+          } else if (msg.lastImpact.sequence > lastImpactPlayedRef.current) {
             lastImpactPlayedRef.current = msg.lastImpact.sequence
             soundFeedback.playCatch()
           }
@@ -474,9 +481,13 @@ export function MobilePlayView({
       ? `Room ${formatRoomCode(roomCode ?? '')} · Cloud Relay`
       : roomStatus === 'waiting-peer'
         ? `Room ${formatRoomCode(roomCode ?? '')} · Waiting for desktop`
-        : roomStatus === 'unavailable'
-          ? 'Signaling server unreachable'
-          : 'Connecting to desktop…'
+        : roomStatus === 'replaced'
+          ? `Room ${formatRoomCode(roomCode ?? '')} · Replaced by another session`
+          : roomStatus === 'unavailable'
+            ? 'Signaling server unreachable'
+            : roomStatus === 'closed'
+              ? 'Room disconnected'
+              : 'Connecting to desktop…'
 
   const handleJoinRoom = (e: React.FormEvent) => {
     e.preventDefault()
@@ -487,7 +498,9 @@ export function MobilePlayView({
     }
     setCodeError(null)
     setPairDialogOpen(false)
+    setDriver(null)
     pairedCalRef.current = null
+    lastImpactPlayedRef.current = 0
     setRoomCode(normalized)
     const url = new URL(window.location.href)
     url.searchParams.set('pair', normalized)
@@ -517,6 +530,8 @@ export function MobilePlayView({
                 setRoomCode(null)
                 setRoomStatus('idle')
                 setPairedSnapshot(null)
+                lastImpactPlayedRef.current = 0
+                pairedCalRef.current = null
                 const url = new URL(window.location.href)
                 url.searchParams.delete('pair')
                 window.history.replaceState(null, '', url)

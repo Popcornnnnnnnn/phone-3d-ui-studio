@@ -1,5 +1,6 @@
 import {
   parseWebPlayMessage,
+  ROOM_REPLACED_CLOSE_CODE,
   type WebPlayGameMessage,
   type WebPlayRole,
   type WebPlaySignalMessage,
@@ -12,6 +13,7 @@ export type RoomConnectionStatus =
   | 'paired-relay'
   | 'paired-p2p'
   | 'unavailable'
+  | 'replaced'
   | 'closed'
 
 export interface RoomConnectionOptions {
@@ -41,6 +43,8 @@ export function resolveSignalingWsUrl(roomCode: string, role: WebPlayRole, origi
   return url.toString()
 }
 
+const MAX_PENDING_ICE_CANDIDATES = 64
+
 export class RoomConnection {
   private readonly options: RoomConnectionOptions
   private ws: WebSocket | null = null
@@ -49,8 +53,11 @@ export class RoomConnection {
   private status: RoomConnectionStatus = 'idle'
   private everOpened = false
   private closedByUser = false
+  private replaced = false
   private retryTimer: ReturnType<typeof setTimeout> | undefined
   private attempt = 0
+  private remoteDescriptionSet = false
+  private pendingIceCandidates: RTCIceCandidateInit[] = []
 
   constructor(options: RoomConnectionOptions) {
     this.options = options
@@ -68,8 +75,24 @@ export class RoomConnection {
 
   connect() {
     this.closedByUser = false
+    this.replaced = false
     clearTimeout(this.retryTimer)
     this.openSocket()
+  }
+
+  private closeCurrentSocket() {
+    if (!this.ws) return
+    const prev = this.ws
+    this.ws = null
+    prev.onopen = null
+    prev.onmessage = null
+    prev.onerror = null
+    prev.onclose = null
+    try {
+      prev.close()
+    } catch {
+      // ignore
+    }
   }
 
   private openSocket() {
@@ -78,19 +101,21 @@ export class RoomConnection {
       this.setStatus('unavailable')
       return
     }
+    this.closeCurrentSocket()
+    this.teardownPeer()
     this.setStatus('connecting')
     const url = resolveSignalingWsUrl(this.options.roomCode, this.options.role, this.options.signalingOrigin)
     const socket = new WS(url)
     this.ws = socket
 
     socket.onopen = () => {
-      if (this.ws !== socket || this.closedByUser) return
+      if (this.ws !== socket || this.closedByUser || this.replaced) return
       this.everOpened = true
       this.attempt = 0
     }
 
     socket.onmessage = (event) => {
-      if (this.ws !== socket || this.closedByUser) return
+      if (this.ws !== socket || this.closedByUser || this.replaced) return
       this.handleRawPayload(event.data)
     }
 
@@ -98,12 +123,19 @@ export class RoomConnection {
       // Handled in onclose
     }
 
-    socket.onclose = () => {
+    socket.onclose = (event?: { code?: number; reason?: string }) => {
       if (this.ws !== socket) return
       this.ws = null
       this.teardownPeer()
       if (this.closedByUser) {
         this.setStatus('closed')
+        return
+      }
+      if (event?.code === ROOM_REPLACED_CLOSE_CODE) {
+        this.replaced = true
+        clearTimeout(this.retryTimer)
+        this.options.onError?.(event.reason || 'Replaced by new connection')
+        this.setStatus('replaced')
         return
       }
       if (!this.everOpened && this.attempt >= 1) {
@@ -113,7 +145,7 @@ export class RoomConnection {
       this.setStatus(this.everOpened ? 'connecting' : 'unavailable')
       const delayMs = Math.min(800 * 2 ** Math.min(this.attempt++, 4), 6000)
       this.retryTimer = setTimeout(() => {
-        if (!this.closedByUser) this.openSocket()
+        if (!this.closedByUser && !this.replaced) this.openSocket()
       }, delayMs)
     }
   }
@@ -131,6 +163,7 @@ export class RoomConnection {
 
     switch (msg.type) {
       case 'room-joined':
+        this.teardownPeer()
         if (msg.peerConnected) {
           this.setStatus('paired-relay')
           if (this.options.role === 'desktop') void this.startPeerAsOfferer()
@@ -139,6 +172,7 @@ export class RoomConnection {
         }
         return
       case 'peer-joined':
+        this.teardownPeer()
         this.setStatus('paired-relay')
         if (this.options.role === 'desktop') void this.startPeerAsOfferer()
         return
@@ -151,12 +185,24 @@ export class RoomConnection {
         return
       case 'rtc-answer':
         if (this.options.role === 'desktop' && this.pc) {
-          void this.pc.setRemoteDescription({ type: 'answer', sdp: msg.sdp }).catch(() => {})
+          const pc = this.pc
+          void pc
+            .setRemoteDescription({ type: 'answer', sdp: msg.sdp })
+            .then(() => {
+              if (this.pc !== pc) return
+              this.remoteDescriptionSet = true
+              return this.flushPendingIceCandidates(pc)
+            })
+            .catch(() => {})
         }
         return
       case 'rtc-ice':
         if (this.pc) {
-          void this.pc.addIceCandidate(msg.candidate).catch(() => {})
+          if (this.remoteDescriptionSet) {
+            void this.pc.addIceCandidate(msg.candidate).catch(() => {})
+          } else if (this.pendingIceCandidates.length < MAX_PENDING_ICE_CANDIDATES) {
+            this.pendingIceCandidates.push(msg.candidate)
+          }
         }
         return
       case 'room-error':
@@ -169,6 +215,18 @@ export class RoomConnection {
         return
       default:
         this.options.onMessage?.(msg)
+    }
+  }
+
+  private async flushPendingIceCandidates(pc: RTCPeerConnection) {
+    while (this.pendingIceCandidates.length > 0) {
+      if (this.pc !== pc) return
+      const candidate = this.pendingIceCandidates.shift()!
+      try {
+        await pc.addIceCandidate(candidate)
+      } catch {
+        // ignore stale or invalid candidate
+      }
     }
   }
 
@@ -214,6 +272,9 @@ export class RoomConnection {
       if (this.channel !== channel) return
       this.handleRawPayload(event.data)
     }
+    if (channel.readyState === 'open') {
+      this.setStatus('paired-p2p')
+    }
   }
 
   private async startPeerAsOfferer() {
@@ -225,6 +286,7 @@ export class RoomConnection {
       const offer = await pc.createOffer()
       if (this.pc !== pc) return
       await pc.setLocalDescription(offer)
+      if (this.pc !== pc) return
       if (offer.sdp) {
         this.sendSignal({ type: 'rtc-offer', sdp: offer.sdp })
       }
@@ -243,9 +305,13 @@ export class RoomConnection {
     try {
       await pc.setRemoteDescription({ type: 'offer', sdp })
       if (this.pc !== pc) return
+      this.remoteDescriptionSet = true
+      await this.flushPendingIceCandidates(pc)
+      if (this.pc !== pc) return
       const answer = await pc.createAnswer()
       if (this.pc !== pc) return
       await pc.setLocalDescription(answer)
+      if (this.pc !== pc) return
       if (answer.sdp) {
         this.sendSignal({ type: 'rtc-answer', sdp: answer.sdp })
       }
@@ -255,6 +321,8 @@ export class RoomConnection {
   }
 
   private teardownPeer() {
+    this.remoteDescriptionSet = false
+    this.pendingIceCandidates = []
     if (this.channel) {
       this.channel.onopen = null
       this.channel.onclose = null
@@ -294,12 +362,10 @@ export class RoomConnection {
 
   close() {
     this.closedByUser = true
+    this.replaced = false
     clearTimeout(this.retryTimer)
     this.teardownPeer()
-    if (this.ws) {
-      try { this.ws.close() } catch { /* ignore */ }
-      this.ws = null
-    }
+    this.closeCurrentSocket()
     this.setStatus('closed')
   }
 }
