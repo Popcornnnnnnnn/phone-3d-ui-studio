@@ -44,8 +44,8 @@ export function AdaptiveAndroidShell({
     chassis.translate(0, 0, -frameDepth / 2)
 
     const backPlate = createRoundedRectangleGeometry(width * 0.91, height * 0.955, cornerRadius * 0.85, 24)
-    const frontBezel = createRoundedRectangleGeometry(width * 0.96, height * 0.978, cornerRadius * 0.92, 24)
-    const screenBacking = createRoundedRectangleGeometry(displayWidth, displayHeight, cornerRadius * 0.78, 24)
+    const frontBezel = createRoundedRectangleGeometry(width * 0.976, height * 0.986, cornerRadius * 0.94, 24)
+    const screenBacking = createRoundedRectangleGeometry(displayWidth, displayHeight, Math.min(width, height) * 0.100, 24)
 
     return { chassis, backPlate, frontBezel, screenBacking }
   }, [bevel, cornerRadius, displayHeight, displayWidth, frameDepth, height, width])

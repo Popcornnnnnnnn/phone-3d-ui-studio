@@ -2,7 +2,8 @@
 .webplay-stage-shell {
   position: relative;
   flex: 1;
-  min-height: calc(100dvh - 52px);
+  min-height: 0;
+  height: 100%;
   width: 100%;
   overflow: hidden;
   background: radial-gradient(ellipse at 50% 42%, #ffffff 0%, #f1efe9 64%, #e5e2da 100%);
@@ -254,15 +255,25 @@
 }
 
 .webplay-dock-select {
+  appearance: none;
   min-height: 32px;
-  max-width: 152px;
-  padding: 5px 9px;
+  max-width: 158px;
+  padding: 5px 26px 5px 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--surface-secondary);
+  background-color: var(--surface-secondary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239aa1b0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
   color: var(--text-primary);
   font: 520 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
   cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.webplay-dock-select:hover {
+  background-color: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 
 .webplay-dock-swatches {

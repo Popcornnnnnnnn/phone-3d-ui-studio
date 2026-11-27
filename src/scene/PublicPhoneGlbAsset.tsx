@@ -31,6 +31,18 @@ function cloneAndTintMaterials(
     obj.castShadow = true
     obj.receiveShadow = true
 
+    if (asset.id === 'iphone-17-pro' && obj.name === 'Object_19') {
+      const speakerMat = new MeshStandardMaterial({
+        color: '#121418',
+        metalness: 0.2,
+        roughness: 0.75,
+        envMapIntensity: 0.2,
+      })
+      clonedMaterials.push(speakerMat)
+      obj.material = speakerMat
+      return
+    }
+
     const applyMat = (src: Material): Material => {
       const existing = cache.get(src)
       if (existing) return existing
@@ -38,10 +50,14 @@ function cloneAndTintMaterials(
       if (copy instanceof MeshStandardMaterial) {
         if (frameSet.has(src.name)) {
           copy.color.set(finish.frameHex)
-          copy.envMapIntensity = Math.max(copy.envMapIntensity, 1.15)
+          copy.roughness = Math.max(copy.roughness, 0.3)
+          copy.envMapIntensity = 0.92
         } else if (backSet.has(src.name)) {
           copy.color.set(finish.backHex)
           copy.envMapIntensity = Math.max(copy.envMapIntensity, 0.9)
+        } else if (asset.id === 'iphone-17-pro' && src.name === 'Display_Frame') {
+          copy.roughness = Math.max(copy.roughness, 0.28)
+          copy.envMapIntensity = 0.2
         } else if (asset.id === 'iphone-16' && accentSet.has(src.name)) {
           copy.color.set(finish.buttonHex)
         }

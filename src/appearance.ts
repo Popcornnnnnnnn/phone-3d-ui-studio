@@ -74,7 +74,7 @@ export function useAppearance() {
 
 export const workspaceColors = {
   light: { background: '#f3f2ee', grid: '#e1dfd9', gridSection: '#cbc8c0', slab: '#eae8e2' },
-  dark: { background: '#0c0e13', grid: '#222733', gridSection: '#2f3646', slab: '#14171f' },
+  dark: { background: '#0c0e13', grid: '#1c212c', gridSection: '#272f3f', slab: '#14171f' },
 } as const
 
 declare global {

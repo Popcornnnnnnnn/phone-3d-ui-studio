@@ -16,11 +16,15 @@ import { screenFragmentShader, screenVertexShader } from './screenSurfaceShader'
 interface ScreenSurfaceMaterialProps {
   media: ScreenMedia | null
   orientation: ScreenOrientation
+  displayWidth?: number
+  displayHeight?: number
 }
 
 export function ScreenSurfaceMaterial({
   media,
   orientation,
+  displayWidth = IPHONE_17_SCENE.displayWidth,
+  displayHeight = IPHONE_17_SCENE.displayHeight,
 }: ScreenSurfaceMaterialProps) {
   const videoTexture = useMemo(() => {
     if (!media || media.kind !== 'video') return null
@@ -43,8 +47,8 @@ export function ScreenSurfaceMaterial({
     if (!media || !texture) return null
 
     const targetAspect = getScreenTargetAspect(
-      IPHONE_17_SCENE.displayWidth,
-      IPHONE_17_SCENE.displayHeight,
+      displayWidth,
+      displayHeight,
       orientation,
     )
     const mapping = getContainMapping(media.width, media.height, targetAspect)
@@ -55,7 +59,7 @@ export function ScreenSurfaceMaterial({
       landscape: { value: orientation === 'landscape' ? 1 : 0 },
       screenTexture: { value: texture },
     }
-  }, [media, orientation, texture])
+  }, [displayHeight, displayWidth, media, orientation, texture])
 
   if (!uniforms) {
     return <meshBasicMaterial color="#0b0e14" toneMapped={false} />

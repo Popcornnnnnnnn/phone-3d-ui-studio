@@ -29,6 +29,7 @@ import {
 import { useAppearance } from '../appearance'
 import { drawMarbleScreen } from '../marble/drawMarbleScreen'
 import { createClippedMarbleMaterial } from '../marble/marbleMaterials'
+import { fittedPhoneDisplayMetrics } from '../model/publicPhoneAssets'
 import { usePhoneAppearance } from '../model/usePhoneAppearance'
 import { SpatialPhoneModel } from '../spatial/SpatialPhoneModel'
 import { DEMO_SCREENS, type DemoScreenId } from '../studio/demoScreens'
@@ -81,19 +82,21 @@ function SoloMobileScene({
     [g.cornerRadius, g.height, g.width],
   )
   const surface = useMemo(() => {
+    const { displayWidth, displayHeight } = fittedPhoneDisplayMetrics(profile)
     const canvas = document.createElement('canvas')
-    canvas.width = Math.max(240, Math.round(profile.displayPixels.width / 3))
-    canvas.height = Math.max(480, Math.round(profile.displayPixels.height / 3))
+    canvas.width = 640
+    canvas.height = Math.round(640 * (displayHeight / displayWidth))
     const texture = new CanvasTexture(canvas)
     texture.colorSpace = SRGBColorSpace
+    texture.anisotropy = 8
     return {
       canvas,
       context: canvas.getContext('2d')!,
       media: { kind: 'texture' as const, name: 'Solo Tray', width: canvas.width, height: canvas.height, texture },
     }
-  }, [profile.displayPixels.height, profile.displayPixels.width])
+  }, [profile])
 
-  const material = useMemo(() => createClippedMarbleMaterial('#56ed9f', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
+  const material = useMemo(() => createClippedMarbleMaterial('#34d888', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
   const marker = useMemo(() => createClippedMarbleMaterial('#082418', inverse, slotGeometry, screenBounds), [inverse, slotGeometry, screenBounds])
   const trailMaterial = useMemo(() => new MeshStandardMaterial({ color: '#454d5c', roughness: 0.45, metalness: 0.2 }), [])
   const trailMarker = useMemo(() => new MeshStandardMaterial({ color: '#222833', roughness: 0.55 }), [])

@@ -11,8 +11,11 @@ export const MARBLE_GEOMETRY = Object.freeze({
   interpolationMs: 50, gravity: 1.5,
 })
 export function marbleGeometry(settings, profile = DEFAULT_PHONE_PROFILE) {
-  return { ...MARBLE_GEOMETRY, width: profile.displayMm.width / 1000, height: profile.displayMm.height / 1000,
+  const width = profile.displayMm.width / 1000
+  const height = profile.displayMm.height / 1000
+  return { ...MARBLE_GEOMETRY, width, height,
     screenZ: profile.bodyMm.depth / 2000 + 0.0008 * SPATIAL_MODEL_SCALE,
+    cornerRadius: Math.min(width, height) * 0.155,
     radius: settings.ballDiameterMm / 2000 }
 }
 export function scaleMarbleTranslation(phone, scale) {

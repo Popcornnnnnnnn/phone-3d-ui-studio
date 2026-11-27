@@ -1,4 +1,4 @@
-import type { PhoneProfileId } from '../../shared/phoneGeometry.mjs'
+import { millimetersToScene, type PhoneProfile, type PhoneProfileId } from '../../shared/phoneGeometry.mjs'
 
 export type PublicPhoneGlbId = 'iphone-17-pro' | 'iphone-16' | 'iphone-16-pro'
 
@@ -13,6 +13,23 @@ export interface PublicPhoneAssetAttribution {
   modifications: string
 }
 
+export interface PublicPhoneFrontFaceSpec {
+  /** Glass bezel width / total normalized body width */
+  bezelWidthRatio: number
+  /** Glass bezel height / total normalized body height */
+  bezelHeightRatio: number
+  /** Glass bezel corner radius / min(bezelWidth, bezelHeight) */
+  bezelCornerRatio: number
+  /** Active OLED display width / total normalized body width */
+  displayWidthRatio: number
+  /** Active OLED display height / total normalized body height */
+  displayHeightRatio: number
+  /** Active OLED corner radius / min(displayWidth, displayHeight) */
+  displayCornerRatio: number
+  /** Distance from the active screen top edge to the Dynamic Island center */
+  islandOffsetFromTopMm: number
+}
+
 export interface PublicPhoneAssetSpec {
   id: PublicPhoneGlbId
   file: string
@@ -23,6 +40,7 @@ export interface PublicPhoneAssetSpec {
     bodyDepth: number
     frontGlassZ: number
   }
+  frontFace: PublicPhoneFrontFaceSpec
   frameMaterials: readonly string[]
   backMaterials: readonly string[]
   accentMaterials: readonly string[]
@@ -38,6 +56,15 @@ export const PUBLIC_PHONE_ASSETS: Readonly<Record<PublicPhoneGlbId, PublicPhoneA
       bodyHeight: 1.0,
       bodyDepth: 0.057222,
       frontGlassZ: 0.028611,
+    },
+    frontFace: {
+      bezelWidthRatio: 0.966,
+      bezelHeightRatio: 0.991,
+      bezelCornerRatio: 0.176,
+      displayWidthRatio: 0.936,
+      displayHeightRatio: 0.976,
+      displayCornerRatio: 0.165,
+      islandOffsetFromTopMm: 5.4,
     },
     frameMaterials: ['Anodized_aluminum', 'Plastic_antena'],
     backMaterials: ['Frosted_glass', 'Glass_tint'],
@@ -63,6 +90,15 @@ export const PUBLIC_PHONE_ASSETS: Readonly<Record<PublicPhoneGlbId, PublicPhoneA
       bodyDepth: 0.051813,
       frontGlassZ: 0.025906,
     },
+    frontFace: {
+      bezelWidthRatio: 0.974,
+      bezelHeightRatio: 0.989,
+      bezelCornerRatio: 0.164,
+      displayWidthRatio: 0.938,
+      displayHeightRatio: 0.972,
+      displayCornerRatio: 0.153,
+      islandOffsetFromTopMm: 5.6,
+    },
     frameMaterials: ['SNEsafZygRmlhRr'],
     backMaterials: ['imSnhDbpTQibpde', 'FpuaJVrjAsixZjs'],
     accentMaterials: ['DGqhsECDVpTtHfY'],
@@ -86,6 +122,15 @@ export const PUBLIC_PHONE_ASSETS: Readonly<Record<PublicPhoneGlbId, PublicPhoneA
       bodyHeight: 1.0,
       bodyDepth: 0.05268,
       frontGlassZ: 0.02634,
+    },
+    frontFace: {
+      bezelWidthRatio: 0.964,
+      bezelHeightRatio: 0.990,
+      bezelCornerRatio: 0.158,
+      displayWidthRatio: 0.936,
+      displayHeightRatio: 0.975,
+      displayCornerRatio: 0.148,
+      islandOffsetFromTopMm: 5.4,
     },
     frameMaterials: ['metalframe.002'],
     backMaterials: ['basecolor.001'],
@@ -118,6 +163,88 @@ const PROFILE_TO_PUBLIC_GLB: Record<PhoneProfileId, PublicPhoneGlbId | null> = {
 export function publicPhoneAssetForProfile(profileId: string): PublicPhoneAssetSpec | null {
   const mapped = (PROFILE_TO_PUBLIC_GLB as Record<string, PublicPhoneGlbId | null>)[profileId]
   return mapped ? PUBLIC_PHONE_ASSETS[mapped] : null
+}
+
+export interface FittedPhoneDisplayMetrics {
+  bodyWidth: number
+  bodyHeight: number
+  bodyDepth: number
+  bezelWidth: number
+  bezelHeight: number
+  bezelCornerRadius: number
+  displayWidth: number
+  displayHeight: number
+  displayCornerRadius: number
+  islandOffsetFromTop: number
+}
+
+/**
+ * Computes bezel and active OLED screen dimensions fitted cleanly to each
+ * model's physical silhouette and metal rim opening.
+ */
+export function fittedPhoneDisplayMetrics(profile: PhoneProfile): FittedPhoneDisplayMetrics {
+  const bodyWidth = millimetersToScene(profile.bodyMm.width)
+  const bodyHeight = millimetersToScene(profile.bodyMm.height)
+  const bodyDepth = millimetersToScene(profile.bodyMm.depth)
+  const asset = publicPhoneAssetForProfile(profile.id)
+
+  if (asset) {
+    const { frontFace } = asset
+    const bezelWidth = bodyWidth * frontFace.bezelWidthRatio
+    const bezelHeight = bodyHeight * frontFace.bezelHeightRatio
+    const bezelCornerRadius = Math.min(bezelWidth, bezelHeight) * frontFace.bezelCornerRatio
+    const displayWidth = bodyWidth * frontFace.displayWidthRatio
+    const displayHeight = bodyHeight * frontFace.displayHeightRatio
+    const displayCornerRadius = Math.min(displayWidth, displayHeight) * frontFace.displayCornerRatio
+    return {
+      bodyWidth,
+      bodyHeight,
+      bodyDepth,
+      bezelWidth,
+      bezelHeight,
+      bezelCornerRadius,
+      displayWidth,
+      displayHeight,
+      displayCornerRadius,
+      islandOffsetFromTop: millimetersToScene(frontFace.islandOffsetFromTopMm),
+    }
+  }
+
+  if (profile.id === 'android-adaptive') {
+    const bezelWidth = bodyWidth * 0.976
+    const bezelHeight = bodyHeight * 0.986
+    const bezelCornerRadius = Math.min(bodyWidth, bodyHeight) * 0.108
+    const displayWidth = Math.min(millimetersToScene(profile.displayMm.width), bezelWidth * 0.974)
+    const displayHeight = Math.min(millimetersToScene(profile.displayMm.height), bezelHeight * 0.986)
+    const displayCornerRadius = Math.min(bodyWidth, bodyHeight) * 0.100
+    return {
+      bodyWidth,
+      bodyHeight,
+      bodyDepth,
+      bezelWidth,
+      bezelHeight,
+      bezelCornerRadius,
+      displayWidth,
+      displayHeight,
+      displayCornerRadius,
+      islandOffsetFromTop: millimetersToScene(5.2),
+    }
+  }
+
+  const displayWidth = millimetersToScene(profile.displayMm.width)
+  const displayHeight = millimetersToScene(profile.displayMm.height)
+  return {
+    bodyWidth,
+    bodyHeight,
+    bodyDepth,
+    bezelWidth: bodyWidth * 0.968,
+    bezelHeight: bodyHeight * 0.986,
+    bezelCornerRadius: Math.min(bodyWidth, bodyHeight) * 0.165,
+    displayWidth,
+    displayHeight,
+    displayCornerRadius: Math.min(displayWidth, displayHeight) * 0.155,
+    islandOffsetFromTop: millimetersToScene(5.4),
+  }
 }
 
 export function publicPhoneGlbUrl(asset: PublicPhoneAssetSpec): string {
